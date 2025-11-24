@@ -385,3 +385,45 @@ An AI/ML benchmark run is rejected if:
 - Check for impossible performance results
 - Cross-reference with device hardware capabilities
 - Validate accuracy metrics are within expected bounds
+
+## Data Collected
+
+During the AI/ML benchmark tests, the following data is collected and stored in the database:
+
+### Benchmark Results
+- Overall AI/ML score and performance grade
+- Test duration and completion timestamps
+- App version and verification status
+- Global and category rankings
+
+### Test Environment Data
+- Ambient temperature during testing
+- Battery levels at start and end
+- Charging status and screen brightness
+- WiFi, Bluetooth, and mobile data status
+- Number of running applications
+- Available RAM and storage
+- Kernel version and build fingerprint
+- Device temperature at start (CPU, GPU, battery)
+
+### AI/ML Test Results
+- LLM Inference score, tokens per second, and time to first token
+- Image Classification score and images processed per second
+- Object Detection score and detections per second
+- Text Embedding score and embeddings generated per second
+- Speech-to-Text score and real-time factor
+- All detailed metrics stored in JSON format in the `ai_ml_test_results` column
+
+### Full Benchmark Details
+- CPU, GPU, RAM, Storage, and Productivity scores for comparison
+- Detailed test results for all categories in JSON format
+
+### Telemetry Data
+- CPU, GPU, and battery temperature timelines
+- CPU and GPU frequency timelines
+- Battery level and memory usage timelines
+- Power consumption timeline
+- Thermal throttle events and performance state timeline
+- Average and maximum temperature/frequency values
+- Total throttle events and battery drain percentage
+- Average and peak power consumption values

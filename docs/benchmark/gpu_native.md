@@ -396,3 +396,51 @@ A GPU benchmark run is rejected if:
 - Check for impossible performance results
 - Cross-reference with device hardware capabilities
 - Validate consistency across multiple test runs
+
+## Data Collected
+
+During the GPU Native benchmark tests, the following data is collected and stored in the database:
+
+### Benchmark Results
+- Overall GPU score and performance grade
+- Test duration and completion timestamps
+- App version and verification status
+- Global and category rankings
+
+### Test Environment Data
+- Ambient temperature during testing
+- Battery levels at start and end
+- Charging status and screen brightness
+- WiFi, Bluetooth, and mobile data status
+- Number of running applications
+- Available RAM and storage
+- Kernel version and build fingerprint
+- Device temperature at start (CPU, GPU, battery)
+
+### GPU Test Results
+- Triangle Rendering Stress Test FPS and frame time consistency
+- Compute Shader Matrix Multiplication GFLOPS and computation time
+- Particle System Simulation particles processed per second
+- Texture Sampling Fillrate test pixel fillrate in GPixels/sec
+- Tessellation & Geometry Shader test throughput and performance
+- All detailed metrics stored in JSON format in the `gpu_test_results` column
+
+### GPU Frame Metrics
+- Frame-by-frame performance data including FPS, frame times, and consistency
+- GPU utilization, temperature, and frequency timelines
+- Frame time distribution and spike analysis
+- All detailed frame metrics in JSON format in the `gpu_frame_metrics` table
+
+### Full Benchmark Details
+- CPU, AI/ML, RAM, Storage, and Productivity scores for comparison
+- Detailed test results for all categories in JSON format
+
+### Telemetry Data
+- CPU, GPU, and battery temperature timelines
+- CPU and GPU frequency timelines
+- Battery level and memory usage timelines
+- Power consumption timeline
+- Thermal throttle events and performance state timeline
+- Average and maximum temperature/frequency values
+- Total throttle events and battery drain percentage
+- Average and peak power consumption values

@@ -438,3 +438,45 @@ A storage benchmark run is rejected if:
 - Check for impossible performance results
 - Cross-reference with device hardware capabilities
 - Validate consistency across multiple test runs
+
+## Data Collected
+
+During the Storage benchmark tests, the following data is collected and stored in the database:
+
+### Benchmark Results
+- Overall Storage score and performance grade
+- Test duration and completion timestamps
+- App version and verification status
+- Global and category rankings
+
+### Test Environment Data
+- Ambient temperature during testing
+- Battery levels at start and end
+- Charging status and screen brightness
+- WiFi, Bluetooth, and mobile data status
+- Number of running applications
+- Available RAM and storage
+- Kernel version and build fingerprint
+- Device temperature at start (CPU, GPU, battery)
+
+### Storage Test Results
+- Sequential Read/Write Speed test MB/s read/write speed
+- Random Access (4K blocks) IOPS and latency measurements
+- Small File Operations test files processed per second
+- Database Performance test transactions per second and query response time
+- Mixed Workload Test overall throughput and consistency
+- All detailed metrics stored in JSON format in the `storage_test_results` column
+
+### Full Benchmark Details
+- CPU, AI/ML, GPU, RAM, and Productivity scores for comparison
+- Detailed test results for all categories in JSON format
+
+### Telemetry Data
+- CPU, GPU, and battery temperature timelines
+- CPU and GPU frequency timelines
+- Battery level and memory usage timelines
+- Power consumption timeline
+- Thermal throttle events and performance state timeline
+- Average and maximum temperature/frequency values
+- Total throttle events and battery drain percentage
+- Average and peak power consumption values

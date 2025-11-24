@@ -567,3 +567,50 @@ A productivity benchmark run is rejected if:
 - Check for impossible performance results
 - Cross-reference with device hardware capabilities
 - Validate consistency across multiple test runs
+
+## Data Collected
+
+During the Productivity benchmark tests, the following data is collected and stored in the database:
+
+### Benchmark Results
+- Overall Productivity score and performance grade
+- Test duration and completion timestamps
+- App version and verification status
+- Global and category rankings
+
+### Test Environment Data
+- Ambient temperature during testing
+- Battery levels at start and end
+- Charging status and screen brightness
+- WiFi, Bluetooth, and mobile data status
+- Number of running applications
+- Available RAM and storage
+- Kernel version and build fingerprint
+- Device temperature at start (CPU, GPU, battery)
+
+### Productivity Test Results
+- UI Rendering Performance sustained FPS and frame drops
+- RecyclerView Stress Test scroll smoothness and memory usage
+- Canvas Drawing Performance draw operations per second
+- Image Processing - Filters processing time per filter and images processed per second
+- Image Processing - Batch Resize images processed per second and total processing time
+- Video Encoding Test FPS encoding speed and time to complete
+- Video Transcoding transcoding speed (X real-time) and processing time
+- PDF Rendering & Generation pages per second and rendering time
+- Text Rendering & Typography characters per second and layout calculation time
+- Multi-tasking Simulation performance degradation percentage and thermal throttling events
+- All detailed metrics stored in JSON format in the `productivity_test_results` column
+
+### Full Benchmark Details
+- CPU, AI/ML, GPU, RAM, and Storage scores for comparison
+- Detailed test results for all categories in JSON format
+
+### Telemetry Data
+- CPU, GPU, and battery temperature timelines
+- CPU and GPU frequency timelines
+- Battery level and memory usage timelines
+- Power consumption timeline
+- Thermal throttle events and performance state timeline
+- Average and maximum temperature/frequency values
+- Total throttle events and battery drain percentage
+- Average and peak power consumption values

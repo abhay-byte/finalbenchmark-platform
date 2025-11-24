@@ -887,3 +887,50 @@ A benchmark run is rejected if:
 - Check for impossible performance results
 - Cross-reference with device hardware capabilities
 - Validate consistency across multiple test runs
+
+## Data Collected
+
+During the CPU benchmark tests, the following data is collected and stored in the database:
+
+### Benchmark Results
+- Overall CPU score and performance grade
+- Test duration and completion timestamps
+- App version and verification status
+- Global and category rankings
+
+### Test Environment Data
+- Ambient temperature during testing
+- Battery levels at start and end
+- Charging status and screen brightness
+- WiFi, Bluetooth, and mobile data status
+- Number of running applications
+- Available RAM and storage
+- Kernel version and build fingerprint
+- Device temperature at start (CPU, GPU, battery)
+
+### CPU Test Results
+- Prime Number Generation score and operations per second
+- Fibonacci Sequence score and computation time
+- Matrix Multiplication score and floating-point operations per second
+- Hash Computing score and data processing throughput
+- String Sorting score and string comparison operations per second
+- Ray Tracing score and rays processed per second
+- Compression/Decompression score and throughput
+- Monte Carlo Simulation score and random number generation throughput
+- JSON Parsing score and JSON elements parsed per second
+- N-Queens Problem score and backtracking operations
+- All detailed metrics stored in JSON format in the `cpu_test_results` column
+
+### Full Benchmark Details
+- AI/ML, GPU, RAM, Storage, and Productivity scores for comparison
+- Detailed test results for all categories in JSON format
+
+### Telemetry Data
+- CPU, GPU, and battery temperature timelines
+- CPU and GPU frequency timelines
+- Battery level and memory usage timelines
+- Power consumption timeline
+- Thermal throttle events and performance state timeline
+- Average and maximum temperature/frequency values
+- Total throttle events and battery drain percentage
+- Average and peak power consumption values
