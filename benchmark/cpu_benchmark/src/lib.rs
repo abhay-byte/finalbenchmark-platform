@@ -35,6 +35,7 @@ pub mod algorithms;
 pub mod types;
 pub mod utils;
 pub mod ffi;
+pub mod jni_interface;
 
 pub use algorithms::*;
 pub use types::*;

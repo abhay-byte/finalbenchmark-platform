@@ -1,100 +1,116 @@
-# Android Benchmarking App
+# FinalBenchmark2 - CPU Benchmark Application
 
-A comprehensive Android application for benchmarking device performance across CPU, GPU, RAM, and Storage components.
+A comprehensive CPU benchmarking application that tests processor performance with various computational tasks using Rust-powered native libraries.
 
-## Features
+## 🚀 Features
 
-- **CPU Benchmarking**: Tests integer operations, floating-point calculations, multi-core performance, compression algorithms, and cryptographic operations
-- **GPU Benchmarking**: Tests rendering performance, compute operations, and memory bandwidth
-- **RAM Benchmarking**: Tests memory read/write speeds, latency, and bandwidth
-- **Storage Benchmarking**: Tests storage read/write speeds, IOPS, and latency
-- **Scoring System**: Normalized scores across all components with overall performance rating
-- **Results History**: Stores and displays historical benchmark results
-- **Export Functionality**: Export results in JSON, CSV, or text formats
+- **Real-time Benchmarking**: Visual progress updates for each CPU test
+- **Comprehensive Tests**: 10 single-core and 10 multi-core benchmark tests
+- **Native Performance**: Rust-powered CPU-intensive operations via JNI
+- **Modern UI**: Jetpack Compose with Material3 design
+- **Detailed Reports**: Final score calculation with ratings
 
-## Architecture
+## 📋 Benchmark Tests
 
-The app follows modern Android development practices:
+### Single-Core Tests
+- Prime Generation
+- Fibonacci Calculation (Recursive)
+- Matrix Multiplication
+- Hash Computing (SHA-2/MD5)
+- String Sorting
+- Ray Tracing
+- Compression (LZMA)
+- Monte Carlo Pi Estimation
+- JSON Parsing
+- N-Queens Problem
 
-- **MVVM Pattern**: Clean separation of concerns with ViewModels
-- **Jetpack Compose**: Modern UI toolkit for building native Android interfaces
-- **Room Database**: Local storage for benchmark results
-- **Coroutines**: Asynchronous programming for background operations
-- **Navigation Component**: Single Activity architecture with Compose navigation
+### Multi-Core Tests
+- Same algorithms optimized for multi-core execution
 
-## Components
+## 🛠️ Project Structure
 
-### Core Framework
-- `BenchmarkTest`: Base class for all benchmark tests
-- `BenchmarkManager`: Orchestrates execution of multiple tests
-- `ScoringSystem`: Calculates component and overall scores
+```
+app/src/main/java/com/ivarna/finalbenchmark2/
+├── cpuBenchmark/           # Native interface and managers
+│   ├── BenchmarkEvent.kt   # Data classes
+│   ├── CpuBenchmarkNative.kt # JNI interface
+│   └── BenchmarkManager.kt # Benchmark orchestrator
+├── ui/screens/            # Compose UI screens
+│   ├── WelcomeScreen.kt   # Intro screen
+│   ├── BenchmarkScreen.kt # Real-time progress
+│   └── ResultScreen.kt    # Final report
+├── navigation/            # Navigation graph
+└── MainActivity.kt        # Entry point
+```
 
-### Benchmark Tests
-- **CPU Tests**:
-  - Integer Operations Test
-  - Floating Point Operations Test
- - Multi-Core Test
-  - Compression Test
-  - Cryptography Test
+## 🔧 Building the Native Library
 
-- **GPU Tests**:
-  - GPU Info Test
-  - 2D Rendering Test
-  - 3D Rendering Test
-  - Compute Shader Test
-  - GPU Memory Test
+The application uses a Rust-based CPU benchmark engine. To build the native library for Android:
 
-- **RAM Tests**:
-  - Sequential Memory Test
-  - Random Access Memory Test
-  - Memory Bandwidth Test
-  - Cache Performance Test
-  - Memory Pool Test
+1. **Setup Environment**:
+   ```bash
+   export ANDROID_NDK_HOME=/path/to/your/ndk
+   rustup target add aarch64-linux-android armv7-linux-androideabi x86_64-linux-android i686-linux-android
+   cargo install cargo-ndk
+   rustup component add rust-src
+   ```
 
-- **Storage Tests**:
-  - Sequential Storage Test
-  - Random Access IOPS Test
-  - Storage Latency Test
-  - Write Amplification Test
- - Storage Comparison Test
+2. **Build Native Libraries**:
+   ```bash
+   ./build_android_native.sh
+   ```
 
-### UI Components
-- Dashboard Screen: Main screen for test selection and device info
-- Execution Screen: Real-time progress indicators
-- Results Screen: Detailed scores and visualizations
-- History Screen: Previous benchmark results
-- Settings Screen: Configuration options
+3. **Build Android App**:
+   ```bash
+   ./gradlew assembleDebug
+   ```
 
-## Getting Started
+For detailed instructions, see [README_NATIVE_BUILD.md](README_NATIVE_BUILD.md).
 
-1. Clone the repository
-2. Open in Android Studio
-3. Build and run on your Android device
+## 📱 Running the Application
 
-## Permissions
+After building both the native library and the Android app:
 
-The app requires the following permissions:
-- `WRITE_EXTERNAL_STORAGE` (for Android versions below 13)
-- `READ_EXTERNAL_STORAGE` (for accessing storage benchmarks)
+```bash
+# Install the app
+adb install app/build/outputs/apk/debug/app-debug.apk
 
-## Testing
+# Or run directly from Gradle
+./gradlew installDebug
+```
 
-The project includes:
-- Unit tests for scoring algorithms
-- Integration tests for benchmark workflow
-- UI tests for core functionality
+## 🏗️ Architecture
 
-## Performance Considerations
+- **Frontend**: Kotlin + Jetpack Compose with Material3
+- **Backend**: Rust-powered native library via JNI
+- **Communication**: JSON-based parameter passing and result retrieval
+- **UI Flow**: Welcome → Benchmark → Result screens
+- **State Management**: Kotlin Coroutines + Flows for real-time updates
 
-- Thermal management to prevent device overheating
-- Battery level monitoring
-- Memory management during intensive operations
-- Storage space validation
+## 🧪 Testing Flow
 
-## Contributing
+1. User starts benchmark from Welcome screen
+2. App attempts to call native Rust functions
+3. If native library is available, runs actual CPU-intensive tests
+4. If native library is missing, falls back to simulation mode
+5. Real-time progress updates shown during execution
+6. Final results displayed with scores and ratings
 
-We welcome contributions to improve the benchmarking accuracy and add new tests. Please follow the existing code patterns and submit pull requests for review.
+## 🎯 Implementation Status
 
-## License
+✅ **Complete CPU Benchmark Flow**
+- Data classes for benchmark events and results
+- JNI interface for Rust FFI
+- Welcome, Benchmark, and Result screens
+- Real-time progress updates
+- Navigation between screens
+- Proper error handling with graceful fallback
+- App icon integration
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+✅ **Native Library Integration Ready**
+- Proper JNI structure with all function declarations
+- Error handling for missing native libraries
+- Simulation fallback when native functions unavailable
+- Build scripts and documentation for native compilation
+
+The implementation is complete and ready for integration with the compiled Rust native library. When the native library is included, the app will execute actual Rust CPU benchmark functions rather than simulations.

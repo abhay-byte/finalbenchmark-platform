@@ -2,7 +2,7 @@
 
 ## Overview
 A comprehensive benchmarking system consisting of:
-- **Android App**: Runs benchmarks, handles authentication, displays previous results
+- **Cross Platform Benchmark App**: Runs benchmarks, handles authentication, displays previous results (android, pc)
 - **Website**: Leaderboards, device comparisons, detailed analytics, device information database
 
 ---

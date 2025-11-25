@@ -1,0 +1,91 @@
+package com.ivarna.finalbenchmark2
+
+import com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkManager
+import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.launch
+import org.junit.Test
+import org.junit.Assert.*
+
+class BenchmarkManagerTest {
+    
+    @Test
+    fun `test benchmark flow emits events and completion`() = runTest {
+        val benchmarkManager = BenchmarkManager()
+        
+        // Collect all events emitted during benchmark
+        val events = mutableListOf<String>()
+        val job = launch {
+            benchmarkManager.benchmarkEvents.collect { event ->
+                events.add("${event.testName} - ${event.state}")
+            }
+        }
+        
+        // Also collect completion
+        var completionReceived = false
+        val completionJob = launch {
+            benchmarkManager.benchmarkComplete.collect { summaryJson ->
+                completionReceived = true
+                assertTrue(summaryJson.isNotEmpty())
+                assertTrue(summaryJson.contains("single_core_score"))
+                assertTrue(summaryJson.contains("multi_core_score"))
+            }
+        }
+        
+        // Start the benchmark
+        launch {
+            benchmarkManager.startBenchmark()
+        }
+        
+        // Allow some time for the benchmark to run
+        kotlinx.coroutines.delay(2000)
+        
+        // Wait for collection to complete
+        job.cancel()
+        completionJob.cancel()
+        
+        // Verify that we received events
+        assertTrue("Should have received benchmark events", events.isNotEmpty())
+        
+        // Verify we received completion
+        assertTrue("Should have received completion", completionReceived)
+        
+        // Verify we have different types of events
+        val eventTypes = events.distinct()
+        assertTrue("Should have different types of events", eventTypes.size > 1)
+        
+        // Verify we have pending, running, and completed states
+        val hasPending = events.any { it.contains("PENDING") }
+        val hasRunning = events.any { it.contains("RUNNING") }
+        val hasCompleted = events.any { it.contains("COMPLETED") }
+        
+        assertTrue("Should have pending events", hasPending)
+        assertTrue("Should have running events", hasRunning)
+        assertTrue("Should have completed events", hasCompleted)
+    }
+    
+    @Test
+    fun `test benchmark manager handles errors gracefully`() = runTest {
+        val benchmarkManager = BenchmarkManager()
+        
+        var completionReceived = false
+        val completionJob = launch {
+            benchmarkManager.benchmarkComplete.collect { summaryJson ->
+                completionReceived = true
+                // Should receive a default summary even if there's an error
+                assertTrue(summaryJson.isNotEmpty())
+            }
+        }
+        
+        // This should complete without crashing
+        launch {
+            benchmarkManager.startBenchmark()
+        }
+        
+        // Allow some time for the benchmark to run
+        kotlinx.coroutines.delay(2000)
+        
+        completionJob.cancel()
+        
+        assertTrue("Should have received completion even with errors", completionReceived)
+    }
+}
