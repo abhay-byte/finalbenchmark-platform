@@ -16,3 +16,7 @@ local.properties
 .kilocode
 .idea
 .gradle
+# Rust
+target/
+Cargo.lock
+**/*.rs.bk
