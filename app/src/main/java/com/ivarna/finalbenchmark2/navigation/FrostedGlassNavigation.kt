@@ -1,92 +1,116 @@
 package com.ivarna.finalbenchmark2.navigation
 
-import android.os.Build
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.navigation.NavController
-import androidx.compose.ui.graphics.RenderEffect
-import androidx.compose.ui.graphics.Shader
-import androidx.compose.ui.graphics.TileMode
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
-import androidx.compose.ui.res.painterResource
-import androidx.compose.runtime.getValue
-import com.ivarna.finalbenchmark2.ui.screens.*
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.haze
+import dev.chrisbanes.haze.hazeChild
 
 @Composable
 fun FrostedGlassNavigationBar(
     items: List<BottomNavigationItem>,
     navController: NavHostController,
+    hazeState: HazeState, // Pass this from parent
     modifier: Modifier = Modifier
 ) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
+    
+    // Get color in Composable context
+    val blurBackgroundColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)
 
-    val backgroundColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.65f)
-
-    Box(
+    NavigationBar(
+        containerColor = Color.Transparent, // Must be transparent to see blur
+        tonalElevation = 0.dp,
         modifier = modifier
             .fillMaxWidth()
-            .background(backgroundColor)
+            .hazeChild(state = hazeState) {
+                backgroundColor = blurBackgroundColor
+                blurRadius = 20.dp
+            }
     ) {
-        NavigationBar(
-            containerColor = Color.Transparent, // needed so background shows
-            tonalElevation = 0.dp
-        ) {
-            items.forEach { item ->
-                val isSelected = currentRoute == item.route
+        items.forEach { item ->
+            val isSelected = currentRoute == item.route
 
-                NavigationBarItem(
-                    selected = isSelected,
-                    onClick = {
-                        if (!isSelected) { // prevent re-clicking same tab
-                            navController.navigate(item.route) {
-                                launchSingleTop = true
-                                restoreState = true
-                                popUpTo(navController.graph.startDestinationId) {
-                                    saveState = true
-                                }
+            NavigationBarItem(
+                selected = isSelected,
+                onClick = {
+                    if (currentRoute != item.route) {
+                        navController.navigate(item.route) {
+                            launchSingleTop = true
+                            restoreState = true
+                            popUpTo(navController.graph.startDestinationId) {
+                                saveState = true
                             }
                         }
-                    },
-                    icon = {
-                        when (item.route) {
-                            "device" -> Icon(
-                                painter = painterResource(id = com.ivarna.finalbenchmark2.R.drawable.mobile_24),
-                                contentDescription = item.label,
-                                tint = if (isSelected) {
-                                    MaterialTheme.colorScheme.primary
-                                } else {
-                                    MaterialTheme.colorScheme.onSurfaceVariant
-                                }
-                            )
-                            "history" -> Icon(
-                                painter = painterResource(id = com.ivarna.finalbenchmark2.R.drawable.history_24),
-                                contentDescription = item.label,
-                                tint = if (isSelected) {
-                                    MaterialTheme.colorScheme.primary
-                                } else {
-                                    MaterialTheme.colorScheme.onSurfaceVariant
-                                }
-                            )
-                            else -> Icon(item.icon, contentDescription = item.label)
-                        }
-                    },
-                    label = { Text(item.label) }
-                )
-            }
+                    }
+                },
+                icon = {
+                    when (item.route) {
+                        "device" -> Icon(
+                            painter = painterResource(id = com.ivarna.finalbenchmark2.R.drawable.mobile_24),
+                            contentDescription = item.label,
+                            tint = if (isSelected) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            }
+                        )
+                        "history" -> Icon(
+                            painter = painterResource(id = com.ivarna.finalbenchmark2.R.drawable.history_24),
+                            contentDescription = item.label,
+                            tint = if (isSelected) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            }
+                        )
+                        else -> Icon(item.icon, contentDescription = item.label)
+                    }
+                },
+                label = { Text(item.label) }
+            )
         }
     }
 }
 
-// Import the BottomNavigationItem from the main navigation file
-// The BottomNavigationItem data class is defined in MainNavigation.kt
+// In your parent composable (where you use Scaffold):
+/*
+@Composable
+fun MainScreen() {
+    val hazeState = remember { HazeState() }
+    val navController = rememberNavController()
+    
+    Scaffold(
+        bottomBar = {
+            FrostedGlassNavigationBar(
+                items = navigationItems,
+                navController = navController,
+                hazeState = hazeState
+            )
+        }
+    ) { padding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .haze(state = hazeState) // Add this to content that should be blurred
+        ) {
+            NavHost(
+                navController = navController,
+                startDestination = "device",
+                modifier = Modifier.padding(padding)
+            ) {
+                // Your navigation routes
+            }
+        }
+    }
+}
+*/
