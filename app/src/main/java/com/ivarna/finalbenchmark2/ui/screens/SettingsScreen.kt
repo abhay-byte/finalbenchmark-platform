@@ -1,5 +1,7 @@
 package com.ivarna.finalbenchmark2.ui.screens
 
+import android.content.Context
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -7,17 +9,49 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.activity.ComponentActivity
 import com.ivarna.finalbenchmark2.ui.theme.FinalBenchmark2Theme
+import com.ivarna.finalbenchmark2.ui.theme.ThemeMode
+import com.ivarna.finalbenchmark2.utils.ThemePreferences
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen() {
+    val context = LocalContext.current
+    val themePreferences = remember { ThemePreferences(context) }
+    
     val themes = listOf("Light", "Dark", "System Default")
-    var selectedTheme by remember { mutableStateOf(themes[2]) } // Default to System Default
+    val currentThemeMode = themePreferences.getThemeMode()
+    var selectedThemeIndex by remember { mutableStateOf(getThemeIndex(currentThemeMode)) }
+    
+    // Update theme when selection changes
+    val onThemeChange: (Int) -> Unit = remember {
+        { newIndex ->
+            if (newIndex != getThemeIndex(themePreferences.getThemeMode())) {
+                val themeMode = when (newIndex) {
+                    0 -> ThemeMode.LIGHT
+                    1 -> ThemeMode.DARK
+                    else -> ThemeMode.SYSTEM
+                }
+                themePreferences.setThemeMode(themeMode)
+                
+                // Apply theme immediately using AppCompatDelegate
+                when (themeMode) {
+                    ThemeMode.LIGHT -> AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO)
+                    ThemeMode.DARK -> AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES)
+                    ThemeMode.SYSTEM -> AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM)
+                }
+                
+                // Recreate the activity to apply the theme immediately
+                (context as? ComponentActivity)?.recreate()
+            }
+        }
+    }
     
     FinalBenchmark2Theme {
         Surface(
@@ -67,15 +101,17 @@ fun SettingsScreen() {
                             modifier = Modifier.padding(bottom = 8.dp)
                         )
                         
+                        var expanded by remember { mutableStateOf(false) }
+                        
                         ExposedDropdownMenuBox(
-                            expanded = false,
-                            onExpandedChange = { }
+                            expanded = expanded,
+                            onExpandedChange = { expanded = !expanded }
                         ) {
                             TextField(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .menuAnchor(MenuAnchorType.PrimaryNotEditable),
-                                value = selectedTheme,
+                                value = themes[selectedThemeIndex],
                                 onValueChange = { },
                                 readOnly = true,
                                 label = { Text("Select Theme") },
@@ -88,13 +124,17 @@ fun SettingsScreen() {
                             )
                             
                             ExposedDropdownMenu(
-                                expanded = false,
-                                onDismissRequest = { }
+                                expanded = expanded,
+                                onDismissRequest = { expanded = false }
                             ) {
-                                themes.forEach { theme ->
+                                themes.forEachIndexed { index, theme ->
                                     DropdownMenuItem(
                                         text = { Text(theme) },
-                                        onClick = { selectedTheme = theme }
+                                        onClick = {
+                                            onThemeChange(index)
+                                            selectedThemeIndex = index
+                                            expanded = false
+                                        }
                                     )
                                 }
                             }
@@ -124,5 +164,15 @@ fun SettingsScreen() {
                 )
             }
         }
+    }
+}
+
+
+// Helper function to get theme index
+private fun getThemeIndex(themeMode: ThemeMode): Int {
+    return when (themeMode) {
+        ThemeMode.LIGHT -> 0
+        ThemeMode.DARK -> 1
+        ThemeMode.SYSTEM -> 2
     }
 }

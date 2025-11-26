@@ -1,16 +1,22 @@
 package com.ivarna.finalbenchmark2.ui.screens
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.ivarna.finalbenchmark2.R
 import com.ivarna.finalbenchmark2.ui.theme.FinalBenchmark2Theme
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -31,6 +37,17 @@ fun HomeScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
+                // App logo
+                Image(
+                    painter = painterResource(id = R.drawable.logo),
+                    contentDescription = "FinalBenchmark2 Logo",
+                    modifier = Modifier
+                        .size(180.dp)
+                        .clip(CircleShape)
+                        .padding(bottom = 16.dp),
+                    contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                )
+                
                 // App name
                 Text(
                     text = "FinalBenchmark2",

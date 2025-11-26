@@ -1,11 +1,13 @@
 package com.ivarna.finalbenchmark2.navigation
 
+import android.content.Context
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -19,8 +21,9 @@ fun MainNavigation(
     val navController = rememberNavController()
     val navBackStackEntry = navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry.value?.destination?.route
+    val context = LocalContext.current
 
-    // Define the bottom navigation items
+    // Define the bottom navigation items with custom icons
     val bottomNavigationItems = listOf(
         BottomNavigationItem(
             route = "home",
@@ -54,7 +57,29 @@ fun MainNavigation(
                 NavigationBar {
                     bottomNavigationItems.forEach { item ->
                         NavigationBarItem(
-                            icon = { Icon(item.icon, contentDescription = item.label) },
+                            icon = {
+                                when (item.route) {
+                                    "device" -> Icon(
+                                        painter = androidx.compose.ui.res.painterResource(id = com.ivarna.finalbenchmark2.R.drawable.mobile_24),
+                                        contentDescription = item.label,
+                                        tint = if (currentRoute == item.route) {
+                                            MaterialTheme.colorScheme.primary
+                                        } else {
+                                            MaterialTheme.colorScheme.onSurfaceVariant
+                                        }
+                                    )
+                                    "history" -> Icon(
+                                        painter = androidx.compose.ui.res.painterResource(id = com.ivarna.finalbenchmark2.R.drawable.history_24),
+                                        contentDescription = item.label,
+                                        tint = if (currentRoute == item.route) {
+                                            MaterialTheme.colorScheme.primary
+                                        } else {
+                                            MaterialTheme.colorScheme.onSurfaceVariant
+                                        }
+                                    )
+                                    else -> Icon(item.icon, contentDescription = item.label)
+                                }
+                            },
                             label = { Text(item.label) },
                             selected = currentRoute == item.route,
                             onClick = {
