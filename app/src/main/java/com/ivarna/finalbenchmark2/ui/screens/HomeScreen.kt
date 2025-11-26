@@ -1,16 +1,19 @@
 package com.ivarna.finalbenchmark2.ui.screens
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -18,6 +21,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ivarna.finalbenchmark2.R
 import com.ivarna.finalbenchmark2.ui.theme.FinalBenchmark2Theme
+import com.ivarna.finalbenchmark2.utils.TemperatureUtils
+import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -37,16 +42,24 @@ fun HomeScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
-                // App logo
-                Image(
-                    painter = painterResource(id = R.drawable.logo),
-                    contentDescription = "FinalBenchmark2 Logo",
+                // App logo - Fixed to be perfectly circular
+                Box(
                     modifier = Modifier
                         .size(180.dp)
                         .clip(CircleShape)
-                        .padding(bottom = 16.dp),
-                    contentScale = androidx.compose.ui.layout.ContentScale.Crop
-                )
+                        .background(MaterialTheme.colorScheme.surface)
+                        .padding(16.dp)
+                        .padding(bottom = 16.dp)
+                ) {
+                    Image(
+                        painter = painterResource(id = R.drawable.logo),
+                        contentDescription = "FinalBenchmark2 Logo",
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(CircleShape),
+                        contentScale = ContentScale.Crop
+                    )
+                }
                 
                 // App name
                 Text(
@@ -64,15 +77,86 @@ fun HomeScreen(
                     fontSize = 16.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(bottom = 48.dp)
+                    modifier = Modifier.padding(bottom = 16.dp)
                 )
+                
+                // Temperature Card
+                val context = LocalContext.current
+                val tempUtils = remember { TemperatureUtils(context) }
+                var cpuTemp by remember { mutableStateOf(-1f) }
+                var batteryTemp by remember { mutableStateOf(-1f) }
+                var isInitialized by remember { mutableStateOf(false) }
+                
+                LaunchedEffect(Unit) {
+                    isInitialized = true
+                    // Initial readings
+                    cpuTemp = tempUtils.getCpuTemperature()
+                    batteryTemp = tempUtils.getBatteryTemperature()
+                    
+                    // Update every 5 seconds
+                    while (true) {
+                        delay(5000)
+                        cpuTemp = tempUtils.getCpuTemperature()
+                        batteryTemp = tempUtils.getBatteryTemperature()
+                    }
+                }
+                
+                if (isInitialized) {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.Start
+                            ) {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.mobile_24), // Using a generic icon
+                                    contentDescription = "Temperature",
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "Device Temperatures",
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    text = "CPU: ${if (cpuTemp > 0) "${cpuTemp}°C" else "N/A"}",
+                                    fontSize = 16.sp,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = "Battery: ${if (batteryTemp > 0) "${batteryTemp}°C" else "N/A"}",
+                                    fontSize = 16.sp,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                        }
+                    }
+                }
                 
                 // Start Benchmark Button
                 Button(
                     onClick = onStartBenchmark,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp)
+                        .padding(vertical = 16.dp)
                 ) {
                     Text(
                         text = "Start Benchmark",
@@ -87,7 +171,7 @@ fun HomeScreen(
                     fontSize = 14.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(top = 24.dp)
+                    modifier = Modifier.padding(top = 8.dp)
                 )
             }
         }
