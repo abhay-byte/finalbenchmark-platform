@@ -1,18 +1,27 @@
 package com.ivarna.finalbenchmark2.navigation
 
 import android.content.Context
+import android.os.Build
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.RenderEffect
+import androidx.compose.ui.graphics.TileMode
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.ivarna.finalbenchmark2.ui.screens.*
+import com.ivarna.finalbenchmark2.navigation.FrostedGlassNavigationBar
 
 @Composable
 fun MainNavigation(
@@ -54,45 +63,10 @@ fun MainNavigation(
         modifier = modifier,
         bottomBar = {
             if (showBottomBar) {
-                NavigationBar {
-                    bottomNavigationItems.forEach { item ->
-                        NavigationBarItem(
-                            icon = {
-                                when (item.route) {
-                                    "device" -> Icon(
-                                        painter = androidx.compose.ui.res.painterResource(id = com.ivarna.finalbenchmark2.R.drawable.mobile_24),
-                                        contentDescription = item.label,
-                                        tint = if (currentRoute == item.route) {
-                                            MaterialTheme.colorScheme.primary
-                                        } else {
-                                            MaterialTheme.colorScheme.onSurfaceVariant
-                                        }
-                                    )
-                                    "history" -> Icon(
-                                        painter = androidx.compose.ui.res.painterResource(id = com.ivarna.finalbenchmark2.R.drawable.history_24),
-                                        contentDescription = item.label,
-                                        tint = if (currentRoute == item.route) {
-                                            MaterialTheme.colorScheme.primary
-                                        } else {
-                                            MaterialTheme.colorScheme.onSurfaceVariant
-                                        }
-                                    )
-                                    else -> Icon(item.icon, contentDescription = item.label)
-                                }
-                            },
-                            label = { Text(item.label) },
-                            selected = currentRoute == item.route,
-                            onClick = {
-                                navController.navigate(item.route) {
-                                    // Avoid multiple copies of the same destination
-                                    launchSingleTop = true
-                                    // Restore the state when navigating back
-                                    restoreState = true
-                                }
-                            }
-                        )
-                    }
-                }
+                FrostedGlassNavigationBar(
+                    items = bottomNavigationItems,
+                    navController = navController
+                )
             }
         }
     ) { innerPadding ->
