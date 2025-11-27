@@ -13,20 +13,25 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkEvent
 import com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkManager
 import com.ivarna.finalbenchmark2.ui.theme.FinalBenchmark2Theme
+import com.ivarna.finalbenchmark2.ui.viewmodels.BenchmarkProgress
+import com.ivarna.finalbenchmark2.ui.viewmodels.BenchmarkState
+import com.ivarna.finalbenchmark2.ui.viewmodels.BenchmarkViewModel
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BenchmarkScreen(
-    onBenchmarkComplete: (String) -> Unit
+    onBenchmarkComplete: (String) -> Unit,
+    viewModel: BenchmarkViewModel = viewModel()
 ) {
+    val benchmarkState by viewModel.benchmarkState.collectAsState()
     val benchmarkManager = remember { BenchmarkManager() }
     var benchmarkEvents by remember { mutableStateOf<Map<String, BenchmarkEvent>>(emptyMap()) }
-    var isRunning by remember { mutableStateOf(true) }
     val coroutineScope = rememberCoroutineScope()
     
     // Collect benchmark events
@@ -38,17 +43,33 @@ fun BenchmarkScreen(
         }
     }
     
-    // Collect benchmark completion
+    // Handle benchmark state changes
     LaunchedEffect(Unit) {
-        benchmarkManager.benchmarkComplete.collectLatest { summaryJson ->
-            isRunning = false
-            onBenchmarkComplete(summaryJson)
+        viewModel.benchmarkState.collectLatest { state ->
+            when (state) {
+                is BenchmarkState.Completed -> {
+                    onBenchmarkComplete(state.results)
+                }
+                is BenchmarkState.Error -> {
+                    // In case of error, still navigate to results with default data
+                    onBenchmarkComplete("""{
+                        "single_core_score": 0.0,
+                        "multi_core_score": 0.0,
+                        "final_score": 0.0,
+                        "normalized_score": 0.0,
+                        "rating": "★"
+                    }""")
+                }
+                else -> {
+                    // Handle other states if needed
+                }
+            }
         }
     }
     
     // Start benchmark when the screen is launched
     LaunchedEffect(Unit) {
-        benchmarkManager.startBenchmark()
+        viewModel.startBenchmark()
     }
     
     FinalBenchmark2Theme {
@@ -72,19 +93,70 @@ fun BenchmarkScreen(
                 )
                 
                 // Progress indicator
-                if (isRunning) {
-                    LinearProgressIndicator(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp)
-                    )
-                } else {
-                    LinearProgressIndicator(
-                        progress = { 1f },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp)
-                    )
+                when (val state = benchmarkState) {
+                    is BenchmarkState.Running -> {
+                        val progress = state.progress
+                        LinearProgressIndicator(
+                            progress = { progress.progress / 100f },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 8.dp)
+                        )
+                        
+                        // Show current benchmark name
+                        Text(
+                            text = "Current: ${progress.currentBenchmark}",
+                            fontSize = 16.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 4.dp),
+                            textAlign = TextAlign.Center
+                        )
+                        
+                        // Show progress percentage
+                        Text(
+                            text = "${progress.progress}% (${progress.completedBenchmarks}/${progress.totalBenchmarks})",
+                            fontSize = 14.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 4.dp),
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                    is BenchmarkState.Completed -> {
+                        LinearProgressIndicator(
+                            progress = { 1f },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 8.dp)
+                        )
+                    }
+                    is BenchmarkState.Error -> {
+                        LinearProgressIndicator(
+                            progress = { 1f },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 8.dp)
+                        )
+                        Text(
+                            text = "Error: ${state.message}",
+                            fontSize = 16.sp,
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 4.dp),
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                    else -> {
+                        LinearProgressIndicator(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 8.dp)
+                        )
+                    }
                 }
                 
                 // Benchmark list

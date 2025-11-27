@@ -6,7 +6,7 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 
 class BenchmarkManager {
-    private val _benchmarkEvents = MutableSharedFlow<BenchmarkEvent>()
+    val _benchmarkEvents = MutableSharedFlow<BenchmarkEvent>()
     val benchmarkEvents = _benchmarkEvents.asSharedFlow()
     
     private val _benchmarkComplete = MutableSharedFlow<String>()
@@ -60,7 +60,7 @@ class BenchmarkManager {
     /**
      * Calculates the summary from the actual benchmark results
      */
-    private fun calculateSummaryFromResults(resultsJson: String?): String {
+    fun calculateSummaryFromResults(resultsJson: String?): String {
         if (resultsJson.isNullOrEmpty()) {
             return """{
                 "single_core_score": 0.0,
@@ -213,7 +213,7 @@ class BenchmarkManager {
      * Calls the native benchmark function based on the function name
      * This function maps the function name to the appropriate native call
      */
-    private suspend fun runNativeBenchmarkFunction(functionName: String): BenchmarkResult {
+    fun runNativeBenchmarkFunction(functionName: String): BenchmarkResult {
         // Create default parameters for the benchmark
         val paramsJson = """{
             "prime_range": 1000000,
@@ -460,21 +460,9 @@ class BenchmarkManager {
     /**
      * Simulates a benchmark result for fallback purposes
      */
-    private suspend fun simulateBenchmarkResult(functionName: String): BenchmarkResult {
-        // Simulate actual computation time by introducing delays based on function type
-        when {
-            functionName.contains("Prime") -> delay((800..1200).random().toLong())
-            functionName.contains("Fibonacci") -> delay((600..1000).random().toLong())
-            functionName.contains("Matrix") -> delay((700..1100).random().toLong())
-            functionName.contains("Hash") -> delay((500..900).random().toLong())
-            functionName.contains("String") -> delay((400..800).random().toLong())
-            functionName.contains("Ray") -> delay((900..1300).random().toLong())
-            functionName.contains("Compression") -> delay((600..1000).random().toLong())
-            functionName.contains("Monte") -> delay((700..1100).random().toLong())
-            functionName.contains("Json") -> delay((500..900).random().toLong())
-            functionName.contains("Nqueens") -> delay((600..1000).random().toLong())
-            else -> delay((500..1000).random().toLong())
-        }
+    private fun simulateBenchmarkResult(functionName: String): BenchmarkResult {
+        // For simulation, we don't introduce delays since this is now a non-suspend function
+        // Instead, we just return a simulated result
         
         val executionTime = when {
             functionName.contains("Multi") -> (400..800).random().toDouble()
