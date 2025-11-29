@@ -15,6 +15,7 @@
 local.properties
 .idea
 .gradle
+
 # Rust
 target/
 Cargo.lock

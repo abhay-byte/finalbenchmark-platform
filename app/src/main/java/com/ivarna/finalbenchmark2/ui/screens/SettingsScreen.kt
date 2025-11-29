@@ -19,6 +19,7 @@ import com.ivarna.finalbenchmark2.MainActivity
 import com.ivarna.finalbenchmark2.ui.theme.FinalBenchmark2Theme
 import com.ivarna.finalbenchmark2.ui.theme.ThemeMode
 import com.ivarna.finalbenchmark2.utils.ThemePreferences
+import com.ivarna.finalbenchmark2.utils.PowerConsumptionPreferences
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -147,6 +148,89 @@ fun SettingsScreen() {
                         
                         Text(
                             text = "Theme will apply to the entire application",
+                            fontSize = 14.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 8.dp)
+                        )
+                    }
+                }
+                
+                // Power Consumption Multiplier Settings Card
+                val powerConsumptionPrefs = remember { PowerConsumptionPreferences(context) }
+                var selectedMultiplier by remember { mutableStateOf(powerConsumptionPrefs.getMultiplier()) }
+                
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 16.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                    ) {
+                        Text(
+                            text = "Power Consumption Settings",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(bottom = 12.dp)
+                        )
+                        
+                        // Multiplier Selection
+                        Text(
+                            text = "Power Multiplier",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                        
+                        val multipliers = listOf(0.01f, 0.1f, 1.0f, 10f, 100f)
+                        val multiplierLabels = listOf("0.01x", "0.1x", "1x", "10x", "100x")
+                        
+                        var expanded by remember { mutableStateOf(false) }
+                        
+                        ExposedDropdownMenuBox(
+                            expanded = expanded,
+                            onExpandedChange = { expanded = !expanded }
+                        ) {
+                            TextField(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .menuAnchor(MenuAnchorType.PrimaryNotEditable),
+                                value = "Current: ${String.format("%.2f", selectedMultiplier)}x",
+                                onValueChange = { },
+                                readOnly = true,
+                                label = { Text("Select Multiplier") },
+                                trailingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.ArrowDropDown,
+                                        contentDescription = "Dropdown arrow"
+                                    )
+                                }
+                            )
+                            
+                            ExposedDropdownMenu(
+                                expanded = expanded,
+                                onDismissRequest = { expanded = false }
+                            ) {
+                                multipliers.forEachIndexed { index, multiplier ->
+                                    DropdownMenuItem(
+                                        text = { Text(multiplierLabels[index]) },
+                                        onClick = {
+                                            powerConsumptionPrefs.setMultiplier(multiplier)
+                                            selectedMultiplier = multiplier
+                                            expanded = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                        
+                        Text(
+                            text = "Adjust power consumption readings by this multiplier",
                             fontSize = 14.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(top = 8.dp)

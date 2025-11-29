@@ -176,8 +176,17 @@ fun ResultScreen(
                     }
                 }
                 
-                // Detailed Results Section (Collapsible) - Now properly integrated in the scrollable column
-                DetailedResultsSection(summary.detailedResults)
+                // Button to navigate to detailed results screen
+                Button(
+                    onClick = {
+                        onShowDetailedResults(summary.detailedResults)
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 16.dp)
+                ) {
+                    Text("View All Detailed Results")
+                }
                 
                 // Action Buttons - Now properly positioned to remain visible when scrolled
                 Row(
@@ -200,114 +209,6 @@ fun ResultScreen(
                         Text("Back to Home")
                     }
                 }
-                
-                // Button to navigate to detailed results screen
-                Button(
-                    onClick = {
-                        onShowDetailedResults(summary.detailedResults)
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 16.dp)
-                ) {
-                    Text("View All Detailed Results")
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun DetailedResultsSection(detailedResults: List<BenchmarkResult>) {
-    var expanded by remember { mutableStateOf(false) }
-    
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { expanded = !expanded }
-                    .padding(8.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Detailed Benchmark Results (${detailedResults.size} tests)",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                Icon(
-                    imageVector = if (expanded) {
-                        Icons.Default.ExpandLess
-                    } else {
-                        Icons.Default.ExpandMore
-                    },
-                    contentDescription = if (expanded) "Collapse" else "Expand",
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-            
-            AnimatedVisibility(
-                visible = expanded,
-                enter = slideInVertically() + fadeIn(),
-                exit = slideOutVertically() + fadeOut()
-            ) {
-                LazyColumn {
-                    item {
-                        Spacer(modifier = Modifier.height(8.dp))
-                    }
-                    items(detailedResults) { result ->
-                        DetailedResultItem(result = result)
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun DetailedResultItem(result: BenchmarkResult) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-    ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Text(
-                text = result.name,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Column {
-                    Text(
-                        text = "Time: ${String.format("%.2f", result.executionTimeMs)} ms",
-                        fontSize = 14.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        text = "Score: ${String.format("%.2f", result.opsPerSecond)} ops/sec",
-                        fontSize = 14.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                Text(
-                    text = if (result.isValid) "✓ Valid" else "✗ Invalid",
-                    fontSize = 14.sp,
-                    color = if (result.isValid) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.error
-                )
             }
         }
     }

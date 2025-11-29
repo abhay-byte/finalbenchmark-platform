@@ -2,6 +2,7 @@ package com.ivarna.finalbenchmark2.ui.screens
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -24,12 +25,14 @@ import androidx.compose.ui.unit.sp
 import com.ivarna.finalbenchmark2.R
 import com.ivarna.finalbenchmark2.ui.theme.FinalBenchmark2Theme
 import com.ivarna.finalbenchmark2.utils.TemperatureUtils
+import com.ivarna.finalbenchmark2.utils.PowerUtils
 import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
-    onStartBenchmark: (String) -> Unit
+    onStartBenchmark: (String) -> Unit,
+    onNavigateToSettings: () -> Unit = {}
 ) {
     var selectedPreset by remember { mutableStateOf("Auto") }
     val presets = listOf("Auto", "Slow", "Mid", "Flagship")
@@ -149,6 +152,90 @@ fun HomeScreen(
                                     text = "Battery: ${if (batteryTemp > 0) "${batteryTemp}°C" else "N/A"}",
                                     fontSize = 16.sp,
                                     color = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                        }
+                    }
+                }
+                
+                // Power Consumption Card - Added below temperature card
+                val powerUtils = remember { PowerUtils(context) }
+                var powerConsumptionInfo by remember { mutableStateOf(powerUtils.getPowerConsumptionInfo()) }
+                var powerConsumptionInitialized by remember { mutableStateOf(false) }
+                
+                LaunchedEffect(Unit) {
+                    powerConsumptionInitialized = true
+                    
+                    // Update every 1 second
+                    while (true) {
+                        delay(1000)
+                        powerConsumptionInfo = powerUtils.getPowerConsumptionInfo()
+                    }
+                }
+                
+                if (powerConsumptionInitialized) {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp)
+                            .clickable { onNavigateToSettings() }, // Make the card clickable
+                        shape = RoundedCornerShape(16.dp),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.Start
+                            ) {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.power_consumption_24),
+                                    contentDescription = "Power Consumption",
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "Power Consumption",
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                            // Power row
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    text = if (powerConsumptionInfo.power != 0f) "${String.format("%.2f", powerConsumptionInfo.power)} W" else "N/A",
+                                    fontSize = 16.sp,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = if (powerConsumptionInfo.power > 0) "Charging" else if (powerConsumptionInfo.power < 0) "Discharging" else "Current Usage",
+                                    fontSize = 14.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(4.dp))
+                            // Voltage and Current row
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    text = "${String.format("%.2f", powerConsumptionInfo.voltage)} V",
+                                    fontSize = 14.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(
+                                    text = "${String.format("%.2f", powerConsumptionInfo.current)} A",
+                                    fontSize = 14.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                         }

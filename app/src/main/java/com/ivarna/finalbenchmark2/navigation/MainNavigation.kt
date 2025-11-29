@@ -91,6 +91,9 @@ fun MainNavigation(
                     HomeScreen(
                         onStartBenchmark = { preset ->
                             navController.navigate("benchmark/$preset")
+                        },
+                        onNavigateToSettings = {
+                            navController.navigate("settings")
                         }
                     )
                 }
