@@ -25,7 +25,8 @@ data class BenchmarkResults(
     val multiCoreScore: Double,
     val coreRatio: Double,
     val finalWeightedScore: Double,
-    val normalizedScore: Double
+    val normalizedScore: Double,
+    val detailedResults: List<BenchmarkResult> = emptyList() // Added for detailed view
 )
 
 sealed class BenchmarkState {
@@ -41,7 +42,7 @@ class BenchmarkViewModel : ViewModel() {
     
     private val benchmarkManager = BenchmarkManager()
     
-    fun startBenchmark() {
+    fun startBenchmark(preset: String = "Auto") {
         if (_benchmarkState.value is BenchmarkState.Running) return
         
         viewModelScope.launch {
@@ -97,7 +98,7 @@ class BenchmarkViewModel : ViewModel() {
                     // Run the benchmark in the default dispatcher (background thread)
                     val result = withContext(Dispatchers.Default) {
                         try {
-                            benchmarkManager.runNativeBenchmarkFunction(functionName)
+                            benchmarkManager.runNativeBenchmarkFunction(functionName, preset)
                         } catch (e: Exception) {
                             Log.e("BenchmarkViewModel", "Error running benchmark $name: ${e.message}", e)
                             // Return a default result in case of error
@@ -145,9 +146,11 @@ class BenchmarkViewModel : ViewModel() {
                 
                 val finalWeightedScore = (singleCoreScore + multiCoreScore) / 2.0
                 
-                // Calculate normalized score (scaled to 0-100 range)
+                // Calculate normalized score using the same logic as BenchmarkManager
                 val normalizedScore = if (finalWeightedScore > 0) {
-                    kotlin.math.min(finalWeightedScore / 1000000.0 * 100.0, 100.0)  // Scale appropriately
+                    // Scale scores to reasonable range (0-100000 instead of billions)
+                    val scaledScore = kotlin.math.log10(finalWeightedScore + 1) * 10000.0
+                    kotlin.math.min(scaledScore, 100000.0)
                 } else {
                     0.0
                 }
@@ -165,7 +168,8 @@ class BenchmarkViewModel : ViewModel() {
                     multiCoreScore = multiCoreScore,
                     coreRatio = coreRatio,
                     finalWeightedScore = finalWeightedScore,
-                    normalizedScore = normalizedScore
+                    normalizedScore = normalizedScore,
+                    detailedResults = results
                 )
                 
                 _benchmarkState.value = BenchmarkState.Completed(benchmarkResults)

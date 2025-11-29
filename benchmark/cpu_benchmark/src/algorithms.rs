@@ -3,7 +3,6 @@
 //! This module contains implementations of all CPU benchmark algorithms
 //! as specified in the documentation.
 
-use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use rayon::prelude::*;
 use sha2::{Sha256, Digest};
@@ -803,7 +802,7 @@ pub fn multi_core_fibonacci_memoized(params: &WorkloadParams) -> BenchmarkResult
             return n as u64;
         }
         
-        let mut map = memo.lock().unwrap();
+        let map = memo.lock().unwrap();
         if let Some(&result) = map.get(&n) {
             return result;
         }

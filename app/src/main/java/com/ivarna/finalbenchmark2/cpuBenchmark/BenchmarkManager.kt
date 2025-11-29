@@ -14,17 +14,26 @@ class BenchmarkManager {
     
     private var isRunning = false
     
-    suspend fun startBenchmark() {
+    suspend fun startBenchmark(preset: String = "Auto") {
         if (isRunning) return
         isRunning = true
         
         try {
-            // Configuration for the benchmark
+            // Configuration for the benchmark - use preset or dynamic device tier detection
+            val deviceTier = when (preset) {
+                "Auto" -> detectDeviceTier()
+                "Slow" -> "Slow"
+                "Mid" -> "Mid"
+                "Flagship" -> "Flagship"
+                else -> detectDeviceTier()
+            }
+            Log.d("BenchmarkManager", "Using preset: $preset, resolved device tier: $deviceTier")
+            
             val config = BenchmarkConfig(
                 iterations = 3,
                 warmup = true,
                 warmupCount = 3,
-                deviceTier = "Slow"
+                deviceTier = deviceTier
             )
             
             val configJson = """{
@@ -78,28 +87,33 @@ class BenchmarkManager {
         // Calculate final weighted score (average of single and multi core)
         val finalScore = (singleCoreScore + multiCoreScore) / 2.0
         
-        // Calculate normalized score (scaled to 0-100 range)
+        // Calculate normalized score (scaled to 0-100 range) - Fixed scaling issue
         val normalizedScore = if (finalScore > 0) {
-            minOf(finalScore / 1000000.0 * 100.0, 100.0)  // Scale appropriately
+            // Scale scores to reasonable range (0-100000 instead of billions)
+            // Use logarithmic scaling to handle wide range of performance differences
+            val scaledScore = kotlin.math.log10(finalScore + 1) * 10000.0
+            minOf(scaledScore, 100000.0)  // Cap at 100,000 for practical purposes
         } else {
             0.0
         }
         
-        // Determine rating based on normalized score
+        // Determine rating based on normalized score - Adjusted thresholds
         val rating = when {
-            normalizedScore >= 90 -> "★★★★★"
-            normalizedScore >= 75 -> "★★★★☆"
-            normalizedScore >= 60 -> "★★★☆☆"
-            normalizedScore >= 45 -> "★★☆☆☆"
-            normalizedScore >= 30 -> "★☆☆☆☆"
+            normalizedScore >= 80000 -> "★★★★★"
+            normalizedScore >= 60000 -> "★★★★☆"
+            normalizedScore >= 40000 -> "★★★☆☆"
+            normalizedScore >= 20000 -> "★★☆☆☆"
+            normalizedScore >= 10000 -> "★☆☆☆☆"
             else -> "☆☆☆☆☆"
         }
         
+        Log.d("BenchmarkManager", "Final scoring - Single: $singleCoreScore, Multi: $multiCoreScore, Final: $finalScore, Normalized: $normalizedScore")
+        
         return """{
-            "single_core_score": $singleCoreScore,
-            "multi_core_score": $multiCoreScore,
-            "final_score": $finalScore,
-            "normalized_score": $normalizedScore,
+            "single_core_score": ${"%.2f".format(singleCoreScore)},
+            "multi_core_score": ${"%.2f".format(multiCoreScore)},
+            "final_score": ${"%.2f".format(finalScore)},
+            "normalized_score": ${"%.2f".format(normalizedScore)},
             "rating": "$rating"
         }"""
     }
@@ -210,26 +224,47 @@ class BenchmarkManager {
     }
     
     /**
+     * Detects the appropriate device tier based on hardware capabilities
+     */
+    private fun detectDeviceTier(): String {
+        return try {
+            val availableProcessors = Runtime.getRuntime().availableProcessors()
+            val maxMemory = Runtime.getRuntime().maxMemory() / (1024 * 1024) // MB
+            
+            Log.d("BenchmarkManager", "Available processors: $availableProcessors")
+            Log.d("BenchmarkManager", "Max memory: ${maxMemory}MB")
+            
+            // Detect device tier based on CPU cores and available memory
+            when {
+                availableProcessors >= 8 && maxMemory > 100 -> "Flagship"
+                availableProcessors >= 4 && maxMemory > 50 -> "Mid"
+                else -> "Slow"
+            }
+        } catch (e: Exception) {
+            Log.w("BenchmarkManager", "Failed to detect device tier, using Mid as fallback", e)
+            "Mid"
+        }
+    }
+    
+    /**
      * Calls the native benchmark function based on the function name
      * This function maps the function name to the appropriate native call
      */
-    fun runNativeBenchmarkFunction(functionName: String): BenchmarkResult {
-        // Create default parameters for the benchmark
-        val paramsJson = """{
-            "prime_range": 1000000,
-            "fibonacci_n_range": [30, 38],
-            "matrix_size": 500,
-            "hash_data_size_mb": 25,
-            "string_count": 250000,
-            "ray_tracing_resolution": [256, 256],
-            "ray_tracing_depth": 2,
-            "compression_data_size_mb": 25,
-            "monte_carlo_samples": 25000000,
-            "json_data_size_mb": 2,
-            "nqueens_size": 12
-        }"""
+    fun runNativeBenchmarkFunction(functionName: String, preset: String = "Auto"): BenchmarkResult {
+        // Determine device tier from preset and get appropriate workload parameters
+        val deviceTier = when (preset) {
+            "Auto" -> detectDeviceTier()
+            "Slow" -> "Slow"
+            "Mid" -> "Mid"
+            "Flagship" -> "Flagship"
+            else -> detectDeviceTier()
+        }
+        val workloadParams = getWorkloadParamsForDeviceTier(deviceTier)
         
-        Log.d("BenchmarkManager", "About to call native function: $functionName with params: $paramsJson")
+        val paramsJson = createParamsJson(workloadParams)
+        
+        Log.d("BenchmarkManager", "About to call native function: $functionName with preset: $preset, device tier: $deviceTier")
+        Log.d("BenchmarkManager", "Using workload params: $paramsJson")
         
         return try {
             when (functionName) {
@@ -752,6 +787,54 @@ class BenchmarkManager {
             isValid = true,
             metricsJson = "{}"
         )
+    }
+    
+    /**
+     * Gets workload parameters based on device tier
+     */
+    private fun getWorkloadParamsForDeviceTier(deviceTier: String): WorkloadParams {
+        return when (deviceTier.lowercase()) {
+            "slow" -> WorkloadParams(
+                primeRange = 100_000,
+                fibonacciNRange = Pair(20, 25),
+                matrixSize = 100,
+                hashDataSizeMb = 5,
+                stringCount = 50_000,
+                rayTracingResolution = Pair(128, 128),
+                rayTracingDepth = 1,
+                compressionDataSizeMb = 5,
+                monteCarloSamples = 5_000_000,
+                jsonDataSizeMb = 1,
+                nqueensSize = 8
+            )
+            "mid" -> WorkloadParams(
+                primeRange = 6_000_000,
+                fibonacciNRange = Pair(32, 38),
+                matrixSize = 600,
+                hashDataSizeMb = 40,
+                stringCount = 500_000,
+                rayTracingResolution = Pair(300, 300),
+                rayTracingDepth = 3,
+                compressionDataSizeMb = 25,
+                monteCarloSamples = 40_000_000,
+                jsonDataSizeMb = 4,
+                nqueensSize = 13
+            )
+            "flagship" -> WorkloadParams(
+                primeRange = 12_000_000,
+                fibonacciNRange = Pair(35, 40),
+                matrixSize = 900,
+                hashDataSizeMb = 100,
+                stringCount = 1_000_000,
+                rayTracingResolution = Pair(450, 450),
+                rayTracingDepth = 4,
+                compressionDataSizeMb = 50,
+                monteCarloSamples = 80_000_000,
+                jsonDataSizeMb = 10,
+                nqueensSize = 15
+            )
+            else -> WorkloadParams() // Default values from data class
+        }
     }
     
     private fun createParamsJson(params: WorkloadParams): String {

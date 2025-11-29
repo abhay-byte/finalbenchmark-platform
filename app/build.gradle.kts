@@ -75,6 +75,7 @@ dependencies {
     implementation(libs.kotlinx.coroutines.core)
     implementation("dev.chrisbanes.haze:haze:1.0.0") // Compatible with Kotlin 2.0.x
     implementation("dev.chrisbanes.haze:haze-materials:1.0.0") // Compatible with Kotlin 2.0.x
+    implementation("androidx.compose.material:material-icons-extended:1.7.5") // Add icons extended directly
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.androidx.arch.core.testing)

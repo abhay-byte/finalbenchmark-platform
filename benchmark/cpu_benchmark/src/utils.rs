@@ -33,17 +33,17 @@ pub fn get_workload_params(tier: &DeviceTier) -> WorkloadParams {
             nqueens_size: 13,  // Reduced from 14
         },
         DeviceTier::Flagship => WorkloadParams {
-            prime_range: 12_000_000,  // Reduced from 20_000_000
-            fibonacci_n_range: (35, 40),  // Reduced from (40, 47) to (35, 40)
-            matrix_size: 900,  // Reduced from 1200
-            hash_data_size_mb: 100,  // Reduced from 150
-            string_count: 1_000_000,  // Reduced from 1_500_000
-            ray_tracing_resolution: (450, 450),  // Reduced from (600, 600)
-            ray_tracing_depth: 4,  // Reduced from 5
-            compression_data_size_mb: 50,  // Reduced from 75
-            monte_carlo_samples: 80_000_000,  // Reduced from 150_000_000 (was incorrectly set to 150_000)
-            json_data_size_mb: 10,  // Reduced from 15
-            nqueens_size: 15,  // Reduced from 16
+            prime_range: 12_000,  // High-end flagship value
+            fibonacci_n_range: (38, 45),  // High-end flagship value
+            matrix_size: 1000,  // High-end flagship value
+            hash_data_size_mb: 100,  // High-end flagship value
+            string_count: 1_250_000,  // High-end flagship value
+            ray_tracing_resolution: (500, 500),  // High-end flagship value
+            ray_tracing_depth: 5,  // High-end flagship value
+            compression_data_size_mb: 60,  // High-end flagship value
+            monte_carlo_samples: 120_000_000,  // High-end flagship value
+            json_data_size_mb: 10,  // High-end flagship value
+            nqueens_size: 15,  // High-end flagship value
         },
     }
 }

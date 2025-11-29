@@ -8,8 +8,6 @@ use jni::JNIEnv;
 use jni::objects::{JClass, JString};
 use jni::sys::jstring;
 use serde_json;
-use std::ffi::CString;
-use std::os::raw::c_char;
 
 #[cfg(target_os = "android")]
 use log::error;
@@ -31,7 +29,7 @@ pub extern "C" fn Java_com_ivarna_finalbenchmark2_cpuBenchmark_CpuBenchmarkNativ
     );
 }
 
-// Macro to implement JNI benchmark functions with direct Rust calls
+// Macro to implement JNI benchmark functions with direct Rust calls and preset-based workloads
 macro_rules! impl_jni_benchmark {
     ($func_name:ident, $rust_func:path, $log_name:expr) => {
         #[no_mangle]
@@ -60,23 +58,37 @@ macro_rules! impl_jni_benchmark {
                 Err(e) => {
                     #[cfg(target_os = "android")]
                     error!("Failed to parse JSON for {}: {:?}", $log_name, e);
-                    return std::ptr::null_mut();
+                    // Instead of returning null, use default Mid-tier workload parameters
+                    #[cfg(target_os = "android")]
+                    error!("Using default Mid-tier workload parameters for {}", $log_name);
+                    crate::utils::get_workload_params(&crate::types::DeviceTier::Mid)
                 }
             };
-            
-            #[cfg(target_os = "android")]
-            error!("Using WorkloadParams for {} - prime_range: {}, matrix_size: {}, hash_data_size_mb: {}",
-                   $log_name, params.prime_range, params.matrix_size, params.hash_data_size_mb);
             
             let result = $rust_func(&params);
             
             #[cfg(target_os = "android")]
-            error!("Benchmark completed for {}: {} - {:.2}ms", $log_name, result.name, result.execution_time.as_secs_f64() * 1000.0);
+            error!("Benchmark completed for {}: {} - {:.2}ms, ops/sec: {:.2}", $log_name, result.name, result.execution_time.as_secs_f64() * 1000.0, result.ops_per_second);
+            
+            // Log detailed timing information for debugging the 10x issue
+            let execution_time_secs = result.execution_time.as_secs_f64();
+            let execution_time_millis = result.execution_time.as_millis() as f64;
+            
+            #[cfg(target_os = "android")]
+            error!("Benchmark completed for {}: {} - Duration: {:.6}s ({:.6}ms), Operations: {}, Ops/sec: {:.2}",
+                   $log_name, result.name, execution_time_secs, execution_time_millis,
+                   (result.ops_per_second * execution_time_secs) as u64, result.ops_per_second);
+            
+            // Verify time measurement consistency
+            #[cfg(target_os = "android")]
+            if (execution_time_secs * 1000.0 - execution_time_millis).abs() > 0.1 {
+                error!("WARNING: Time measurement inconsistency detected for {}", result.name);
+            }
             
             let result_json = serde_json::json!({
                 "name": result.name,
-                "execution_time_ms": result.execution_time.as_secs_f64() * 1000.0,
-                "ops_per_second": result.ops_per_second,
+                "execution_time_ms": execution_time_secs * 1000.0,  // Use consistent time in ms
+                "ops_per_second": result.ops_per_second,  // Raw ops/second from algorithm
                 "is_valid": result.is_valid,
                 "metrics_json": result.metrics.to_string()
             });
@@ -239,14 +251,41 @@ pub extern "C" fn Java_com_ivarna_finalbenchmark2_cpuBenchmark_CpuBenchmarkNativ
     #[cfg(target_os = "android")]
     error!("Received config JSON: {}", config_str);
     
-    // Parse JSON directly into BenchmarkConfig
-    let config: crate::types::BenchmarkConfig = match serde_json::from_str(&config_str) {
+    // Parse JSON into a temporary structure with string device tier, then convert
+    #[derive(serde::Deserialize)]
+    struct ConfigWithStringTier {
+        iterations: usize,
+        warmup: bool,
+        warmup_count: usize,
+        device_tier: String,
+    }
+    
+    let config_with_string: ConfigWithStringTier = match serde_json::from_str(&config_str) {
         Ok(c) => c,
         Err(e) => {
             #[cfg(target_os = "android")]
-            error!("Failed to parse JSON into BenchmarkConfig: {:?}", e);
+            error!("Failed to parse JSON into ConfigWithStringTier: {:?}", e);
             return std::ptr::null_mut();
         }
+    };
+    
+    // Convert string device tier to enum with fallback handling
+    let device_tier = match config_with_string.device_tier.to_lowercase().as_str() {
+        "slow" => crate::types::DeviceTier::Slow,
+        "mid" | "medium" => crate::types::DeviceTier::Mid,
+        "flagship" | "high" | "fast" => crate::types::DeviceTier::Flagship,
+        _ => {
+            #[cfg(target_os = "android")]
+            error!("Unknown device tier '{}', defaulting to Mid", config_with_string.device_tier);
+            crate::types::DeviceTier::Mid
+        }
+    };
+    
+    let config = crate::types::BenchmarkConfig {
+        iterations: config_with_string.iterations,
+        warmup: config_with_string.warmup,
+        warmup_count: config_with_string.warmup_count,
+        device_tier,
     };
     
     #[cfg(target_os = "android")]
@@ -280,6 +319,21 @@ pub extern "C" fn Java_com_ivarna_finalbenchmark2_cpuBenchmark_CpuBenchmarkNativ
     // Run the actual benchmarks
     let single_core_results = run_single_core_benchmarks(&params);
     let multi_core_results = run_multi_core_benchmarks(&params);
+    
+    // Log detailed information about each result for debugging
+    #[cfg(target_os = "android")]
+    {
+        for result in &single_core_results {
+            let execution_time_secs = result.execution_time.as_secs_f64();
+            error!("Single-core result - {}: {:.2} ops/sec, Duration: {:.6}s",
+                   result.name, result.ops_per_second, execution_time_secs);
+        }
+        for result in &multi_core_results {
+            let execution_time_secs = result.execution_time.as_secs_f64();
+            error!("Multi-core result - {}: {:.2} ops/sec, Duration: {:.6}s",
+                   result.name, result.ops_per_second, execution_time_secs);
+        }
+    }
     
     // Combine results into a single structure
     let suite_result = serde_json::json!({

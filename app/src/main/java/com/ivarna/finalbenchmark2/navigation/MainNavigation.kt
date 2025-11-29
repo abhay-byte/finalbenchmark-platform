@@ -22,6 +22,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.ivarna.finalbenchmark2.ui.screens.*
+import com.ivarna.finalbenchmark2.ui.screens.DetailedResultScreen
 import com.ivarna.finalbenchmark2.navigation.FrostedGlassNavigationBar
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.haze
@@ -88,8 +89,8 @@ fun MainNavigation(
             ) {
                 composable("home") {
                     HomeScreen(
-                        onStartBenchmark = {
-                            navController.navigate("benchmark")
+                        onStartBenchmark = { preset ->
+                            navController.navigate("benchmark/$preset")
                         }
                     )
                 }
@@ -103,8 +104,18 @@ fun MainNavigation(
                     SettingsScreen()
                 }
                 // Keep the existing benchmark flow
-                composable("benchmark") {
+                composable("benchmark/{preset}") { backStackEntry ->
+                    val preset = backStackEntry.arguments?.getString("preset") ?: "Auto"
                     BenchmarkScreen(
+                        preset = preset,
+                        onBenchmarkComplete = { summaryJson ->
+                            navController.navigate("result/$summaryJson")
+                        }
+                    )
+                }
+                composable("benchmark") { // Fallback route without preset
+                    BenchmarkScreen(
+                        preset = "Auto",
                         onBenchmarkComplete = { summaryJson ->
                             navController.navigate("result/$summaryJson")
                         }
@@ -121,6 +132,21 @@ fun MainNavigation(
                         onBackToHome = {
                             navController.popBackStack()
                             navController.navigate("home")
+                        },
+                        onShowDetailedResults = { detailedResults ->
+                            // Pass the summary JSON to the detailed results screen
+                            navController.navigate("detailed-results/${summaryJson.replace("\"", "%22").replace("'", "%27")}")
+                        }
+                    )
+                }
+                composable("detailed-results/{summaryJson}") { backStackEntry ->
+                    val summaryJson = backStackEntry.arguments?.getString("summaryJson") ?: "{}"
+                    // Decode URL-encoded characters
+                    val decodedSummaryJson = summaryJson.replace("%22", "\"").replace("%27", "'")
+                    DetailedResultScreen(
+                        summaryJson = decodedSummaryJson,
+                        onBack = {
+                            navController.popBackStack()
                         }
                     )
                 }

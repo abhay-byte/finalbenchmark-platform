@@ -7,6 +7,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -27,8 +29,10 @@ import kotlinx.coroutines.delay
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
-    onStartBenchmark: () -> Unit
+    onStartBenchmark: (String) -> Unit
 ) {
+    var selectedPreset by remember { mutableStateOf("Auto") }
+    val presets = listOf("Auto", "Slow", "Mid", "Flagship")
     FinalBenchmark2Theme {
         Surface(
             modifier = Modifier.fillMaxSize(),
@@ -151,9 +155,103 @@ fun HomeScreen(
                     }
                 }
                 
+                // Preset Selection Card
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Start,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.mobile_24), 
+                                contentDescription = "Benchmark Preset",
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Benchmark Preset",
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(12.dp))
+                        
+                        var expanded by remember { mutableStateOf(false) }
+                        
+                        ExposedDropdownMenuBox(
+                            expanded = expanded,
+                            onExpandedChange = { expanded = !expanded }
+                        ) {
+                            TextField(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .menuAnchor(MenuAnchorType.PrimaryNotEditable),
+                                value = selectedPreset,
+                                onValueChange = { },
+                                readOnly = true,
+                                label = { Text("Select Preset") },
+                                trailingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.ArrowDropDown,
+                                        contentDescription = "Dropdown arrow"
+                                    )
+                                },
+                                supportingText = {
+                                    Text(
+                                        text = when (selectedPreset) {
+                                            "Auto" -> "Automatically detected based on device capabilities"
+                                            "Slow" -> "Low-intensity workload for older/budget devices"
+                                            "Mid" -> "Medium-intensity workload for standard devices"
+                                            "Flagship" -> "High-intensity workload for premium devices"
+                                            else -> ""
+                                        }
+                                    )
+                                }
+                            )
+                            
+                            ExposedDropdownMenu(
+                                expanded = expanded,
+                                onDismissRequest = { expanded = false }
+                            ) {
+                                presets.forEach { preset ->
+                                    DropdownMenuItem(
+                                        text = { 
+                                            Text(
+                                                text = when (preset) {
+                                                    "Auto" -> "Auto (Recommended)"
+                                                    "Slow" -> "Slow - Budget Devices"
+                                                    "Mid" -> "Mid - Standard Devices"
+                                                    "Flagship" -> "Flagship - Premium Devices"
+                                                    else -> preset
+                                                }
+                                            ) 
+                                        },
+                                        onClick = {
+                                            selectedPreset = preset
+                                            expanded = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+                
                 // Start Benchmark Button
                 Button(
-                    onClick = onStartBenchmark,
+                    onClick = { onStartBenchmark(selectedPreset) },
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(vertical = 16.dp)

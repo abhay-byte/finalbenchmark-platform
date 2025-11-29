@@ -1,8 +1,19 @@
 package com.ivarna.finalbenchmark2.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -11,16 +22,20 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavController
 import com.ivarna.finalbenchmark2.ui.theme.FinalBenchmark2Theme
+import com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkResult
 import org.json.JSONObject
 import android.util.Log
+import org.json.JSONArray
 
 data class BenchmarkSummary(
     val singleCoreScore: Double,
     val multiCoreScore: Double,
     val finalScore: Double,
     val normalizedScore: Double,
-    val rating: String
+    val rating: String,
+    val detailedResults: List<BenchmarkResult> = emptyList() // Added for detailed view
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -28,17 +43,38 @@ data class BenchmarkSummary(
 fun ResultScreen(
     summaryJson: String,
     onRunAgain: () -> Unit,
-    onBackToHome: () -> Unit
+    onBackToHome: () -> Unit,
+    onShowDetailedResults: (List<BenchmarkResult>) -> Unit = {}
 ) {
     val summary = try {
         Log.d("ResultScreen", "Received summary JSON: $summaryJson")
         val jsonObject = JSONObject(summaryJson)
+        val detailedResults = mutableListOf<BenchmarkResult>()
+        
+        // Parse detailed results if available
+        val detailedResultsArray = jsonObject.optJSONArray("detailed_results")
+        if (detailedResultsArray != null) {
+            for (i in 0 until detailedResultsArray.length()) {
+                val resultObj = detailedResultsArray.getJSONObject(i)
+                detailedResults.add(
+                    BenchmarkResult(
+                        name = resultObj.optString("name", "Unknown"),
+                        executionTimeMs = resultObj.optDouble("executionTimeMs", 0.0),
+                        opsPerSecond = resultObj.optDouble("opsPerSecond", 0.0),
+                        isValid = resultObj.optBoolean("isValid", false),
+                        metricsJson = resultObj.optString("metricsJson", "{}")
+                    )
+                )
+            }
+        }
+        
         val summary = BenchmarkSummary(
             singleCoreScore = jsonObject.optDouble("single_core_score", 0.0),
             multiCoreScore = jsonObject.optDouble("multi_core_score", 0.0),
             finalScore = jsonObject.optDouble("final_score", 0.0),
             normalizedScore = jsonObject.optDouble("normalized_score", 0.0),
-            rating = jsonObject.optString("rating", "★")
+            rating = jsonObject.optString("rating", "★"),
+            detailedResults = detailedResults
         )
         Log.d("ResultScreen", "Parsed summary: $summary")
         summary
@@ -50,7 +86,8 @@ fun ResultScreen(
             multiCoreScore = 0.0,
             finalScore = 0.0,
             normalizedScore = 0.0,
-            rating = "★"
+            rating = "★",
+            detailedResults = emptyList()
         )
     }
 
@@ -62,8 +99,8 @@ fun ResultScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(16.dp)
-                    .verticalScroll(rememberScrollState()),
+                    .verticalScroll(rememberScrollState()) // Make the entire screen scrollable
+                    .padding(16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 // Header
@@ -139,11 +176,14 @@ fun ResultScreen(
                     }
                 }
                 
-                // Action Buttons
+                // Detailed Results Section (Collapsible) - Now properly integrated in the scrollable column
+                DetailedResultsSection(summary.detailedResults)
+                
+                // Action Buttons - Now properly positioned to remain visible when scrolled
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 24.dp),
+                        .padding(top = 24.dp, bottom = 16.dp),
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     OutlinedButton(
@@ -160,10 +200,120 @@ fun ResultScreen(
                         Text("Back to Home")
                     }
                 }
+                
+                // Button to navigate to detailed results screen
+                Button(
+                    onClick = {
+                        onShowDetailedResults(summary.detailedResults)
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 16.dp)
+                ) {
+                    Text("View All Detailed Results")
+                }
             }
         }
     }
 }
+
+@Composable
+fun DetailedResultsSection(detailedResults: List<BenchmarkResult>) {
+    var expanded by remember { mutableStateOf(false) }
+    
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { expanded = !expanded }
+                    .padding(8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Detailed Benchmark Results (${detailedResults.size} tests)",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Icon(
+                    imageVector = if (expanded) {
+                        Icons.Default.ExpandLess
+                    } else {
+                        Icons.Default.ExpandMore
+                    },
+                    contentDescription = if (expanded) "Collapse" else "Expand",
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+            
+            AnimatedVisibility(
+                visible = expanded,
+                enter = slideInVertically() + fadeIn(),
+                exit = slideOutVertically() + fadeOut()
+            ) {
+                LazyColumn {
+                    item {
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+                    items(detailedResults) { result ->
+                        DetailedResultItem(result = result)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun DetailedResultItem(result: BenchmarkResult) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Text(
+                text = result.name,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column {
+                    Text(
+                        text = "Time: ${String.format("%.2f", result.executionTimeMs)} ms",
+                        fontSize = 14.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = "Score: ${String.format("%.2f", result.opsPerSecond)} ops/sec",
+                        fontSize = 14.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Text(
+                    text = if (result.isValid) "✓ Valid" else "✗ Invalid",
+                    fontSize = 14.sp,
+                    color = if (result.isValid) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.error
+                )
+            }
+        }
+    }
+}
+
+// These functions are not needed as they're already imported from androidx.compose.foundation.lazy
 
 @Composable
 fun ScoreItem(title: String, value: String) {

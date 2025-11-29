@@ -26,6 +26,7 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BenchmarkScreen(
+    preset: String = "Auto",
     onBenchmarkComplete: (String) -> Unit,
     viewModel: BenchmarkViewModel = viewModel()
 ) {
@@ -49,12 +50,34 @@ fun BenchmarkScreen(
             when (state) {
                 is BenchmarkState.Completed -> {
                     // Convert BenchmarkResults to JSON string for navigation
+                    // Include detailed results as well
+                    val detailedResultsJson = state.results.individualScores.map { result ->
+                        // Properly escape the metrics JSON for inclusion in the parent JSON
+                        val escapedMetricsJson = result.metricsJson
+                            .replace("\\", "\\\\")
+                            .replace("\"", "\\\"")
+                            .replace("\n", "\\n")
+                            .replace("\r", "\\r")
+                            .replace("\t", "\\t")
+                        
+                        """{
+                            "name": "${result.name.replace("\"", "\\\"")}",
+                            "executionTimeMs": ${result.executionTimeMs},
+                            "opsPerSecond": ${result.opsPerSecond},
+                            "isValid": ${result.isValid},
+                            "metricsJson": "$escapedMetricsJson"
+                        }"""
+                    }.joinToString(",\n")
+                    
                     val summaryJson = """{
                         "single_core_score": ${state.results.singleCoreScore},
                         "multi_core_score": ${state.results.multiCoreScore},
                         "final_score": ${state.results.finalWeightedScore},
                         "normalized_score": ${state.results.normalizedScore},
-                        "rating": "${determineRating(state.results.normalizedScore)}"
+                        "rating": "${determineRating(state.results.normalizedScore)}",
+                        "detailed_results": [
+                            $detailedResultsJson
+                        ]
                     }"""
                     onBenchmarkComplete(summaryJson)
                 }
@@ -77,7 +100,7 @@ fun BenchmarkScreen(
     
     // Start benchmark when the screen is launched
     LaunchedEffect(Unit) {
-        viewModel.startBenchmark()
+        viewModel.startBenchmark(preset)
     }
     
     FinalBenchmark2Theme {
@@ -187,14 +210,14 @@ fun BenchmarkScreen(
 * Determines the rating based on the normalized score
 */
 fun determineRating(normalizedScore: Double): String {
-   return when {
-       normalizedScore >= 90 -> "★★★★★"
-       normalizedScore >= 75 -> "★★★★☆"
-       normalizedScore >= 60 -> "★★★☆☆"
-       normalizedScore >= 45 -> "★★☆☆☆"
-       normalizedScore >= 30 -> "★☆☆☆"
-       else -> "☆☆☆☆☆"
-   }
+  return when {
+      normalizedScore >= 80000 -> "★★★★★"
+      normalizedScore >= 60000 -> "★★☆"
+      normalizedScore >= 40000 -> "★★★☆☆"
+      normalizedScore >= 20000 -> "★★☆☆☆"
+      normalizedScore >= 10000 -> "★☆☆☆"
+      else -> "☆☆☆☆☆"
+  }
 }
 
 @Composable
