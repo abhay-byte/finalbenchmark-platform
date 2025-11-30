@@ -12,6 +12,11 @@ import androidx.compose.foundation.isSystemInDarkTheme
 enum class ThemeMode {
     LIGHT,
     DARK,
+    GRUVBOX,
+    NORD,
+    DRACULA,
+    SOLARIZED,
+    MONOKAI,
     SYSTEM
 }
 
@@ -33,5 +38,10 @@ fun shouldUseDarkTheme(): Boolean {
         ThemeMode.LIGHT -> false
         ThemeMode.DARK -> true
         ThemeMode.SYSTEM -> isSystemInDarkTheme()
+        ThemeMode.GRUVBOX -> isSystemInDarkTheme()   // Use system preference for Gruvbox
+        ThemeMode.NORD -> isSystemInDarkTheme()      // Use system preference for Nord
+        ThemeMode.DRACULA -> true                    // Dracula is typically dark
+        ThemeMode.SOLARIZED -> isSystemInDarkTheme() // Use system preference for Solarized
+        ThemeMode.MONOKAI -> true                    // Monokai is typically dark
     }
 }

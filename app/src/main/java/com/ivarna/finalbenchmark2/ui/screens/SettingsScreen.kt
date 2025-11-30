@@ -31,7 +31,7 @@ fun SettingsScreen() {
     val themePreferences = remember { ThemePreferences(context) }
     val rootAccessPreferences = remember { RootAccessPreferences(context) }
     
-    val themes = listOf("Light", "Dark", "System Default")
+    val themes = listOf("Light", "Dark", "System Default", "Gruvbox", "Nord", "Dracula", "Solarized", "Monokai")
     val currentThemeMode = themePreferences.getThemeMode()
     var selectedThemeIndex by remember { mutableStateOf(getThemeIndex(currentThemeMode)) }
     
@@ -62,6 +62,12 @@ fun SettingsScreen() {
                 val themeMode = when (newIndex) {
                     0 -> ThemeMode.LIGHT
                     1 -> ThemeMode.DARK
+                    2 -> ThemeMode.SYSTEM
+                    3 -> ThemeMode.GRUVBOX
+                    4 -> ThemeMode.NORD
+                    5 -> ThemeMode.DRACULA
+                    6 -> ThemeMode.SOLARIZED
+                    7 -> ThemeMode.MONOKAI
                     else -> ThemeMode.SYSTEM
                 }
                 themePreferences.setThemeMode(themeMode)
@@ -76,6 +82,8 @@ fun SettingsScreen() {
                         ThemeMode.LIGHT -> AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO)
                         ThemeMode.DARK -> AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES)
                         ThemeMode.SYSTEM -> AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM)
+                        // For custom themes, default to dark mode
+                        else -> AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES)
                     }
                     activity?.recreate()
                 }
@@ -161,7 +169,7 @@ fun SettingsScreen() {
                             Switch(
                                 checked = useRootAccess,
                                 onCheckedChange = { onRootAccessChange(it) },
-                                enabled = !isRootCheckLoading && isDeviceRooted  // Only enable if not loading and device is rooted
+                                enabled = !isRootCheckLoading && isDeviceRooted // Only enable if not loading and device is rooted
                             )
                         }
                     }
@@ -352,5 +360,10 @@ private fun getThemeIndex(themeMode: ThemeMode): Int {
         ThemeMode.LIGHT -> 0
         ThemeMode.DARK -> 1
         ThemeMode.SYSTEM -> 2
+        ThemeMode.GRUVBOX -> 3
+        ThemeMode.NORD -> 4
+        ThemeMode.DRACULA -> 5
+        ThemeMode.SOLARIZED -> 6
+        ThemeMode.MONOKAI -> 7
     }
 }

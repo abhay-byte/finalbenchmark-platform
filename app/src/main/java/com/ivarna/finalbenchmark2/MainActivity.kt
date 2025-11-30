@@ -39,7 +39,7 @@ class MainActivity : ComponentActivity() {
             
             // Provide theme mode to the composition
             provideThemeMode(currentThemeMode) {
-                FinalBenchmark2Theme {
+                FinalBenchmark2Theme(themeMode = currentThemeMode) {
                     val hazeState = remember { HazeState() }
                     Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                         MainNavigation(
@@ -57,6 +57,8 @@ class MainActivity : ComponentActivity() {
             ThemeMode.LIGHT -> AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO)
             ThemeMode.DARK -> AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES)
             ThemeMode.SYSTEM -> AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM)
+            // For custom themes, we'll default to dark mode since they're mostly dark themes
+            else -> AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES)
         }
     }
     
