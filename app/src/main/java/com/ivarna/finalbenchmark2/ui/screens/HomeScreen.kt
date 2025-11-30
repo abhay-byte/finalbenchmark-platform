@@ -254,7 +254,7 @@ fun HomeScreen(
                                 
                                 // Display core utilization in a compact grid
                                 LazyVerticalGrid(
-                                    columns = GridCells.Fixed(2),
+                                    columns = GridCells.Fixed(4), // Show 4 cores in one row
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .heightIn(max = 300.dp) // Limit the height to avoid infinite constraints
@@ -269,17 +269,17 @@ fun HomeScreen(
                                             horizontalAlignment = Alignment.CenterHorizontally,
                                             modifier = Modifier
                                                 .fillMaxWidth()
-                                                .padding(8.dp)
+                                                .padding(4.dp) // Reduced padding
                                         ) {
                                             // Circular progress indicator
                                             Box(
                                                 contentAlignment = Alignment.Center,
-                                                modifier = Modifier.size(80.dp)
+                                                modifier = Modifier.size(60.dp) // Reduced size
                                             ) {
                                                 CircularProgressIndicator(
                                                     progress = { utilization / 100f },
-                                                    modifier = Modifier.size(80.dp),
-                                                    strokeWidth = 6.dp,
+                                                    modifier = Modifier.size(60.dp), // Reduced size
+                                                    strokeWidth = 4.dp, // Reduced stroke width
                                                     color = MaterialTheme.colorScheme.primary,
                                                     trackColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
                                                 )
@@ -287,24 +287,24 @@ fun HomeScreen(
                                                 // Center text
                                                 Text(
                                                     text = "${String.format("%.0f", utilization)}%",
-                                                    fontSize = 14.sp,
+                                                    fontSize = 10.sp, // Reduced font size
                                                     fontWeight = FontWeight.Bold,
                                                     color = MaterialTheme.colorScheme.primary
                                                 )
                                             }
                                             
-                                            Spacer(modifier = Modifier.height(4.dp))
+                                            Spacer(modifier = Modifier.height(2.dp)) // Reduced space
                                             
                                             Text(
                                                 text = "Core $coreIndex",
-                                                fontSize = 12.sp,
+                                                fontSize = 10.sp, // Reduced font size
                                                 fontWeight = FontWeight.Medium,
                                                 color = MaterialTheme.colorScheme.onSurface
                                             )
                                             
                                             Text(
-                                                text = "${currentFreq}MHz/${maxFreq}MHz",
-                                                fontSize = 10.sp,
+                                                text = "${currentFreq}M",
+                                                fontSize = 8.sp, // Reduced font size
                                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                                             )
                                         }
