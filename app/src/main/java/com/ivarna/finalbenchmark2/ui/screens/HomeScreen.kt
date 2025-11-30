@@ -303,7 +303,7 @@ fun HomeScreen(
                                             )
                                             
                                             Text(
-                                                text = "${currentFreq}M",
+                                                text = "${currentFreq}MHz",
                                                 fontSize = 8.sp, // Reduced font size
                                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                                             )
