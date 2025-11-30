@@ -134,7 +134,7 @@ fun CpuUtilizationGraph(
                             }
                         }
                         
-                        // Draw X-axis labels (0s, 15s, 30s)
+                        // Draw X-axis labels based on actual time range
                         drawIntoCanvas { canvas ->
                             val paint = android.graphics.Paint().apply {
                                 color = onSurfaceVariantColor.toArgb()
@@ -142,8 +142,11 @@ fun CpuUtilizationGraph(
                                 textAlign = android.graphics.Paint.Align.CENTER
                             }
                             
+                            // X-axis labels always show "30s ago", "15s ago", "0s ago" (from left to right)
+                            // These represent fixed positions in the 30-second window
+                            
                             canvas.nativeCanvas.drawText(
-                                "0s",
+                                "30s",
                                 padding,
                                 height - padding + 30f,
                                 paint
@@ -155,16 +158,20 @@ fun CpuUtilizationGraph(
                                 paint
                             )
                             canvas.nativeCanvas.drawText(
-                                "30s",
+                                "0s",
                                 width - padding,
                                 height - padding + 30f,
                                 paint
                             )
                         }
                         
-                        // Calculate time range (last 30 seconds)
-                        val currentTime = System.currentTimeMillis()
-                        val startTime = currentTime - 30_000L
+                        // Calculate time range based on actual data points to prevent compression
+                        val maxTimestamp = if (dataPoints.isNotEmpty()) {
+                            dataPoints.maxOf { it.timestamp }
+                        } else {
+                            System.currentTimeMillis()
+                        }
+                        val startTime = maxTimestamp - 30_000L
                         
                         // Draw the line graph
                         if (dataPoints.size >= 2) {

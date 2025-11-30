@@ -47,10 +47,14 @@ class DeviceViewModel : ViewModel() {
     val deviceInfo: StateFlow<com.ivarna.finalbenchmark2.utils.DeviceInfo> = _deviceInfo.asStateFlow()
     
     private var cpuUtilizationUtils: CpuUtilizationUtils? = null
+    private var isMonitoringStarted = false
     
     fun initialize(context: Context) {
         cpuUtilizationUtils = CpuUtilizationUtils(context)
-        startCpuMonitoring()
+        if (!isMonitoringStarted) {
+            isMonitoringStarted = true
+            startCpuMonitoring()
+        }
     }
     
     private fun startCpuMonitoring() {
