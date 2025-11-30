@@ -3,10 +3,11 @@ package com.ivarna.finalbenchmark2.ui.theme
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
-// Complete Material3 Typography with Roboto (system default)
+// Complete Material3 Typography with Roboto (system default on Android)
 val Typography = Typography(
     // Display styles (largest)
     displayLarge = TextStyle(
