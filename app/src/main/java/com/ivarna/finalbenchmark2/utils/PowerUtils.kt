@@ -65,10 +65,10 @@ class PowerUtils(private val context: Context) {
         val multiplier = powerConsumptionPrefs.getMultiplier()
         power *= multiplier
         
-        // For display purposes, return positive value when charging, negative when discharging
-        // When charging, the power is positive (energy going into battery)
-        // When discharging, the power is negative (energy coming out of battery)
-        val displayPower = if (isCharging) kotlin.math.abs(power) else -kotlin.math.abs(power)
+        // For display purposes, return negative value when charging, positive when discharging
+        // When charging, the power is negative (energy going into battery)
+        // When discharging, the power is positive (energy coming out of battery)
+        val displayPower = if (isCharging) -kotlin.math.abs(power) else kotlin.math.abs(power)
         
         return PowerConsumptionInfo(
             power = displayPower,

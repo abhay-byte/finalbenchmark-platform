@@ -5,6 +5,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -20,6 +21,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ivarna.finalbenchmark2.ui.components.CpuUtilizationGraph
+import com.ivarna.finalbenchmark2.ui.components.PowerConsumptionGraph
 import com.ivarna.finalbenchmark2.ui.viewmodels.DeviceViewModel
 
 // Utility functions unique to DeviceScreen
@@ -109,7 +111,7 @@ fun DeviceScreen(viewModel: DeviceViewModel = androidx.lifecycle.viewmodel.compo
                         .padding(top = 8.dp)  // Add spacing at top of each tab view
                 ) {
                     when (selectedTabIndex) {
-                        0 -> InfoTab(deviceInfo)
+                        0 -> InfoTab(deviceInfo, viewModel)
                         1 -> CpuTab(deviceInfo, viewModel)
                         2 -> GpuTab(deviceInfo)
                         3 -> MemoryTab(deviceInfo)
@@ -125,7 +127,13 @@ fun DeviceScreen(viewModel: DeviceViewModel = androidx.lifecycle.viewmodel.compo
 }
 
 @Composable
-fun InfoTab(deviceInfo: com.ivarna.finalbenchmark2.utils.DeviceInfo) {
+fun InfoTab(deviceInfo: com.ivarna.finalbenchmark2.utils.DeviceInfo, viewModel: DeviceViewModel? = null) {
+    val powerHistory by remember(viewModel) {
+        derivedStateOf {
+            viewModel?.powerHistory?.value ?: emptyList<com.ivarna.finalbenchmark2.ui.components.PowerDataPoint>()
+        }
+    }
+    
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -156,6 +164,16 @@ fun InfoTab(deviceInfo: com.ivarna.finalbenchmark2.utils.DeviceInfo) {
         }
                 
         Spacer(modifier = Modifier.height(16.dp))
+        
+        // Power Consumption Graph Card
+        if (viewModel != null) {
+            PowerConsumptionGraph(
+                dataPoints = powerHistory,
+                modifier = Modifier.fillMaxWidth()
+            )
+            
+            Spacer(modifier = Modifier.height(16.dp))
+        }
                 
         // System Information
         DeviceInfoCard("System Information") {
