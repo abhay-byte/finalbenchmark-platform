@@ -26,6 +26,7 @@ import com.ivarna.finalbenchmark2.R
 import com.ivarna.finalbenchmark2.ui.theme.FinalBenchmark2Theme
 import com.ivarna.finalbenchmark2.utils.TemperatureUtils
 import com.ivarna.finalbenchmark2.utils.PowerUtils
+import com.ivarna.finalbenchmark2.utils.CpuUtilizationUtils
 import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -156,6 +157,72 @@ fun HomeScreen(
                             }
                         }
                     }
+                
+                // CPU Utilization Card - Added below temperature card
+                val cpuUtilizationUtils = remember { CpuUtilizationUtils(context) }
+                var cpuUtilization by remember { mutableStateOf(0f) }
+                var cpuUtilizationInitialized by remember { mutableStateOf(false) }
+                
+                LaunchedEffect(Unit) {
+                    cpuUtilizationInitialized = true
+                    
+                    // Update every 2 seconds
+                    while (true) {
+                        delay(2000)
+                        cpuUtilization = cpuUtilizationUtils.getCpuUtilizationPercentage()
+                    }
+                }
+                
+                if (cpuUtilizationInitialized) {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.Start
+                            ) {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.cpu_24),
+                                    contentDescription = "CPU Utilization",
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "CPU Utilization",
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    text = "${String.format("%.1f", cpuUtilization)}%",
+                                    fontSize = 24.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                Text(
+                                    text = "Current Usage",
+                                    fontSize = 14.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                }
                 }
                 
                 // Power Consumption Card - Added below temperature card
