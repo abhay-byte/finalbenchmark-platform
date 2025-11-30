@@ -7,6 +7,13 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
@@ -168,9 +175,9 @@ fun HomeScreen(
                 LaunchedEffect(Unit) {
                     cpuUtilizationInitialized = true
                     
-                    // Update every 2 seconds
+                    // Update every 1 second
                     while (true) {
-                        delay(2000)
+                        delay(1000)
                         cpuUtilization = cpuUtilizationUtils.getCpuUtilizationPercentage()
                     }
                 }
@@ -245,49 +252,59 @@ fun HomeScreen(
                                 val coreUtilizations = remember { cpuUtilizationUtils.getCoreUtilizationPercentages() }
                                 val allCoreFrequencies = remember { cpuUtilizationUtils.getAllCoreFrequencies() }
                                 
-                                // Display core utilization information
-                                Column {
-                                    coreUtilizations.forEach { (coreIndex, utilization) ->
+                                // Display core utilization in a compact grid
+                                LazyVerticalGrid(
+                                    columns = GridCells.Fixed(2),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    items(coreUtilizations.size) { index ->
+                                        val coreIndex = index
+                                        val utilization = coreUtilizations[coreIndex] ?: 0f
                                         val (currentFreq, maxFreq) = allCoreFrequencies[coreIndex] ?: Pair(0L, 0L)
                                         
-                                        // Core utilization bar
+                                        // Circular progress indicator for each core
                                         Column(
+                                            horizontalAlignment = Alignment.CenterHorizontally,
                                             modifier = Modifier
                                                 .fillMaxWidth()
-                                                .padding(vertical = 4.dp)
+                                                .padding(8.dp)
                                         ) {
-                                            Row(
-                                                modifier = Modifier.fillMaxWidth(),
-                                                horizontalArrangement = Arrangement.SpaceBetween
-                                            ) {
-                                                Text(
-                                                    text = "Core $coreIndex",
-                                                    fontSize = 14.sp,
-                                                    fontWeight = FontWeight.Medium,
-                                                    color = MaterialTheme.colorScheme.onSurface
-                                                )
-                                                Text(
-                                                    text = "${String.format("%.1f", utilization)}% (${currentFreq}MHz/${maxFreq}MHz)",
-                                                    fontSize = 12.sp,
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                                )
-                                            }
-                                            Spacer(modifier = Modifier.height(4.dp))
-                                            // Progress bar for core utilization
+                                            // Circular progress indicator
                                             Box(
-                                                modifier = Modifier
-                                                    .fillMaxWidth()
-                                                    .height(8.dp)
-                                                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
-                                                    .clip(RoundedCornerShape(4.dp))
+                                                contentAlignment = Alignment.Center,
+                                                modifier = Modifier.size(80.dp)
                                             ) {
-                                                Box(
-                                                    modifier = Modifier
-                                                        .fillMaxWidth(utilization / 100f)
-                                                        .background(MaterialTheme.colorScheme.primary)
-                                                        .clip(RoundedCornerShape(4.dp))
+                                                CircularProgressIndicator(
+                                                    progress = { utilization / 100f },
+                                                    modifier = Modifier.size(80.dp),
+                                                    strokeWidth = 6.dp,
+                                                    color = MaterialTheme.colorScheme.primary,
+                                                    trackColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                                                )
+                                                
+                                                // Center text
+                                                Text(
+                                                    text = "${String.format("%.0f", utilization)}%",
+                                                    fontSize = 14.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = MaterialTheme.colorScheme.primary
                                                 )
                                             }
+                                            
+                                            Spacer(modifier = Modifier.height(4.dp))
+                                            
+                                            Text(
+                                                text = "Core $coreIndex",
+                                                fontSize = 12.sp,
+                                                fontWeight = FontWeight.Medium,
+                                                color = MaterialTheme.colorScheme.onSurface
+                                            )
+                                            
+                                            Text(
+                                                text = "${currentFreq}MHz/${maxFreq}MHz",
+                                                fontSize = 10.sp,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
                                         }
                                     }
                                 }
