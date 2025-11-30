@@ -125,4 +125,33 @@ class CpuUtilizationUtils(context: Context) {
         
         return frequencies
     }
+
+    /**
+     * Calculate individual core utilization percentages
+     */
+    fun getCoreUtilizationPercentages(): Map<Int, Float> {
+        try {
+            if (!cpuDir.exists()) {
+                return emptyMap()
+            }
+
+            val coreUtilizations = mutableMapOf<Int, Float>()
+            val allFrequencies = getAllCoreFrequencies()
+
+            for ((coreIndex, freqPair) in allFrequencies) {
+                val (currentFreq, maxFreq) = freqPair
+                if (currentFreq > 0 && maxFreq > 0) {
+                    val utilization = (currentFreq.toFloat() / maxFreq.toFloat() * 100).coerceIn(0f, 100f)
+                    coreUtilizations[coreIndex] = utilization
+                } else {
+                    coreUtilizations[coreIndex] = 0f
+                }
+            }
+
+            return coreUtilizations
+        } catch (e: Exception) {
+            Log.e("CpuUtilizationUtils", "Error getting core utilizations", e)
+            return emptyMap()
+        }
+    }
 }

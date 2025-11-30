@@ -13,6 +13,7 @@ import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
@@ -162,6 +163,7 @@ fun HomeScreen(
                 val cpuUtilizationUtils = remember { CpuUtilizationUtils(context) }
                 var cpuUtilization by remember { mutableStateOf(0f) }
                 var cpuUtilizationInitialized by remember { mutableStateOf(false) }
+                var isExpanded by remember { mutableStateOf(false) }
                 
                 LaunchedEffect(Unit) {
                     cpuUtilizationInitialized = true
@@ -177,7 +179,8 @@ fun HomeScreen(
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 8.dp),
+                            .padding(vertical = 8.dp)
+                            .clickable { isExpanded = !isExpanded },
                         shape = RoundedCornerShape(16.dp),
                         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
                     ) {
@@ -188,19 +191,32 @@ fun HomeScreen(
                         ) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.Start
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
+                                Row(
+                                    horizontalArrangement = Arrangement.Start,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        painter = painterResource(id = R.drawable.cpu_24),
+                                        contentDescription = "CPU Utilization",
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = "CPU Utilization",
+                                        fontSize = 18.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                }
                                 Icon(
-                                    painter = painterResource(id = R.drawable.cpu_24),
-                                    contentDescription = "CPU Utilization",
-                                    modifier = Modifier.size(24.dp)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = "CPU Utilization",
-                                    fontSize = 18.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.primary
+                                    painter = painterResource(id = R.drawable.arrow_expand_24),
+                                    contentDescription = if (isExpanded) "Collapse" else "Expand",
+                                    modifier = Modifier
+                                        .size(24.dp)
+                                        .rotate(if (isExpanded) 180f else 0f)
                                 )
                             }
                             Spacer(modifier = Modifier.height(8.dp))
@@ -219,6 +235,62 @@ fun HomeScreen(
                                     fontSize = 14.sp,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
+                            }
+                            
+                            // Expanded content
+                            if (isExpanded) {
+                                Spacer(modifier = Modifier.height(12.dp))
+                                
+                                // Get core utilization data
+                                val coreUtilizations = remember { cpuUtilizationUtils.getCoreUtilizationPercentages() }
+                                val allCoreFrequencies = remember { cpuUtilizationUtils.getAllCoreFrequencies() }
+                                
+                                // Display core utilization information
+                                Column {
+                                    coreUtilizations.forEach { (coreIndex, utilization) ->
+                                        val (currentFreq, maxFreq) = allCoreFrequencies[coreIndex] ?: Pair(0L, 0L)
+                                        
+                                        // Core utilization bar
+                                        Column(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(vertical = 4.dp)
+                                        ) {
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.SpaceBetween
+                                            ) {
+                                                Text(
+                                                    text = "Core $coreIndex",
+                                                    fontSize = 14.sp,
+                                                    fontWeight = FontWeight.Medium,
+                                                    color = MaterialTheme.colorScheme.onSurface
+                                                )
+                                                Text(
+                                                    text = "${String.format("%.1f", utilization)}% (${currentFreq}MHz/${maxFreq}MHz)",
+                                                    fontSize = 12.sp,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                            }
+                                            Spacer(modifier = Modifier.height(4.dp))
+                                            // Progress bar for core utilization
+                                            Box(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .height(8.dp)
+                                                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+                                                    .clip(RoundedCornerShape(4.dp))
+                                            ) {
+                                                Box(
+                                                    modifier = Modifier
+                                                        .fillMaxWidth(utilization / 100f)
+                                                        .background(MaterialTheme.colorScheme.primary)
+                                                        .clip(RoundedCornerShape(4.dp))
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
