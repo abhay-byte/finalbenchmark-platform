@@ -1,6 +1,7 @@
 package com.ivarna.finalbenchmark2.ui.theme
 
 import android.app.Activity
+import androidx.compose.ui.graphics.Color
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
@@ -163,6 +164,98 @@ val MonokaiColorScheme = darkColorScheme(
     onError = MonokaiText
 )
 
+// Sky Breeze Color Scheme
+val SkyBreezeColorScheme = lightColorScheme(
+    primary = SkyBreezePrimary,
+    onPrimary = Color.White,
+    primaryContainer = SkyBreezePrimaryLight,
+    onPrimaryContainer = SkyBreezeTextPrimary,
+    secondary = SkyBreezePrimary,
+    onSecondary = Color.White,
+    secondaryContainer = SkyBreezePrimaryLight,
+    onSecondaryContainer = SkyBreezeTextPrimary,
+    background = SkyBreezeBg,
+    onBackground = SkyBreezeTextPrimary,
+    surface = SkyBreezeSurface,
+    onSurface = SkyBreezeTextPrimary,
+    surfaceVariant = SkyBreezeBorder,
+    onSurfaceVariant = SkyBreezeTextSecondary,
+    outline = SkyBreezeBorder,
+    error = SkyBreezeError,
+    onError = Color.White,
+    errorContainer = SkyBreezeError,
+    onErrorContainer = Color.White
+)
+
+// Lavender Dream Color Scheme
+val LavenderDreamColorScheme = lightColorScheme(
+    primary = LavenderDreamPrimary,
+    onPrimary = Color.White,
+    primaryContainer = LavenderDreamPrimaryLight,
+    onPrimaryContainer = LavenderDreamTextPrimary,
+    secondary = LavenderDreamPrimary,
+    onSecondary = Color.White,
+    secondaryContainer = LavenderDreamPrimaryLight,
+    onSecondaryContainer = LavenderDreamTextPrimary,
+    background = LavenderDreamBg,
+    onBackground = LavenderDreamTextPrimary,
+    surface = LavenderDreamSurface,
+    onSurface = LavenderDreamTextPrimary,
+    surfaceVariant = LavenderDreamBorder,
+    onSurfaceVariant = LavenderDreamTextSecondary,
+    outline = LavenderDreamBorder,
+    error = LavenderDreamError,
+    onError = Color.White,
+    errorContainer = LavenderDreamError,
+    onErrorContainer = Color.White
+)
+
+// Mint Fresh Color Scheme
+val MintFreshColorScheme = lightColorScheme(
+    primary = MintFreshPrimary,
+    onPrimary = Color.White,
+    primaryContainer = MintFreshPrimaryLight,
+    onPrimaryContainer = MintFreshTextPrimary,
+    secondary = MintFreshPrimary,
+    onSecondary = Color.White,
+    secondaryContainer = MintFreshPrimaryLight,
+    onSecondaryContainer = MintFreshTextPrimary,
+    background = MintFreshBg,
+    onBackground = MintFreshTextPrimary,
+    surface = MintFreshSurface,
+    onSurface = MintFreshTextPrimary,
+    surfaceVariant = MintFreshBorder,
+    onSurfaceVariant = MintFreshTextSecondary,
+    outline = MintFreshBorder,
+    error = MintFreshError,
+    onError = Color.White,
+    errorContainer = MintFreshError,
+    onErrorContainer = Color.White
+)
+
+// AMOLED Black Color Scheme
+val AmoledBlackColorScheme = darkColorScheme(
+    primary = AmoledBlackPrimary,
+    onPrimary = Color.White,
+    primaryContainer = AmoledBlackSurface,
+    onPrimaryContainer = Color.White,
+    secondary = AmoledBlackPrimary,
+    onSecondary = Color.White,
+    secondaryContainer = AmoledBlackSurface,
+    onSecondaryContainer = Color.White,
+    background = AmoledBlackBg,
+    onBackground = AmoledBlackTextPrimary,
+    surface = AmoledBlackSurface,
+    onSurface = AmoledBlackTextPrimary,
+    surfaceVariant = AmoledBlackBorder,
+    onSurfaceVariant = AmoledBlackTextSecondary,
+    outline = AmoledBlackBorder,
+    error = AmoledBlackError,
+    onError = Color.White,
+    errorContainer = AmoledBlackError,
+    onErrorContainer = Color.White
+)
+
 @Composable
 fun FinalBenchmark2Theme(
     darkTheme: Boolean = shouldUseDarkTheme(), // Use our custom theme system
@@ -178,6 +271,10 @@ fun FinalBenchmark2Theme(
         themeMode == ThemeMode.DRACULA -> DraculaColorScheme  // Dracula is always dark
         themeMode == ThemeMode.SOLARIZED -> if (darkTheme) SolarizedDarkColorScheme else SolarizedLightColorScheme
         themeMode == ThemeMode.MONOKAI -> MonokaiColorScheme  // Monokai is always dark
+        themeMode == ThemeMode.SKY_BREEZE -> SkyBreezeColorScheme // Sky Breeze is light
+        themeMode == ThemeMode.LAVENDER_DREAM -> LavenderDreamColorScheme  // Lavender Dream is light
+        themeMode == ThemeMode.MINT_FRESH -> MintFreshColorScheme  // Mint Fresh is light
+        themeMode == ThemeMode.AMOLED_BLACK -> AmoledBlackColorScheme  // AMOLED Black is dark
         
         // Then check for dynamic colors
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {

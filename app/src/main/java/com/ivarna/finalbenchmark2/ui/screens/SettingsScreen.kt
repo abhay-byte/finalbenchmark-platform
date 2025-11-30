@@ -31,7 +31,7 @@ fun SettingsScreen() {
     val themePreferences = remember { ThemePreferences(context) }
     val rootAccessPreferences = remember { RootAccessPreferences(context) }
     
-    val themes = listOf("Light", "Dark", "System Default", "Gruvbox", "Nord", "Dracula", "Solarized", "Monokai")
+    val themes = listOf("Light", "Dark", "Gruvbox", "Nord", "Dracula", "Solarized", "Monokai", "Sky Breeze", "Lavender Dream", "Mint Fresh", "AMOLED Black", "System Default")
     val currentThemeMode = themePreferences.getThemeMode()
     var selectedThemeIndex by remember { mutableStateOf(getThemeIndex(currentThemeMode)) }
     
@@ -62,12 +62,16 @@ fun SettingsScreen() {
                 val themeMode = when (newIndex) {
                     0 -> ThemeMode.LIGHT
                     1 -> ThemeMode.DARK
-                    2 -> ThemeMode.SYSTEM
-                    3 -> ThemeMode.GRUVBOX
-                    4 -> ThemeMode.NORD
-                    5 -> ThemeMode.DRACULA
-                    6 -> ThemeMode.SOLARIZED
-                    7 -> ThemeMode.MONOKAI
+                    2 -> ThemeMode.GRUVBOX
+                    3 -> ThemeMode.NORD
+                    4 -> ThemeMode.DRACULA
+                    5 -> ThemeMode.SOLARIZED
+                    6 -> ThemeMode.MONOKAI
+                    7 -> ThemeMode.SKY_BREEZE
+                    8 -> ThemeMode.LAVENDER_DREAM
+                    9 -> ThemeMode.MINT_FRESH
+                    10 -> ThemeMode.AMOLED_BLACK
+                    11 -> ThemeMode.SYSTEM
                     else -> ThemeMode.SYSTEM
                 }
                 themePreferences.setThemeMode(themeMode)
@@ -359,11 +363,15 @@ private fun getThemeIndex(themeMode: ThemeMode): Int {
     return when (themeMode) {
         ThemeMode.LIGHT -> 0
         ThemeMode.DARK -> 1
-        ThemeMode.SYSTEM -> 2
-        ThemeMode.GRUVBOX -> 3
-        ThemeMode.NORD -> 4
-        ThemeMode.DRACULA -> 5
-        ThemeMode.SOLARIZED -> 6
-        ThemeMode.MONOKAI -> 7
+        ThemeMode.GRUVBOX -> 2
+        ThemeMode.NORD -> 3
+        ThemeMode.DRACULA -> 4
+        ThemeMode.SOLARIZED -> 5
+        ThemeMode.MONOKAI -> 6
+        ThemeMode.SKY_BREEZE -> 7
+        ThemeMode.LAVENDER_DREAM -> 8
+        ThemeMode.MINT_FRESH -> 9
+        ThemeMode.AMOLED_BLACK -> 10
+        ThemeMode.SYSTEM -> 11
     }
 }

@@ -17,6 +17,10 @@ enum class ThemeMode {
     DRACULA,
     SOLARIZED,
     MONOKAI,
+    SKY_BREEZE,
+    LAVENDER_DREAM,
+    MINT_FRESH,
+    AMOLED_BLACK,
     SYSTEM
 }
 
@@ -38,10 +42,14 @@ fun shouldUseDarkTheme(): Boolean {
         ThemeMode.LIGHT -> false
         ThemeMode.DARK -> true
         ThemeMode.SYSTEM -> isSystemInDarkTheme()
-        ThemeMode.GRUVBOX -> isSystemInDarkTheme()   // Use system preference for Gruvbox
-        ThemeMode.NORD -> isSystemInDarkTheme()      // Use system preference for Nord
+        ThemeMode.GRUVBOX -> true                    // Gruvbox defaults to dark (traditional)
+        ThemeMode.NORD -> true                       // Nord defaults to dark (traditional)
         ThemeMode.DRACULA -> true                    // Dracula is typically dark
-        ThemeMode.SOLARIZED -> isSystemInDarkTheme() // Use system preference for Solarized
+        ThemeMode.SOLARIZED -> false                 // Solarized defaults to light (traditional)
         ThemeMode.MONOKAI -> true                    // Monokai is typically dark
+        ThemeMode.SKY_BREEZE -> false                // Sky Breeze is light
+        ThemeMode.LAVENDER_DREAM -> false            // Lavender Dream is light
+        ThemeMode.MINT_FRESH -> false                // Mint Fresh is light
+        ThemeMode.AMOLED_BLACK -> true               // AMOLED Black is dark
     }
 }
