@@ -63,7 +63,7 @@ fun DeviceScreen() {
             Column(
                 modifier = Modifier.fillMaxSize()
             ) {
-                // Scrollable Tab Row
+                // Scrollable Tab Row - attached to top
                 ScrollableTabRow(
                     selectedTabIndex = selectedTabIndex,
                     containerColor = MaterialTheme.colorScheme.surfaceVariant,
@@ -91,11 +91,12 @@ fun DeviceScreen() {
                     }
                 }
                 
-                // Tab Content
+                // Tab Content with top padding
                 Box(
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxWidth()
+                        .padding(top = 8.dp)  // Add spacing at top of each tab view
                 ) {
                     when (selectedTabIndex) {
                         0 -> DeviceInfoTab(deviceInfo)
