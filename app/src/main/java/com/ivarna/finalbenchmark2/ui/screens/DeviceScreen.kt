@@ -128,11 +128,8 @@ fun DeviceScreen(viewModel: DeviceViewModel = androidx.lifecycle.viewmodel.compo
 
 @Composable
 fun InfoTab(deviceInfo: com.ivarna.finalbenchmark2.utils.DeviceInfo, viewModel: DeviceViewModel? = null) {
-    val powerHistory by remember(viewModel) {
-        derivedStateOf {
-            viewModel?.powerHistory?.value ?: emptyList<com.ivarna.finalbenchmark2.ui.components.PowerDataPoint>()
-        }
-    }
+    val powerHistory by viewModel?.powerHistory?.collectAsState() ?:
+        remember { mutableStateOf(emptyList<com.ivarna.finalbenchmark2.ui.components.PowerDataPoint>()) }
     
     Column(
         modifier = Modifier

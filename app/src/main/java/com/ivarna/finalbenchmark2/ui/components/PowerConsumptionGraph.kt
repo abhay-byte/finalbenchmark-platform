@@ -15,6 +15,7 @@ import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import kotlin.math.abs
 import kotlin.math.ceil
 import kotlin.math.max
 import kotlin.math.min
@@ -29,22 +30,19 @@ fun PowerConsumptionGraph(
     val onSurfaceVariantColor = MaterialTheme.colorScheme.onSurfaceVariant
     val surfaceVariantColor = MaterialTheme.colorScheme.surfaceVariant
     
-    // Calculate dynamic Y-axis range based on data
-    val maxPower = remember(dataPoints) {
-        if (dataPoints.isEmpty()) 10f
-        else {
-            val max = dataPoints.maxOfOrNull { it.powerWatts } ?: 10f
-            // Round up to nearest 5W for cleaner axis
-            (ceil(kotlin.math.abs(max) / 5f) * 5f).coerceAtLeast(5f)
-        }
-    }
-    
-    val minPower = remember(dataPoints) {
-        if (dataPoints.isEmpty()) -10f
-        else {
-            val min = dataPoints.minOfOrNull { it.powerWatts } ?: -10f
-            // Round down to nearest 5W
-            -(ceil(kotlin.math.abs(min) / 5f) * 5f).coerceAtLeast(5f)
+    // Calculate dynamic Y-axis range based on data with padding
+    val (minPower, maxPower) = remember(dataPoints) {
+        if (dataPoints.isEmpty()) {
+            Pair(-10f, 10f) // Default range if no data
+        } else {
+            val min = dataPoints.minOfOrNull { it.powerWatts } ?: -5f
+            val max = dataPoints.maxOfOrNull { it.powerWatts } ?: 5f
+            
+            // Calculate range and add 10-20% padding
+            val range = max - min
+            val padding = if (range > 0) range * 0.2f else 2f // 20% padding or 2W if range is 0
+            
+            Pair(min - padding, max + padding)
         }
     }
     
@@ -55,6 +53,8 @@ fun PowerConsumptionGraph(
     
     // Calculate the full range
     val fullRange = maxPower - minPower
+    // Zero position is now at the top (negative values above X-axis, positive below)
+    // This creates an inverted Y-axis where negative values appear above the X-axis
     val zeroPosition = if (fullRange != 0f) (0f - minPower) / fullRange else 0.5f
     
     Card(
@@ -93,9 +93,9 @@ fun PowerConsumptionGraph(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        text = String.format("%.2f W", currentPower),
+                        text = String.format("%.2f W", abs(currentPower)),
                         style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.primary
+                        color = if (currentPower >= 0) Color(0xFFA5D6A7) else Color(0xFFFFCDD2)  // Charging: light green, Discharging: light red
                     )
                 }
                 
@@ -109,9 +109,9 @@ fun PowerConsumptionGraph(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(
-                            text = String.format("%.2f W", avgPower),
+                            text = String.format("%.2f W", abs(avgPower)),
                             style = MaterialTheme.typography.titleSmall,
-                            color = MaterialTheme.colorScheme.secondary
+                            color = if (avgPower >= 0) Color(0xFFA5D6A7) else Color(0xFFFFCDD2)  // Charging: light green, Discharging: light red
                         )
                     }
                 }
@@ -143,7 +143,8 @@ fun PowerConsumptionGraph(
                             strokeWidth = 2f
                         )
                         
-                        // Draw X-axis (time) - but this should be at the zero point, not bottom
+                        // For true Y-axis inversion, we need to flip the coordinate system
+                        // Negative values should appear above the X-axis (top half), positive below (bottom half)
                         val zeroY = height - padding - (zeroPosition * graphHeight)
                         drawLine(
                             color = surfaceVariantColor,
@@ -158,7 +159,10 @@ fun PowerConsumptionGraph(
                         // Draw Y-axis grid lines and labels (power values)
                         for (i in 0..numYTicks) {
                             val powerValue = minPower + (powerRange * i / numYTicks)
-                            val y = height - padding - ((powerValue - minPower) / powerRange) * graphHeight
+                            // For inverted Y-axis, we want negative values at the top and positive at the bottom
+                            // So we calculate the Y position with the inverted mapping
+                            val powerProgress = (powerValue - minPower) / powerRange
+                            val y = padding + (powerProgress * graphHeight)
                             
                             // Grid line
                             drawLine(
@@ -172,13 +176,13 @@ fun PowerConsumptionGraph(
                             drawIntoCanvas { canvas ->
                                 val paint = android.graphics.Paint().apply {
                                     color = onSurfaceVariantColor.toArgb()
-                                    textSize = 24f
+                                    textSize = 16f
                                     textAlign = android.graphics.Paint.Align.RIGHT
                                 }
                                 canvas.nativeCanvas.drawText(
                                     String.format("%.1fW", powerValue),
                                     padding - 8f,
-                                    y + 8f,
+                                    y + 5f,
                                     paint
                                 )
                             }
@@ -188,35 +192,67 @@ fun PowerConsumptionGraph(
                         drawIntoCanvas { canvas ->
                             val paint = android.graphics.Paint().apply {
                                 color = onSurfaceVariantColor.toArgb()
-                                textSize = 24f
+                                textSize = 16f
                                 textAlign = android.graphics.Paint.Align.CENTER
                             }
                             
-                            canvas.nativeCanvas.drawText(
-                                "0s",
-                                padding,
-                                height - padding + 30f,
-                                paint
-                            )
-                            canvas.nativeCanvas.drawText(
-                                "15s",
-                                padding + graphWidth / 2,
-                                height - padding + 30f,
-                                paint
-                            )
-                            canvas.nativeCanvas.drawText(
-                                "30s",
-                                width - padding,
-                                height - padding + 30f,
-                                paint
-                            )
+                            // Calculate time range (last 30 seconds)
+                            val currentTime = System.currentTimeMillis()
+                            val startTime = currentTime - 30_000L
+                            
+                            // Get the latest 30 seconds of data for positioning
+                            val relevantDataPoints = dataPoints.filter { it.timestamp >= startTime }
+                            
+                            if (relevantDataPoints.isNotEmpty()) {
+                                val earliestPoint = relevantDataPoints.minByOrNull { it.timestamp } ?: relevantDataPoints.first()
+                                val latestPoint = relevantDataPoints.maxByOrNull { it.timestamp } ?: relevantDataPoints.last()
+                                
+                                canvas.nativeCanvas.drawText(
+                                    "0s",
+                                    padding,
+                                    height - padding + 20f,
+                                    paint
+                                )
+                                canvas.nativeCanvas.drawText(
+                                    "15s",
+                                    padding + graphWidth / 2,
+                                    height - padding + 20f,
+                                    paint
+                                )
+                                canvas.nativeCanvas.drawText(
+                                    "30s",
+                                    width - padding,
+                                    height - padding + 20f,
+                                    paint
+                                )
+                            } else {
+                                // Default labels if no data
+                                canvas.nativeCanvas.drawText(
+                                    "0s",
+                                    padding,
+                                    height - padding + 20f,
+                                    paint
+                                )
+                                canvas.nativeCanvas.drawText(
+                                    "15s",
+                                    padding + graphWidth / 2,
+                                    height - padding + 20f,
+                                    paint
+                                )
+                                canvas.nativeCanvas.drawText(
+                                    "30s",
+                                    width - padding,
+                                    height - padding + 20f,
+                                    paint
+                                )
+                            }
                         }
                         
                         // Calculate time range (last 30 seconds)
                         val currentTime = System.currentTimeMillis()
                         val startTime = currentTime - 30_000L
                         
-                        // Draw the line graph
+                        // Draw the line graph with inverted Y-axis
                         if (dataPoints.size >= 2) {
                             val path = Path()
                             
@@ -228,8 +264,9 @@ fun PowerConsumptionGraph(
                                     0.5f
                                 }
                                 
+                                // Calculate position with inverted Y-axis mapping (negative values at top)
                                 val x = padding + (timeProgress * graphWidth)
-                                val y = height - padding - (powerProgress * graphHeight)
+                                val y = padding + (powerProgress * graphHeight)
                                 
                                 if (index == 0) {
                                     path.moveTo(x, y)
@@ -238,14 +275,15 @@ fun PowerConsumptionGraph(
                                 }
                             }
                             
-                            // Draw the line
+                            // Draw the line - use different colors for charging vs discharging
+                            // According to the new requirement: discharge (negative) = light red, charge (positive) = light green
                             drawPath(
                                 path = path,
-                                color = if (currentPower >= 0) primaryColor else Color(0xFF4CAF50), // Different color for charging
+                                color = if (currentPower >= 0) Color(0xFFA5D6A7) else Color(0xFFFFCDD2), // Charging: light green, Discharging: light red
                                 style = Stroke(width = 3f)
                             )
                             
-                            // Optional: Draw data points as circles
+                            // Draw data points as circles
                             dataPoints.forEach { point ->
                                 val timeProgress = (point.timestamp - startTime).toFloat() / 30_000f
                                 val powerProgress = if (powerRange > 0) {
@@ -255,14 +293,26 @@ fun PowerConsumptionGraph(
                                 }
                                 
                                 val x = padding + (timeProgress * graphWidth)
-                                val y = height - padding - (powerProgress * graphHeight)
+                                val y = padding + (powerProgress * graphHeight)
                                 
                                 drawCircle(
-                                    color = if (point.powerWatts >= 0) primaryColor else Color(0xFF4CAF50), // Different color for charging
+                                    color = if (point.powerWatts >= 0) Color(0xFFA5D6A7) else Color(0xFFFFCDD2), // Charging: light green, Discharging: light red
                                     radius = 4f,
                                     center = Offset(x, y)
                                 )
                             }
+                        }
+                        
+                        // Draw zero line if it's within the range
+                        if (minPower < 0 && maxPower > 0) {
+                            val powerProgress = (0f - minPower) / powerRange
+                            val zeroYPos = padding + (powerProgress * graphHeight)
+                            drawLine(
+                                color = Color.Gray,
+                                start = Offset(padding, zeroYPos),
+                                end = Offset(width - padding, zeroYPos),
+                                strokeWidth = 1f
+                            )
                         }
                     }
                 }
@@ -283,12 +333,12 @@ fun PowerConsumptionGraph(
                 }
             }
             
-            // Optional: Power status indicator
+            // Power status indicator with corrected logic
             Spacer(modifier = Modifier.height(8.dp))
             
             val powerStatus = when {
                 currentPower > 0 -> {
-                    // Discharging
+                    // Discharging (power leaving device, negative in our display)
                     when {
                         currentPower > 15f -> "High Discharge"
                         currentPower > 8f -> "Moderate Discharge"
@@ -297,7 +347,7 @@ fun PowerConsumptionGraph(
                     }
                 }
                 currentPower < 0 -> {
-                    // Charging
+                    // Charging (power going into device, positive in our display)
                     when {
                         currentPower < -15f -> "High Charge"
                         currentPower < -8f -> "Moderate Charge"
@@ -309,9 +359,9 @@ fun PowerConsumptionGraph(
             }
             
             val statusColor = when {
-                currentPower > 15f -> MaterialTheme.colorScheme.error // High discharge
-                currentPower > 8f -> Color(0xFFFB923C) // Moderate discharge (orange)
-                currentPower < 0f -> Color(0xFF4CAF50) // Charging (green)
+                currentPower > 15f -> Color(0xFFFFCDD2) // High discharge (light red)
+                currentPower > 8f -> Color(0xFFFFE0B2) // Moderate discharge (light orange)
+                currentPower < 0f -> Color(0xFFA5D6A7) // Charging (light green)
                 else -> MaterialTheme.colorScheme.tertiary
             }
             

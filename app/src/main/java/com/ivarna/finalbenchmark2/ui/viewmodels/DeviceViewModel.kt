@@ -101,7 +101,7 @@ class DeviceViewModel : ViewModel() {
         }
     }
     
-    // NEW: Start power monitoring
+    // NEW: Start power monitoring with improved real-time updates
     private fun startPowerMonitoring() {
         viewModelScope.launch {
             while (true) {
@@ -125,12 +125,13 @@ class DeviceViewModel : ViewModel() {
                         newHistory.removeAt(0)
                     }
                     
-                    _powerHistory.value = newHistory
+                    _powerHistory.value = newHistory.toList() // Ensure immutable list is set
                 } catch (e: Exception) {
                     // Handle any errors in power monitoring gracefully
+                    e.printStackTrace()
                 }
                 
-                delay(500) // Update every 500ms
+                delay(1000) // Update every 1000ms (1 second) as requested
             }
         }
     }
