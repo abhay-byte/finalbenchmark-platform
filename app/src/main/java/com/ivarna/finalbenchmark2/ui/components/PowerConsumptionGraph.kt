@@ -97,7 +97,7 @@ fun PowerConsumptionGraph(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        text = String.format("%.2f W", abs(currentPower)),
+                        text = String.format("%.2f W", currentPower),
                         style = MaterialTheme.typography.titleSmall,
                         color = if (currentPower >= 0) secondaryColor else errorColor  // Charging: secondary, Discharging: error
                     )
@@ -113,9 +113,9 @@ fun PowerConsumptionGraph(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(
-                            text = String.format("%.2f W", abs(avgPower)),
+                            text = String.format("%.2f W", avgPower),
                             style = MaterialTheme.typography.titleSmall,
-                            color = if (avgPower >= 0) secondaryColor else errorColor  // Charging: secondary, Discharging: error
+                            color = if (avgPower >= 0) secondaryColor else errorColor // Charging: secondary, Discharging: error
                         )
                     }
                 }
