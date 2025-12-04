@@ -33,10 +33,19 @@ class RootUtils {
                 // Create a thread to wait for the process
                 val waitThread = Thread {
                     try {
-                        exitCode = process.waitFor()
-                        completed = true
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Error waiting for process: ${e.message}", e)
+                        Thread.sleep(3000) // 3 second timeout
+                        if (process != null) {
+                            try {
+                                // Check if process has exited by trying to get its exit value
+                                process.exitValue()
+                            } catch (e: Exception) {
+                                // Process is still running, terminate it
+                                Log.d(TAG, "Root command timed out after 3 seconds")
+                                process.destroy()
+                            }
+                        }
+                    } catch (e: InterruptedException) {
+                        // Thread interrupted, do nothing
                     }
                 }
                 
@@ -47,12 +56,13 @@ class RootUtils {
                 
                 if (!completed) {
                     // Process didn't complete in time, destroy it
-                    Log.d(TAG, "Root command timed out after 3000 ms")
-                    process.destroy()
+                    Log.d(TAG, "Root command timed out after 3 seconds")
+                    process?.destroy()
                     waitThread.interrupt()
                     return false
                 }
                 
+                exitCode = process.waitFor()
                 Log.d(TAG, "Root command exit code: $exitCode")
                 val result = exitCode == 0
                 Log.d(TAG, "canExecuteRootCommand() result: $result")
@@ -67,6 +77,76 @@ class RootUtils {
                     // Ignore errors during process destruction
                 }
             }
+        }
+        
+        /**
+         * Checks if root access is working using a more robust approach
+         */
+        fun canExecuteRootCommandRobust(): Boolean {
+            // Try multiple approaches to get root access
+            val commands = listOf(
+                "su -c 'id'",  // Standard approach
+                "su -c 'ls /data'", // Test with a known protected directory
+                "su -c 'ls /system'"
+            )
+            
+            for (command in commands) {
+                var process: Process? = null
+                try {
+                    Log.d(TAG, "Attempting robust root command: $command")
+                    process = Runtime.getRuntime().exec(command)
+                    
+                    // Create a thread to wait for the process
+                    val waitThread = Thread {
+                        try {
+                            Thread.sleep(3000) // 3 second timeout
+                            if (process != null) {
+                                try {
+                                    // Check if process has exited by trying to get its exit value
+                                    process.exitValue()
+                                } catch (e: Exception) {
+                                    // Process is still running, terminate it
+                                    Log.d(TAG, "Root command timed out after 3 seconds: $command")
+                                    process.destroy()
+                                }
+                            }
+                        } catch (e: InterruptedException) {
+                            // Thread interrupted, do nothing
+                        }
+                    }
+                    
+                    waitThread.start()
+                    
+                    // Wait for the thread to complete with a timeout
+                    waitThread.join(3000) // 3 second timeout
+                    
+                    val exitCode = process.waitFor()
+                    Log.d(TAG, "Root command exit code for '$command': $exitCode")
+                    if (exitCode == 0) {
+                        Log.d(TAG, "Robust root access confirmed with command: $command")
+                        return true
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error in robust root command execution: ${e.message}", e)
+                    continue
+                } finally {
+                    try {
+                        process?.destroy()
+                    } catch (e: Exception) {
+                        // Ignore errors during process destruction
+                    }
+                }
+            }
+            
+            Log.d(TAG, "All robust root commands failed")
+            return false
+        }
+        
+        /**
+         * Requests root access and returns whether it was granted
+         */
+        fun requestRootAccess(): Boolean {
+            return canExecuteRootCommandRobust()
         }
 
         /**

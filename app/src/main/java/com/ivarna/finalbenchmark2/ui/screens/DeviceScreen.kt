@@ -249,11 +249,14 @@ fun CpuTab(
 @Composable
 fun GpuTab(deviceInfo: com.ivarna.finalbenchmark2.utils.DeviceInfo) {
     val context = LocalContext.current
-    val gpuInfoUtils = remember { com.ivarna.finalbenchmark2.utils.GpuInfoUtils(context) }
-    val viewModel: com.ivarna.finalbenchmark2.ui.viewmodels.GpuInfoViewModel =
-        viewModel { com.ivarna.finalbenchmark2.ui.viewmodels.GpuInfoViewModel(gpuInfoUtils) }
+    var gpuInfoState by remember {
+        mutableStateOf<com.ivarna.finalbenchmark2.utils.GpuInfoState>(com.ivarna.finalbenchmark2.utils.GpuInfoState.Loading)
+    }
     
-    val gpuInfoState by viewModel.gpuInfoState.collectAsState()
+    LaunchedEffect(Unit) {
+        val gpuInfoUtils = com.ivarna.finalbenchmark2.utils.GpuInfoUtils(context)
+        gpuInfoState = gpuInfoUtils.getGpuInfo()
+    }
     
     Column(
         modifier = Modifier
@@ -274,23 +277,27 @@ fun GpuTab(deviceInfo: com.ivarna.finalbenchmark2.utils.DeviceInfo) {
                 .padding(bottom = 16.dp)
         )
         
+        // Use the new GpuFrequencyCard component
+        com.ivarna.finalbenchmark2.ui.components.GpuFrequencyCard()
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        // GPU Info Content based on state
         when (gpuInfoState) {
             is com.ivarna.finalbenchmark2.utils.GpuInfoState.Loading -> {
-                Box(
-                    modifier = Modifier.fillMaxWidth(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator()
-                }
-            }
-            is com.ivarna.finalbenchmark2.utils.GpuInfoState.Error -> {
-                DeviceInfoCard("Error") {
-                    InfoRow("Error", (gpuInfoState as com.ivarna.finalbenchmark2.utils.GpuInfoState.Error).message)
+                DeviceInfoCard("GPU Information") {
+                    InfoRow("Status", "Loading GPU information...")
                 }
             }
             is com.ivarna.finalbenchmark2.utils.GpuInfoState.Success -> {
                 val gpuInfo = (gpuInfoState as com.ivarna.finalbenchmark2.utils.GpuInfoState.Success).gpuInfo
                 GpuInfoContent(gpuInfo)
+            }
+            is com.ivarna.finalbenchmark2.utils.GpuInfoState.Error -> {
+                DeviceInfoCard("GPU Information") {
+                    InfoRow("Status", "Error loading GPU info")
+                    InfoRow("Error", (gpuInfoState as com.ivarna.finalbenchmark2.utils.GpuInfoState.Error).message)
+                }
             }
         }
     }

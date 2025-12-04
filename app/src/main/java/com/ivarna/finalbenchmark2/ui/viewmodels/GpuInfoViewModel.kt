@@ -2,29 +2,46 @@ package com.ivarna.finalbenchmark2.ui.viewmodels
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.ivarna.finalbenchmark2.utils.GpuInfoState
-import com.ivarna.finalbenchmark2.utils.GpuInfoUtils
+import com.ivarna.finalbenchmark2.utils.GpuFrequencyReader
+import com.ivarna.finalbenchmark2.utils.GpuFrequencyFallback
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
-class GpuInfoViewModel(private val gpuInfoUtils: GpuInfoUtils) : ViewModel() {
+class GpuInfoViewModel : ViewModel() {
+    private val gpuFrequencyReader = GpuFrequencyReader()
+    private val gpuFrequencyFallback = GpuFrequencyFallback()
     
-    private val _gpuInfoState = MutableStateFlow<GpuInfoState>(GpuInfoState.Loading)
-    val gpuInfoState: StateFlow<GpuInfoState> = _gpuInfoState
+    private val _gpuFrequencyState = MutableStateFlow(
+        GpuFrequencyReader.GpuFrequencyState.NotSupported as GpuFrequencyReader.GpuFrequencyState
+    )
+    val gpuFrequencyState: StateFlow<GpuFrequencyReader.GpuFrequencyState> = _gpuFrequencyState
     
     init {
-        loadGpuInfo()
+        refreshGpuFrequency()
     }
     
-    private fun loadGpuInfo() {
+    fun refreshGpuFrequency() {
         viewModelScope.launch {
-            _gpuInfoState.value = GpuInfoState.Loading
-            _gpuInfoState.value = gpuInfoUtils.getGpuInfo()
+            // Try primary root-based reading first
+            val primaryResult = gpuFrequencyReader.readGpuFrequency()
+            
+            val result = when (primaryResult) {
+                is GpuFrequencyReader.GpuFrequencyState.RequiresRoot -> {
+                    // If root is required but not available, try fallback
+                    gpuFrequencyFallback.readGpuFrequencyWithoutRoot() ?: primaryResult
+                }
+                is GpuFrequencyReader.GpuFrequencyState.Error -> {
+                    // If primary reading failed, try fallback
+                    gpuFrequencyFallback.readGpuFrequencyWithoutRoot() ?: primaryResult
+                }
+                else -> {
+                    // Use primary result if it was successful
+                    primaryResult
+                }
+            }
+            
+            _gpuFrequencyState.value = result
         }
-    }
-    
-    fun refreshGpuInfo() {
-        loadGpuInfo()
     }
 }
