@@ -70,7 +70,13 @@ class GpuFrequencyReader {
                 return@withContext GpuFrequencyState.RequiresRoot
             }
             
-            // Step 2: Detect GPU vendor if not cached
+            // Step 2: Try the common paths first before vendor detection
+            val commonFreq = tryCommonPaths()
+            if (commonFreq != null) {
+                return@withContext commonFreq
+            }
+            
+            // Step 3: Detect GPU vendor if not cached
             var vendor = cache.getCachedVendor()
             if (vendor == null) {
                 vendor = vendorDetector.detectVendor()
@@ -82,10 +88,10 @@ class GpuFrequencyReader {
                 Log.d(TAG, "Using cached GPU vendor: $vendor")
             }
             
-            // Step 3: Get appropriate paths for current frequency
+            // Step 4: Get appropriate paths for current frequency
             val currentFreqPaths = GpuPaths.getPathsForVendor(vendor, "current_frequency")
             
-            // Step 4: Try each path until one succeeds
+            // Step 5: Try each path until one succeeds
             for (path in currentFreqPaths) {
                 try {
                     Log.d(TAG, "Trying path: $path for vendor: $vendor")
@@ -155,13 +161,61 @@ class GpuFrequencyReader {
                 }
             }
             
-            // Step 5: All paths failed, return error
+            // Step 6: All paths failed, return error
             Log.e(TAG, "Failed to read GPU frequency from any path for vendor: $vendor")
             GpuFrequencyState.Error("Failed to read GPU frequency from any available path")
         } catch (e: Exception) {
             Log.e(TAG, "Unexpected error reading GPU frequency", e)
             GpuFrequencyState.Error("Unexpected error: ${e.message}")
         }
+    }
+    
+    /**
+     * Try common paths first for faster detection
+     */
+    private suspend fun tryCommonPaths(): GpuFrequencyState? = withContext(Dispatchers.IO) {
+        val commonPaths = listOf(
+            "/sys/class/kgsl/kgsl-3d0/gpuclk",             // Adreno (Standard)
+            "/sys/class/kgsl/kgsl-3d0/devfreq/cur_freq",   // Adreno (Alternative)
+            "/sys/class/devfreq/gpufreq/cur_freq",         // Mali/Generic
+            "/sys/kernel/gpu/gpu_clock",                   // Some older Kernels
+            "/sys/devices/platform/galcore/gpu/gpu0/gpufreq/cur_freq" // Pixel/Tensor specific sometimes
+        )
+        
+        for (path in commonPaths) {
+            try {
+                Log.d(TAG, "Trying common path: $path")
+                if (rootExecutor.fileExists(path)) {
+                    Log.d(TAG, "File exists: $path")
+                    val content = rootExecutor.readFile(path)
+                    if (content != null) {
+                        val frequency = parseFrequency(content, GpuVendorDetector.GpuVendor.UNKNOWN)
+                        if (frequency > 0) {
+                            Log.d(TAG, "Successfully parsed frequency: $frequency MHz from common path: $path")
+                            
+                            val data = GpuFrequencyData(
+                                currentFrequencyMhz = frequency,
+                                maxFrequencyMhz = null,
+                                minFrequencyMhz = null,
+                                availableFrequencies = null,
+                                governor = null,
+                                utilizationPercent = null,
+                                temperatureCelsius = null,
+                                vendor = GpuVendorDetector.GpuVendor.UNKNOWN,
+                                sourcePath = path
+                            )
+                            
+                            return@withContext GpuFrequencyState.Available(data)
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error reading from common path: $path", e)
+                continue
+            }
+        }
+        
+        null
     }
     
     /**

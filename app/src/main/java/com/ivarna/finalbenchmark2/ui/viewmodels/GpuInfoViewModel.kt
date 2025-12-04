@@ -10,6 +10,7 @@ import kotlinx.coroutines.launch
 
 class GpuInfoViewModel : ViewModel() {
     private val gpuFrequencyReader = GpuFrequencyReader()
+    private val gpuFrequencyMonitor = com.ivarna.finalbenchmark2.utils.GpuFrequencyMonitor(gpuFrequencyReader, viewModelScope)
     private val gpuFrequencyFallback = GpuFrequencyFallback()
     
     private val _gpuFrequencyState = MutableStateFlow(

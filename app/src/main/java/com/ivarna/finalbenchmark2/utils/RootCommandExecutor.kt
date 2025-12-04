@@ -1,11 +1,9 @@
 package com.ivarna.finalbenchmark2.utils
 
 import android.util.Log
+import com.topjohnwu.superuser.Shell
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.io.BufferedReader
-import java.io.IOException
-import java.util.concurrent.TimeoutException
 
 /**
  * GPU Frequency Reader for Android
@@ -32,7 +30,16 @@ import java.util.concurrent.TimeoutException
 class RootCommandExecutor {
     companion object {
         private const val TAG = "RootCommandExecutor"
-        private const val TIMEOUT_MS = 2000L // 2 seconds timeout
+        
+        // Initialize Shell at the class level
+        init {
+            Shell.enableVerboseLogging = false
+            Shell.setDefaultBuilder(
+                Shell.Builder.create()
+                    .setFlags(Shell.FLAG_REDIRECT_STDERR)
+                    .setTimeout(10)
+            )
+        }
     }
     
     /**
@@ -41,59 +48,21 @@ class RootCommandExecutor {
      * @return Output of the command or null if failed
      */
     suspend fun executeCommand(command: String): String? = withContext(Dispatchers.IO) {
-        var process: Process? = null
         try {
-            Log.d(TAG, "Executing root command: su -c '$command'")
-            process = Runtime.getRuntime().exec("su -c '$command'")
+            Log.d(TAG, "Executing root command: $command")
+            val result = Shell.cmd(command).exec()
             
-            // Set up timeout mechanism (compatible with API 24)
-            val timeoutThread = Thread {
-                try {
-                    Thread.sleep(TIMEOUT_MS)
-                    if (process != null) {
-                        try {
-                            // Check if process has exited by trying to get its exit value
-                            process.exitValue()
-                        } catch (e: Exception) {
-                            // Process is still running, terminate it
-                            Log.d(TAG, "Command timed out after $TIMEOUT_MS ms, destroying process")
-                            process.destroy()
-                        }
-                    }
-                } catch (e: InterruptedException) {
-                    // Thread interrupted, do nothing
-                }
-            }
-            
-            timeoutThread.start()
-            
-            val reader = BufferedReader(process.inputStream.reader())
-            val output = StringBuilder()
-            var line: String?
-            while (reader.readLine().also { line = it } != null) {
-                output.append(line).append("\n")
-            }
-            
-            timeoutThread.interrupt() // Stop the timeout thread since command completed
-            
-            val exitCode = process.waitFor()
-            if (exitCode == 0) {
-                val result = output.toString().trim()
+            if (result.isSuccess) {
+                val output = result.out.joinToString("\n").trim()
                 Log.d(TAG, "Command executed successfully: $command")
-                result
+                output
             } else {
-                Log.e(TAG, "Command failed with exit code $exitCode: $command")
+                Log.e(TAG, "Command failed: $command, stderr: ${result.err.joinToString("\n")}")
                 null
             }
         } catch (e: Exception) {
             Log.e(TAG, "Exception executing command: $command", e)
             null
-        } finally {
-            try {
-                process?.destroy()
-            } catch (e: Exception) {
-                // Ignore errors during process destruction
-            }
         }
     }
     
@@ -103,59 +72,21 @@ class RootCommandExecutor {
      * @return Content of the file or null if failed
      */
     suspend fun readFile(path: String): String? = withContext(Dispatchers.IO) {
-        var process: Process? = null
         try {
             Log.d(TAG, "Reading file with root: $path")
-            process = Runtime.getRuntime().exec("su -c 'cat \"$path\"'")
+            val result = Shell.cmd("cat $path").exec()
             
-            // Set up timeout mechanism (compatible with API 24)
-            val timeoutThread = Thread {
-                try {
-                    Thread.sleep(TIMEOUT_MS)
-                    if (process != null) {
-                        try {
-                            // Check if process has exited by trying to get its exit value
-                            process.exitValue()
-                        } catch (e: Exception) {
-                            // Process is still running, terminate it
-                            Log.d(TAG, "File read timed out after $TIMEOUT_MS ms, destroying process")
-                            process.destroy()
-                        }
-                    }
-                } catch (e: InterruptedException) {
-                    // Thread interrupted, do nothing
-                }
-            }
-            
-            timeoutThread.start()
-            
-            val reader = BufferedReader(process.inputStream.reader())
-            val output = StringBuilder()
-            var line: String?
-            while (reader.readLine().also { line = it } != null) {
-                output.append(line).append("\n")
-            }
-            
-            timeoutThread.interrupt() // Stop the timeout thread since command completed
-            
-            val exitCode = process.waitFor()
-            if (exitCode == 0) {
-                val result = output.toString().trim()
+            if (result.isSuccess) {
+                val output = result.out.joinToString("\n").trim()
                 Log.d(TAG, "File read successfully: $path")
-                result
+                output
             } else {
-                Log.e(TAG, "File read failed with exit code $exitCode: $path")
+                Log.e(TAG, "File read failed: $path, stderr: ${result.err.joinToString("\n")}")
                 null
             }
         } catch (e: Exception) {
             Log.e(TAG, "Exception reading file: $path", e)
             null
-        } finally {
-            try {
-                process?.destroy()
-            } catch (e: Exception) {
-                // Ignore errors during process destruction
-            }
         }
     }
     
@@ -165,54 +96,16 @@ class RootCommandExecutor {
      * @return True if file exists, false otherwise
      */
     suspend fun fileExists(path: String): Boolean = withContext(Dispatchers.IO) {
-        var process: Process? = null
         try {
             Log.d(TAG, "Checking file existence with root: $path")
-            process = Runtime.getRuntime().exec("su -c '[ -e \"$path\" ] && echo \"exists\" || echo \"not_exists\"'")
+            val result = Shell.cmd("ls $path").exec()
             
-            // Set up timeout mechanism (compatible with API 24)
-            val timeoutThread = Thread {
-                try {
-                    Thread.sleep(TIMEOUT_MS)
-                    if (process != null) {
-                        try {
-                            // Check if process has exited by trying to get its exit value
-                            process.exitValue()
-                        } catch (e: Exception) {
-                            // Process is still running, terminate it
-                            Log.d(TAG, "File exists check timed out after $TIMEOUT_MS ms, destroying process")
-                            process.destroy()
-                        }
-                    }
-                } catch (e: InterruptedException) {
-                    // Thread interrupted, do nothing
-                }
-            }
-            
-            timeoutThread.start()
-            
-            val reader = BufferedReader(process.inputStream.reader())
-            val output = reader.readLine()
-            
-            timeoutThread.interrupt() // Stop the timeout thread since command completed
-            
-            val exitCode = process.waitFor()
-            if (exitCode == 0 && output?.trim() == "exists") {
-                Log.d(TAG, "File exists check for $path: true")
-                true
-            } else {
-                Log.d(TAG, "File exists check for $path: false (exitCode: $exitCode, output: $output)")
-                false
-            }
+            val exists = result.isSuccess
+            Log.d(TAG, "File exists check for $path: $exists")
+            exists
         } catch (e: Exception) {
             Log.e(TAG, "Exception checking file existence: $path", e)
             false
-        } finally {
-            try {
-                process?.destroy()
-            } catch (e: Exception) {
-                // Ignore errors during process destruction
-            }
         }
     }
     
@@ -221,7 +114,12 @@ class RootCommandExecutor {
      * @return True if root access is available, false otherwise
      */
     fun hasRootAccess(): Boolean {
-        return RootUtils.requestRootAccess()
+        return try {
+            Shell.getShell().isRoot
+        } catch (e: Exception) {
+            Log.e(TAG, "Error checking root access", e)
+            false
+        }
     }
     
     /**
@@ -230,65 +128,21 @@ class RootCommandExecutor {
      * @return List of files/directories in the path or null if failed
      */
     suspend fun listDirectory(path: String): List<String>? = withContext(Dispatchers.IO) {
-        var process: Process? = null
         try {
             Log.d(TAG, "Listing directory with root: $path")
-            process = Runtime.getRuntime().exec("su -c 'ls -1 \"$path\" 2>/dev/null || echo \"error\"'")
+            val result = Shell.cmd("ls -1 $path").exec()
             
-            // Set up timeout mechanism (compatible with API 24)
-            val timeoutThread = Thread {
-                try {
-                    Thread.sleep(TIMEOUT_MS)
-                    if (process != null) {
-                        try {
-                            // Check if process has exited by trying to get its exit value
-                            process.exitValue()
-                        } catch (e: Exception) {
-                            // Process is still running, terminate it
-                            Log.d(TAG, "Directory listing timed out after $TIMEOUT_MS ms, destroying process")
-                            process.destroy()
-                        }
-                    }
-                } catch (e: InterruptedException) {
-                    // Thread interrupted, do nothing
-                }
-            }
-            
-            timeoutThread.start()
-            
-            val reader = BufferedReader(process.inputStream.reader())
-            val output = StringBuilder()
-            var line: String?
-            while (reader.readLine().also { line = it } != null) {
-                output.append(line).append("\n")
-            }
-            
-            timeoutThread.interrupt() // Stop the timeout thread since command completed
-            
-            val exitCode = process.waitFor()
-            if (exitCode == 0) {
-                val result = output.toString().trim()
-                if (result != "error") {
-                    val files = result.split("\n").filter { it.isNotEmpty() }
-                    Log.d(TAG, "Directory listing successful for $path, found ${files.size} items")
-                    files
-                } else {
-                    Log.e(TAG, "Directory listing failed: $path")
-                    null
-                }
+            if (result.isSuccess) {
+                val output = result.out.filter { it.isNotEmpty() }
+                Log.d(TAG, "Directory listing successful for $path, found ${output.size} items")
+                output
             } else {
-                Log.e(TAG, "Directory listing failed with exit code $exitCode: $path")
+                Log.e(TAG, "Directory listing failed: $path, stderr: ${result.err.joinToString("\n")}")
                 null
             }
         } catch (e: Exception) {
             Log.e(TAG, "Exception listing directory: $path", e)
             null
-        } finally {
-            try {
-                process?.destroy()
-            } catch (e: Exception) {
-                // Ignore errors during process destruction
-            }
         }
     }
     
@@ -298,65 +152,21 @@ class RootCommandExecutor {
      * @return List of matching file paths or null if failed
      */
     suspend fun findFiles(pattern: String): List<String>? = withContext(Dispatchers.IO) {
-        var process: Process? = null
         try {
             Log.d(TAG, "Finding files with root: $pattern")
-            process = Runtime.getRuntime().exec("su -c 'find $pattern 2>/dev/null || echo \"error\"'")
+            val result = Shell.cmd("find $pattern 2>/dev/null").exec()
             
-            // Set up timeout mechanism (compatible with API 24)
-            val timeoutThread = Thread {
-                try {
-                    Thread.sleep(TIMEOUT_MS)
-                    if (process != null) {
-                        try {
-                            // Check if process has exited by trying to get its exit value
-                            process.exitValue()
-                        } catch (e: Exception) {
-                            // Process is still running, terminate it
-                            Log.d(TAG, "File search timed out after $TIMEOUT_MS ms, destroying process")
-                            process.destroy()
-                        }
-                    }
-                } catch (e: InterruptedException) {
-                    // Thread interrupted, do nothing
-                }
-            }
-            
-            timeoutThread.start()
-            
-            val reader = BufferedReader(process.inputStream.reader())
-            val output = StringBuilder()
-            var line: String?
-            while (reader.readLine().also { line = it } != null) {
-                output.append(line).append("\n")
-            }
-            
-            timeoutThread.interrupt() // Stop the timeout thread since command completed
-            
-            val exitCode = process.waitFor()
-            if (exitCode == 0) {
-                val result = output.toString().trim()
-                if (result != "error") {
-                    val files = result.split("\n").filter { it.isNotEmpty() }
-                    Log.d(TAG, "File search successful for $pattern, found ${files.size} items")
-                    files
-                } else {
-                    Log.e(TAG, "File search failed: $pattern")
-                    null
-                }
+            if (result.isSuccess) {
+                val output = result.out.filter { it.isNotEmpty() }
+                Log.d(TAG, "File search successful for $pattern, found ${output.size} items")
+                output
             } else {
-                Log.e(TAG, "File search failed with exit code $exitCode: $pattern")
+                Log.e(TAG, "File search failed: $pattern, stderr: ${result.err.joinToString("\n")}")
                 null
             }
         } catch (e: Exception) {
             Log.e(TAG, "Exception finding files: $pattern", e)
             null
-        } finally {
-            try {
-                process?.destroy()
-            } catch (e: Exception) {
-                // Ignore errors during process destruction
-            }
         }
     }
 }

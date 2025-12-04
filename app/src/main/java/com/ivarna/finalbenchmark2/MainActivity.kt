@@ -20,9 +20,24 @@ import com.ivarna.finalbenchmark2.ui.theme.LocalThemeMode
 import com.ivarna.finalbenchmark2.ui.theme.provideThemeMode
 import com.ivarna.finalbenchmark2.utils.ThemePreferences
 import com.ivarna.finalbenchmark2.ui.theme.ThemeMode
+import com.topjohnwu.superuser.Shell
 import dev.chrisbanes.haze.HazeState
 
 class MainActivity : ComponentActivity() {
+    
+    // 1. Configure Shell at the top level
+    companion object {
+        init {
+            // Set settings before the main shell is created
+            Shell.enableVerboseLogging = true
+            Shell.setDefaultBuilder(
+                Shell.Builder.create()
+                    .setFlags(Shell.FLAG_REDIRECT_STDERR)
+                    .setTimeout(10)
+            )
+        }
+    }
+    
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // Enable edge to edge for full screen experience
