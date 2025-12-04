@@ -25,8 +25,10 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ivarna.finalbenchmark2.ui.components.CpuUtilizationGraph
+import com.ivarna.finalbenchmark2.ui.components.GpuUtilizationGraph
 import com.ivarna.finalbenchmark2.ui.components.PowerConsumptionGraph
 import com.ivarna.finalbenchmark2.ui.viewmodels.DeviceViewModel
+import com.ivarna.finalbenchmark2.ui.viewmodels.GpuInfoViewModel
 
 // Utility functions unique to DeviceScreen
 fun calculateScreenSize(displayMetrics: android.util.DisplayMetrics): Double {
@@ -490,11 +492,16 @@ fun CpuTab(
 }
 
 @Composable
-fun GpuTab(deviceInfo: com.ivarna.finalbenchmark2.utils.DeviceInfo) {
+fun GpuTab(
+    deviceInfo: com.ivarna.finalbenchmark2.utils.DeviceInfo,
+    gpuViewModel: GpuInfoViewModel = viewModel()
+) {
     val context = LocalContext.current
     var gpuInfoState by remember {
         mutableStateOf<com.ivarna.finalbenchmark2.utils.GpuInfoState>(com.ivarna.finalbenchmark2.utils.GpuInfoState.Loading)
     }
+    
+    val gpuHistory by gpuViewModel.gpuHistory.collectAsState()
     
     LaunchedEffect(Unit) {
         val gpuInfoUtils = com.ivarna.finalbenchmark2.utils.GpuInfoUtils(context)
@@ -519,6 +526,14 @@ fun GpuTab(deviceInfo: com.ivarna.finalbenchmark2.utils.DeviceInfo) {
                 .fillMaxWidth()
                 .padding(bottom = 16.dp)
         )
+        
+        // GPU Utilization Graph
+        GpuUtilizationGraph(
+            dataPoints = gpuHistory,
+            modifier = Modifier.fillMaxWidth()
+        )
+        
+        Spacer(modifier = Modifier.height(16.dp))
         
         // Use the new GpuFrequencyCard component
         com.ivarna.finalbenchmark2.ui.components.GpuFrequencyCard()
