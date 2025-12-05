@@ -3,6 +3,8 @@ package com.ivarna.finalbenchmark2.ui.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -11,19 +13,22 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.rounded.Cancel
+import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ivarna.finalbenchmark2.ui.theme.FinalBenchmark2Theme
 import com.ivarna.finalbenchmark2.utils.DeviceInfoCollector
 import com.ivarna.finalbenchmark2.utils.formatBytes
-import androidx.compose.ui.graphics.Color
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ivarna.finalbenchmark2.ui.components.CpuUtilizationGraph
 import com.ivarna.finalbenchmark2.ui.components.GpuUtilizationGraph
 import com.ivarna.finalbenchmark2.ui.components.PowerConsumptionGraph
@@ -936,72 +941,7 @@ fun VulkanInfoCard(vulkanInfo: com.ivarna.finalbenchmark2.utils.VulkanInfo?) {
                         }
                         
                         if (featuresExpanded) {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .background(
-                                        color = MaterialTheme.colorScheme.surface,
-                                        shape = MaterialTheme.shapes.small
-                                    )
-                                    .padding(8.dp)
-                            ) {
-                                val features = vulkanInfo.features
-                                InfoRow("Geometry Shader", if (features.geometryShader) "✓" else "✗")
-                                InfoRow("Tessellation Shader", if (features.tessellationShader) "✓" else "✗")
-                                InfoRow("Multi Viewport", if (features.multiViewport) "✓" else "✗")
-                                InfoRow("Sparse Binding", if (features.sparseBinding) "✓" else "✗")
-                                InfoRow("Variable Multisample Rate", if (features.variableMultisampleRate) "✓" else "✗")
-                                InfoRow("Robust Buffer Access", if (features.robustBufferAccess) "✓" else "✗")
-                                InfoRow("Full Draw Index Uint32", if (features.fullDrawIndexUint32) "✓" else "✗")
-                                InfoRow("Image Cube Array", if (features.imageCubeArray) "✓" else "✗")
-                                InfoRow("Independent Blend", if (features.independentBlend) "✓" else "✗")
-                                InfoRow("Sample Rate Shading", if (features.sampleRateShading) "✓" else "✗")
-                                InfoRow("Dual Src Blend", if (features.dualSrcBlend) "✓" else "✗")
-                                InfoRow("Logic Op", if (features.logicOp) "✓" else "✗")
-                                InfoRow("Multi Draw Indirect", if (features.multiDrawIndirect) "✓" else "✗")
-                                InfoRow("Draw Indirect First Instance", if (features.drawIndirectFirstInstance) "✓" else "✗")
-                                InfoRow("Depth Clamp", if (features.depthClamp) "✓" else "✗")
-                                InfoRow("Depth Bias Clamp", if (features.depthBiasClamp) "✓" else "✗")
-                                InfoRow("Fill Mode Non Solid", if (features.fillModeNonSolid) "✓" else "✗")
-                                InfoRow("Depth Bounds", if (features.depthBounds) "✓" else "✗")
-                                InfoRow("Wide Lines", if (features.wideLines) "✓" else "✗")
-                                InfoRow("Large Points", if (features.largePoints) "✓" else "✗")
-                                InfoRow("Alpha To One", if (features.alphaToOne) "✓" else "✗")
-                                InfoRow("Sampler Anisotropy", if (features.samplerAnisotropy) "✓" else "✗")
-                                InfoRow("Texture Compression ETC2", if (features.textureCompressionETC2) "✓" else "✗")
-                                InfoRow("Texture Compression ASTC_LDR", if (features.textureCompressionASTC_LDR) "✓" else "✗")
-                                InfoRow("Texture Compression BC", if (features.textureCompressionBC) "✓" else "✗")
-                                InfoRow("Occlusion Query Precise", if (features.occlusionQueryPrecise) "✓" else "✗")
-                                InfoRow("Pipeline Statistics Query", if (features.pipelineStatisticsQuery) "✓" else "✗")
-                                InfoRow("Vertex Pipeline Stores And Atomics", if (features.vertexPipelineStoresAndAtomics) "✓" else "✗")
-                                InfoRow("Fragment Stores And Atomics", if (features.fragmentStoresAndAtomics) "✓" else "✗")
-                                InfoRow("Shader Tessellation And Geometry Point Size", if (features.shaderTessellationAndGeometryPointSize) "✓" else "✗")
-                                InfoRow("Shader Image Gather Extended", if (features.shaderImageGatherExtended) "✓" else "✗")
-                                InfoRow("Shader Storage Image Extended Formats", if (features.shaderStorageImageExtendedFormats) "✓" else "✗")
-                                InfoRow("Shader Storage Image Multisample", if (features.shaderStorageImageMultisample) "✓" else "✗")
-                                InfoRow("Shader Storage Image Read Without Format", if (features.shaderStorageImageReadWithoutFormat) "✓" else "✗")
-                                InfoRow("Shader Storage Image Write Without Format", if (features.shaderStorageImageWriteWithoutFormat) "✓" else "✗")
-                                InfoRow("Shader Uniform Buffer Array Dynamic Indexing", if (features.shaderUniformBufferArrayDynamicIndexing) "✓" else "✗")
-                                InfoRow("Shader Sampled Image Array Dynamic Indexing", if (features.shaderSampledImageArrayDynamicIndexing) "✓" else "✗")
-                                InfoRow("Shader Storage Buffer Array Dynamic Indexing", if (features.shaderStorageBufferArrayDynamicIndexing) "✓" else "✗")
-                                InfoRow("Shader Storage Image Array Dynamic Indexing", if (features.shaderStorageImageArrayDynamicIndexing) "✓" else "✗")
-                                InfoRow("Shader Clip Distance", if (features.shaderClipDistance) "✓" else "✗")
-                                InfoRow("Shader Cull Distance", if (features.shaderCullDistance) "✓" else "✗")
-                                InfoRow("Shader Float64", if (features.shaderFloat64) "✓" else "✗")
-                                InfoRow("Shader Int64", if (features.shaderInt64) "✓" else "✗")
-                                InfoRow("Shader Int16", if (features.shaderInt16) "✓" else "✗")
-                                InfoRow("Shader Resource Residency", if (features.shaderResourceResidency) "✓" else "✗")
-                                InfoRow("Shader Resource Min Lod", if (features.shaderResourceMinLod) "✓" else "✗")
-                                InfoRow("Sparse Residency Buffer", if (features.sparseResidencyBuffer) "✓" else "✗")
-                                InfoRow("Sparse Residency Image2D", if (features.sparseResidencyImage2D) "✓" else "✗")
-                                InfoRow("Sparse Residency Image3D", if (features.sparseResidencyImage3D) "✓" else "✗")
-                                InfoRow("Sparse Residency 2 Samples", if (features.sparseResidency2Samples) "✓" else "✗")
-                                InfoRow("Sparse Residency 4 Samples", if (features.sparseResidency4Samples) "✓" else "✗")
-                                InfoRow("Sparse Residency 8 Samples", if (features.sparseResidency8Samples) "✓" else "✗")
-                                InfoRow("Sparse Residency 16 Samples", if (features.sparseResidency16Samples) "✓" else "✗")
-                                InfoRow("Sparse Residency Aliased", if (features.sparseResidencyAliased) "✓" else "✗")
-                                InfoRow("Inherited Queries", if (features.inheritedQueries) "✓" else "✗")
-                            }
+                            VulkanFeaturesGrid(vulkanInfo.features)
                         }
                     }
                     
@@ -1503,6 +1443,120 @@ fun GpuInfoInHardwareTab(gpuInfo: com.ivarna.finalbenchmark2.utils.GpuInfo) {
             vulkanInfo.driverVersion?.let { InfoRow("Vulkan Driver Version", it) }
             vulkanInfo.physicalDeviceName?.let { InfoRow("Vulkan Physical Device", it) }
             InfoRow("Vulkan Extensions", "${vulkanInfo.instanceExtensions.size + vulkanInfo.deviceExtensions.size} total extensions")
+        }
+    }
+}
+
+@Composable
+fun VulkanFeaturesGrid(features: com.ivarna.finalbenchmark2.utils.VulkanFeatures) {
+    val sortedFeatures = remember(features) {
+        listOf(
+            "Alpha To One" to features.alphaToOne,
+            "Depth Bias Clamp" to features.depthBiasClamp,
+            "Depth Bounds" to features.depthBounds,
+            "Depth Clamp" to features.depthClamp,
+            "Draw Indirect First Instance" to features.drawIndirectFirstInstance,
+            "Dual Src Blend" to features.dualSrcBlend,
+            "Fill Mode Non Solid" to features.fillModeNonSolid,
+            "Fragment Stores And Atomics" to features.fragmentStoresAndAtomics,
+            "Full Draw Index Uint32" to features.fullDrawIndexUint32,
+            "Geometry Shader" to features.geometryShader,
+            "Image Cube Array" to features.imageCubeArray,
+            "Independent Blend" to features.independentBlend,
+            "Inherited Queries" to features.inheritedQueries,
+            "Large Points" to features.largePoints,
+            "Logic Op" to features.logicOp,
+            "Multi Draw Indirect" to features.multiDrawIndirect,
+            "Multi Viewport" to features.multiViewport,
+            "Occlusion Query Precise" to features.occlusionQueryPrecise,
+            "Pipeline Statistics Query" to features.pipelineStatisticsQuery,
+            "Robust Buffer Access" to features.robustBufferAccess,
+            "Sample Rate Shading" to features.sampleRateShading,
+            "Sampler Anisotropy" to features.samplerAnisotropy,
+            "Shader Clip Distance" to features.shaderClipDistance,
+            "Shader Cull Distance" to features.shaderCullDistance,
+            "Shader Float64" to features.shaderFloat64,
+            "Shader Image Gather Extended" to features.shaderImageGatherExtended,
+            "Shader Int16" to features.shaderInt16,
+            "Shader Int64" to features.shaderInt64,
+            "Shader Resource Min Lod" to features.shaderResourceMinLod,
+            "Shader Resource Residency" to features.shaderResourceResidency,
+            "Shader Sampled Image Array Dynamic Indexing" to features.shaderSampledImageArrayDynamicIndexing,
+            "Shader Storage Buffer Array Dynamic Indexing" to features.shaderStorageBufferArrayDynamicIndexing,
+            "Shader Storage Image Array Dynamic Indexing" to features.shaderStorageImageArrayDynamicIndexing,
+            "Shader Storage Image Extended Formats" to features.shaderStorageImageExtendedFormats,
+            "Shader Storage Image Multisample" to features.shaderStorageImageMultisample,
+            "Shader Storage Image Read Without Format" to features.shaderStorageImageReadWithoutFormat,
+            "Shader Storage Image Write Without Format" to features.shaderStorageImageWriteWithoutFormat,
+            "Shader Tessellation And Geometry Point Size" to features.shaderTessellationAndGeometryPointSize,
+            "Shader Uniform Buffer Array Dynamic Indexing" to features.shaderUniformBufferArrayDynamicIndexing,
+            "Sparse Binding" to features.sparseBinding,
+            "Sparse Residency 2 Samples" to features.sparseResidency2Samples,
+            "Sparse Residency 4 Samples" to features.sparseResidency4Samples,
+            "Sparse Residency 8 Samples" to features.sparseResidency8Samples,
+            "Sparse Residency 16 Samples" to features.sparseResidency16Samples,
+            "Sparse Residency Aliased" to features.sparseResidencyAliased,
+            "Sparse Residency Buffer" to features.sparseResidencyBuffer,
+            "Sparse Residency Image2D" to features.sparseResidencyImage2D,
+            "Sparse Residency Image3D" to features.sparseResidencyImage3D,
+            "Tessellation Shader" to features.tessellationShader,
+            "Texture Compression ASTC_LDR" to features.textureCompressionASTC_LDR,
+            "Texture Compression BC" to features.textureCompressionBC,
+            "Texture Compression ETC2" to features.textureCompressionETC2,
+            "Variable Multisample Rate" to features.variableMultisampleRate,
+            "Vertex Pipeline Stores And Atomics" to features.vertexPipelineStoresAndAtomics,
+            "Wide Lines" to features.wideLines
+        ).sortedBy { it.first }
+    }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(8.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+        )
+    ) {
+        Column(Modifier.padding(12.dp)) {
+            Text(
+                "Vulkan Capabilities",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(bottom = 12.dp)
+            )
+
+            // 2-Column Grid Layout using LazyVerticalGrid
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(2),
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                items(sortedFeatures.size) { index ->
+                    val featurePair = sortedFeatures[index]
+                    val name = featurePair.component1()
+                    val isSupported = featurePair.component2()
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = if (isSupported) Icons.Rounded.CheckCircle else Icons.Rounded.Cancel,
+                            contentDescription = null,
+                            tint = if (isSupported) Color(0xFF4CAF50) else Color(0xFFEF5350),
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = name,
+                            style = MaterialTheme.typography.bodySmall,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+            }
         }
     }
 }
