@@ -10,7 +10,7 @@ import com.ivarna.finalbenchmark2.data.database.entities.CpuTestDetailEntity
 
 @Database(
     entities = [BenchmarkResultEntity::class, CpuTestDetailEntity::class],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {

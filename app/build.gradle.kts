@@ -98,6 +98,7 @@ dependencies {
     implementation("dev.chrisbanes.haze:haze-materials:1.0.0") // Compatible with Kotlin 2.0.x
     implementation("androidx.compose.material:material-icons-extended:1.7.5") // Add icons extended directly
     implementation("com.github.topjohnwu.libsu:core:6.0.0")
+    implementation("com.google.code.gson:gson:2.10.1")
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.androidx.arch.core.testing)

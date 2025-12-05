@@ -27,5 +27,11 @@ data class BenchmarkResultEntity(
     val singleCoreScore: Double = 0.0,
     
     @ColumnInfo(name = "multi_core_score")
-    val multiCoreScore: Double = 0.0
+    val multiCoreScore: Double = 0.0,
+    
+    @ColumnInfo(name = "normalized_score")
+    val normalizedScore: Double = 0.0,
+    
+    @ColumnInfo(name = "detailed_results_json")
+    val detailedResultsJson: String = ""
 )

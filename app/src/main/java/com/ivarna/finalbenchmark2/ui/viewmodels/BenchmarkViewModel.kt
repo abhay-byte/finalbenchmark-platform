@@ -11,6 +11,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers
 import android.util.Log
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 
 data class BenchmarkProgress(
     val currentBenchmark: String = "",
@@ -196,6 +198,10 @@ class BenchmarkViewModel(
         
         viewModelScope.launch {
             try {
+                // Serialize detailed results to JSON string
+                val gson = Gson()
+                val detailedResultsJson = gson.toJson(results.detailedResults)
+                
                 // Create the main benchmark result entity
                 val benchmarkResultEntity = com.ivarna.finalbenchmark2.data.database.entities.BenchmarkResultEntity(
                     type = "CPU",  // Set the type as CPU
@@ -203,7 +209,9 @@ class BenchmarkViewModel(
                     timestamp = System.currentTimeMillis(),
                     deviceModel = android.os.Build.MODEL,
                     singleCoreScore = results.singleCoreScore,
-                    multiCoreScore = results.multiCoreScore
+                    multiCoreScore = results.multiCoreScore,
+                    normalizedScore = results.normalizedScore, // Add normalized score
+                    detailedResultsJson = detailedResultsJson // Add detailed results as JSON string
                 )
                 
                 // Extract detailed scores for each benchmark type

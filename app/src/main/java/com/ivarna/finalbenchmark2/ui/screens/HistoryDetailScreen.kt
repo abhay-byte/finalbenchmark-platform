@@ -3,6 +3,8 @@ package com.ivarna.finalbenchmark2.ui.screens
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
@@ -13,6 +15,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkResult
 import com.ivarna.finalbenchmark2.ui.components.InformationRow
 import java.text.SimpleDateFormat
 import java.util.*
@@ -29,7 +32,7 @@ fun HistoryDetailScreen(
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text("Result Details") },
+                title = { Text("Benchmark Details") },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(Icons.Rounded.ArrowBack, contentDescription = "Back")
@@ -40,74 +43,90 @@ fun HistoryDetailScreen(
     ) { padding ->
         // Null check handles loading state
         resultState?.let { data ->
-            Column(
+            // Parse detailed results from JSON string if available
+            val detailedResults = try {
+                if (data.benchmarkResult.detailedResultsJson.isNotEmpty()) {
+                    val gson = com.google.gson.Gson()
+                    val listType = object : com.google.gson.reflect.TypeToken<List<com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkResult>>() {}.type
+                    gson.fromJson(data.benchmarkResult.detailedResultsJson, listType) as List<com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkResult>
+                } else {
+                    emptyList()
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("HistoryDetailScreen", "Error parsing detailed results JSON: ${e.message}")
+                emptyList()
+            }
+
+            LazyColumn(
                 modifier = Modifier
                     .padding(padding)
-                    .verticalScroll(rememberScrollState())
                     .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                contentPadding = PaddingValues(bottom = 16.dp)
             ) {
                 // 1. Hero Score Card
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer
-                    ),
-                    shape = MaterialTheme.shapes.large
-                ) {
-                    Column(
-                        modifier = Modifier.padding(32.dp).fillMaxWidth(),
-                        horizontalAlignment = Alignment.CenterHorizontally
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer
+                        ),
+                        shape = MaterialTheme.shapes.large
                     ) {
-                        Text(
-                            text = String.format("%.0f", data.benchmarkResult.totalScore),
-                            style = MaterialTheme.typography.displayMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
-                        Text(
-                            text = "Total Score",
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        
-                        // Date and Rating
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                Icons.Rounded.CalendarToday, 
-                                null, 
-                                modifier = Modifier.size(16.dp),
-                                tint = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
+                        Column(
+                            modifier = Modifier.padding(32.dp).fillMaxWidth(),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
                             Text(
-                                // Helper to format long timestamp
-                                text = formatDate(data.benchmarkResult.timestamp), 
-                                style = MaterialTheme.typography.bodyMedium,
+                                text = String.format("%.0f", data.benchmarkResult.totalScore),
+                                style = MaterialTheme.typography.displayMedium,
+                                fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onPrimaryContainer
                             )
-                        }
-                        
-                        Spacer(modifier = Modifier.height(8.dp))
-                        
-                        // Rating stars
-                        val rating = calculateRating(data.benchmarkResult.totalScore)
-                        Row {
-                            repeat(5) { index ->
+                            Text(
+                                text = "Normalized: ${String.format("%.0f", data.benchmarkResult.normalizedScore)}",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            
+                            // Date and Rating
+                            Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(
-                                    imageVector = if (index < rating) Icons.Rounded.Star else Icons.Rounded.StarBorder,
-                                    contentDescription = "Rating star",
-                                    tint = if (index < rating) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.size(20.dp)
+                                    Icons.Rounded.Event,
+                                    null,
+                                    modifier = Modifier.size(16.dp),
+                                    tint = MaterialTheme.colorScheme.onPrimaryContainer
                                 )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    // Helper to format long timestamp
+                                    text = formatDate(data.benchmarkResult.timestamp),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            }
+                            
+                            Spacer(modifier = Modifier.height(8.dp))
+                            
+                            // Rating stars
+                            val rating = calculateRating(data.benchmarkResult.normalizedScore)
+                            Row {
+                                repeat(5) { index ->
+                                    Icon(
+                                        imageVector = if (index < rating) Icons.Rounded.Star else Icons.Rounded.StarBorder,
+                                        contentDescription = "Rating star",
+                                        tint = if (index < rating) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
                             }
                         }
                     }
                 }
 
                 // 2. Performance Breakdown Card
-                if (data.cpuTestDetail != null) {
+                item {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(16.dp)
@@ -116,42 +135,32 @@ fun HistoryDetailScreen(
                         DetailCard(
                             title = "Single-Core",
                             value = data.benchmarkResult.singleCoreScore,
-                            icon = Icons.Rounded.LooksOne,
+                            icon = Icons.Rounded.Memory,
                             modifier = Modifier.weight(1f)
                         )
                         // Multi Core Card
                         DetailCard(
                             title = "Multi-Core",
                             value = data.benchmarkResult.multiCoreScore,
-                            icon = Icons.Rounded.Groups,
+                            icon = Icons.Rounded.Hub,
                             modifier = Modifier.weight(1f)
                         )
                     }
                 }
                 
-                // 3. Metadata Section
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainer
-                    ),
-                    shape = MaterialTheme.shapes.medium
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp)
-                    ) {
-                        // Benchmark Type
-                        InformationRow(
-                            itemValue = com.ivarna.finalbenchmark2.domain.model.ItemValue.Text("Benchmark Type", data.benchmarkResult.type),
-                            isLastItem = false
-                        )
-                        
-                        // Device Model
-                        InformationRow(
-                            itemValue = com.ivarna.finalbenchmark2.domain.model.ItemValue.Text("Device Model", data.benchmarkResult.deviceModel),
-                            isLastItem = true
-                        )
-                    }
+                // 3. Detailed Test Results Header
+                item {
+                    Text(
+                        text = "Individual Test Results",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(start = 8.dp)
+                    )
+                }
+                
+                // 4. Detailed Test Results
+                items(detailedResults) { result ->
+                    TestResultRow(result = result)
                 }
             }
         } ?: run {
@@ -188,6 +197,49 @@ fun DetailCard(title: String, value: Double, icon: androidx.compose.ui.graphics.
     }
 }
 
+@Composable
+fun TestResultRow(result: BenchmarkResult) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        shape = MaterialTheme.shapes.medium
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                if (result.isValid) Icons.Rounded.CheckCircle else Icons.Rounded.Warning,
+                null,
+                tint = if (result.isValid) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+                modifier = Modifier.size(24.dp)
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = result.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Medium
+                )
+                Text(
+                    text = "Time: ${String.format("%.2f", result.executionTimeMs)} ms",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = String.format("%.0f", result.opsPerSecond),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
+        }
+    }
+}
+
 private fun formatDate(timestamp: Long): String {
     val date = Date(timestamp)
     val sdf = SimpleDateFormat("MMM dd, yyyy HH:mm", Locale.getDefault())
@@ -196,10 +248,10 @@ private fun formatDate(timestamp: Long): String {
 
 private fun calculateRating(score: Double): Int {
     return when {
-        score >= 90 -> 5
-        score >= 70 -> 4
-        score >= 50 -> 3
-        score >= 30 -> 2
+        score >= 80000 -> 5
+        score >= 60000 -> 4
+        score >= 40000 -> 3
+        score >= 20000 -> 2
         else -> 1
     }
 }
