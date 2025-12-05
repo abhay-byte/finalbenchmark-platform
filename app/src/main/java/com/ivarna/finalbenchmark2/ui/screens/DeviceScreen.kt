@@ -27,12 +27,15 @@ import androidx.compose.material.icons.rounded.Cancel
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.ivarna.finalbenchmark2.R
 import com.ivarna.finalbenchmark2.ui.theme.FinalBenchmark2Theme
 import com.ivarna.finalbenchmark2.utils.CpuNativeBridge
+import com.ivarna.finalbenchmark2.utils.CpuUtilizationUtils
 import com.ivarna.finalbenchmark2.utils.DeviceInfoCollector
 import com.ivarna.finalbenchmark2.utils.formatBytes
 import com.ivarna.finalbenchmark2.ui.components.CpuUtilizationGraph
 import com.ivarna.finalbenchmark2.ui.components.GpuUtilizationGraph
+import com.ivarna.finalbenchmark2.ui.components.GpuFrequencyCard
 import com.ivarna.finalbenchmark2.ui.components.PowerConsumptionGraph
 import com.ivarna.finalbenchmark2.ui.viewmodels.DeviceViewModel
 import com.ivarna.finalbenchmark2.ui.viewmodels.GpuInfoViewModel
@@ -539,6 +542,34 @@ fun CpuTab(
                     }
                 }
             }
+            
+            // CPU Governor Section
+            item {
+                Text(
+                    text = "CPU Governor",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier
+                        .padding(top = 16.dp, bottom = 8.dp)
+                )
+            }
+            
+            // Add CPU governor information
+            item {
+                val governor = cpuFreqUtils?.getCurrentCpuGovernor()
+                if (governor != null) {
+                    com.ivarna.finalbenchmark2.ui.components.InformationRow(
+                        itemValue = com.ivarna.finalbenchmark2.domain.model.ItemValue.Text("Current Governor", governor),
+                        isLastItem = false
+                    )
+                } else {
+                    com.ivarna.finalbenchmark2.ui.components.InformationRow(
+                        itemValue = com.ivarna.finalbenchmark2.domain.model.ItemValue.Text("Current Governor", "Not available"),
+                        isLastItem = false
+                    )
+                }
+            }
         }
     }
 }
@@ -584,6 +615,14 @@ fun GpuTab(
         GpuUtilizationGraph(
             dataPoints = gpuHistory,
             modifier = Modifier.fillMaxWidth()
+        )
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        // GPU Frequency Card - Real-time frequency monitoring
+        GpuFrequencyCard(
+            modifier = Modifier.fillMaxWidth(),
+            viewModel = gpuViewModel
         )
         
         Spacer(modifier = Modifier.height(16.dp))
