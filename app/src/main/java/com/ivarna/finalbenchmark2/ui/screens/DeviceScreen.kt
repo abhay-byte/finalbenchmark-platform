@@ -32,6 +32,7 @@ import com.ivarna.finalbenchmark2.ui.theme.FinalBenchmark2Theme
 import com.ivarna.finalbenchmark2.utils.CpuNativeBridge
 import com.ivarna.finalbenchmark2.utils.CpuUtilizationUtils
 import com.ivarna.finalbenchmark2.utils.DeviceInfoCollector
+// Remove the DisplayUtils import since the class doesn't exist
 import com.ivarna.finalbenchmark2.utils.formatBytes
 import kotlin.math.roundToInt
 import com.ivarna.finalbenchmark2.ui.components.CpuUtilizationGraph
@@ -1143,8 +1144,38 @@ fun AdvancedCapabilitiesCard(capabilities: com.ivarna.finalbenchmark2.utils.Open
 
 @Composable
 fun ScreenTab(context: android.content.Context) {
-    val displayUtils = remember { com.ivarna.finalbenchmark2.utils.DisplayUtils(context) }
-    val displayInfo = remember { displayUtils.getDisplayInfo() }
+    val displayMetrics = remember { context.resources.displayMetrics }
+    val windowManager = context.getSystemService(android.content.Context.WINDOW_SERVICE) as android.view.WindowManager
+    val display = windowManager.defaultDisplay
+    val displaySize = android.graphics.Point().apply { display.getSize(this) }
+    
+    // Create a mock display info object with basic information
+    val displayInfo = remember {
+        DisplayInfo(
+            resolution = "${displaySize.x} x ${displaySize.y}",
+            density = "${displayMetrics.density}x (${displayMetrics.densityDpi} DPI)",
+            physicalSize = "%.1f\"".format(kotlin.math.sqrt(((displaySize.x / displayMetrics.xdpi).toDouble() * (displaySize.x / displayMetrics.xdpi).toDouble()) + ((displaySize.y / displayMetrics.ydpi).toDouble() * (displaySize.y / displayMetrics.ydpi).toDouble()))),
+            aspectRatio = calculateAspectRatio(displaySize.x, displaySize.y),
+            exactDpiX = "${displayMetrics.xdpi} DPI",
+            exactDpiY = "${displayMetrics.ydpi} DPI",
+            realMetrics = "w${displaySize.x}dp x h${displaySize.y}dp",
+            refreshRate = "${display.refreshRate} Hz",
+            maxRefreshRate = "Unknown",
+            hdrSupport = "Unknown",
+            hdrTypes = emptyList(),
+            wideColorGamut = false,
+            orientation = when (context.resources.configuration.orientation) {
+                android.content.res.Configuration.ORIENTATION_PORTRAIT -> "Portrait"
+                android.content.res.Configuration.ORIENTATION_LANDSCAPE -> "Landscape"
+                else -> "Unknown"
+            },
+            rotation = display.rotation,
+            brightnessLevel = "Unknown",
+            screenTimeout = "Unknown",
+            safeAreaInsets = "Unknown",
+            displayCutout = "Unknown"
+        )
+    }
     
     Column(
         modifier = Modifier
@@ -1180,8 +1211,30 @@ fun ScreenTab(context: android.content.Context) {
     }
 }
 
+// Data class to represent display information
+data class DisplayInfo(
+    val resolution: String,
+    val density: String,
+    val physicalSize: String,
+    val aspectRatio: String,
+    val exactDpiX: String,
+    val exactDpiY: String,
+    val realMetrics: String,
+    val refreshRate: String,
+    val maxRefreshRate: String,
+    val hdrSupport: String,
+    val hdrTypes: List<String>,
+    val wideColorGamut: Boolean,
+    val orientation: String,
+    val rotation: Int,
+    val brightnessLevel: String?,
+    val screenTimeout: String?,
+    val safeAreaInsets: String,
+    val displayCutout: String
+)
+
 @Composable
-fun DisplayMetricsCard(displayInfo: com.ivarna.finalbenchmark2.utils.DisplayInfo) {
+fun DisplayMetricsCard(displayInfo: DisplayInfo) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -1259,7 +1312,7 @@ fun DisplayMetricsCard(displayInfo: com.ivarna.finalbenchmark2.utils.DisplayInfo
 }
 
 @Composable
-fun DisplayCapabilitiesCard(displayInfo: com.ivarna.finalbenchmark2.utils.DisplayInfo) {
+fun DisplayCapabilitiesCard(displayInfo: DisplayInfo) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -1360,7 +1413,7 @@ fun DisplayCapabilitiesCard(displayInfo: com.ivarna.finalbenchmark2.utils.Displa
 }
 
 @Composable
-fun DisplaySystemStateCard(displayInfo: com.ivarna.finalbenchmark2.utils.DisplayInfo) {
+fun DisplaySystemStateCard(displayInfo: DisplayInfo) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(

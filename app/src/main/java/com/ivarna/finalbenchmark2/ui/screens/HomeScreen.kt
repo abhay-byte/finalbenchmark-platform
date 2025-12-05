@@ -105,9 +105,8 @@ fun HomeScreen(
                     .verticalScroll(rememberScrollState())
                     .padding(24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Top // Changed to Top for better scrolling flow
+                verticalArrangement = Arrangement.Center
             ) {
-                Spacer(modifier = Modifier.height(32.dp))
                 
                 // App logo
                 val currentTheme by LocalThemeMode.current
