@@ -32,7 +32,7 @@ import com.ivarna.finalbenchmark2.ui.theme.FinalBenchmark2Theme
 import com.ivarna.finalbenchmark2.utils.CpuNativeBridge
 import com.ivarna.finalbenchmark2.utils.CpuUtilizationUtils
 import com.ivarna.finalbenchmark2.utils.DeviceInfoCollector
-// Remove the DisplayUtils import since the class doesn't exist
+import com.ivarna.finalbenchmark2.utils.DisplayUtils
 import com.ivarna.finalbenchmark2.utils.formatBytes
 import kotlin.math.roundToInt
 import com.ivarna.finalbenchmark2.ui.components.CpuUtilizationGraph
@@ -46,24 +46,8 @@ import com.ivarna.finalbenchmark2.ui.components.SummaryCard
 import com.ivarna.finalbenchmark2.ui.components.SystemInfoSummary
 import com.ivarna.finalbenchmark2.ui.viewmodels.DeviceViewModel
 import com.ivarna.finalbenchmark2.ui.viewmodels.GpuInfoViewModel
+import com.ivarna.finalbenchmark2.ui.viewmodels.OsViewModel
 
-// Utility functions unique to DeviceScreen
-fun calculateScreenSize(displayMetrics: android.util.DisplayMetrics): Double {
-    val widthInches = displayMetrics.widthPixels / displayMetrics.xdpi
-    val heightInches = displayMetrics.heightPixels / displayMetrics.ydpi
-    return kotlin.math.sqrt((widthInches * widthInches + heightInches * heightInches).toDouble())
-}
-
-fun calculateAspectRatio(width: Int, height: Int): String {
-    val gcd = gcd(width, height)
-    val aspectWidth = width / gcd
-    val aspectHeight = height / gcd
-    return "$aspectWidth:$aspectHeight"
-}
-
-fun gcd(a: Int, b: Int): Int {
-    return if (b == 0) a else gcd(b, a % b)
-}
 
 /**
  * Format bytes to megabytes
@@ -1144,38 +1128,9 @@ fun AdvancedCapabilitiesCard(capabilities: com.ivarna.finalbenchmark2.utils.Open
 
 @Composable
 fun ScreenTab(context: android.content.Context) {
-    val displayMetrics = remember { context.resources.displayMetrics }
-    val windowManager = context.getSystemService(android.content.Context.WINDOW_SERVICE) as android.view.WindowManager
-    val display = windowManager.defaultDisplay
-    val displaySize = android.graphics.Point().apply { display.getSize(this) }
-    
-    // Create a mock display info object with basic information
-    val displayInfo = remember {
-        DisplayInfo(
-            resolution = "${displaySize.x} x ${displaySize.y}",
-            density = "${displayMetrics.density}x (${displayMetrics.densityDpi} DPI)",
-            physicalSize = "%.1f\"".format(kotlin.math.sqrt(((displaySize.x / displayMetrics.xdpi).toDouble() * (displaySize.x / displayMetrics.xdpi).toDouble()) + ((displaySize.y / displayMetrics.ydpi).toDouble() * (displaySize.y / displayMetrics.ydpi).toDouble()))),
-            aspectRatio = calculateAspectRatio(displaySize.x, displaySize.y),
-            exactDpiX = "${displayMetrics.xdpi} DPI",
-            exactDpiY = "${displayMetrics.ydpi} DPI",
-            realMetrics = "w${displaySize.x}dp x h${displaySize.y}dp",
-            refreshRate = "${display.refreshRate} Hz",
-            maxRefreshRate = "Unknown",
-            hdrSupport = "Unknown",
-            hdrTypes = emptyList(),
-            wideColorGamut = false,
-            orientation = when (context.resources.configuration.orientation) {
-                android.content.res.Configuration.ORIENTATION_PORTRAIT -> "Portrait"
-                android.content.res.Configuration.ORIENTATION_LANDSCAPE -> "Landscape"
-                else -> "Unknown"
-            },
-            rotation = display.rotation,
-            brightnessLevel = "Unknown",
-            screenTimeout = "Unknown",
-            safeAreaInsets = "Unknown",
-            displayCutout = "Unknown"
-        )
-    }
+    // Initialize DisplayUtils and get display info
+    val displayUtils = remember { DisplayUtils(context) }
+    val displayInfo = remember { displayUtils.getDisplayInfo() }
     
     Column(
         modifier = Modifier
@@ -1211,30 +1166,9 @@ fun ScreenTab(context: android.content.Context) {
     }
 }
 
-// Data class to represent display information
-data class DisplayInfo(
-    val resolution: String,
-    val density: String,
-    val physicalSize: String,
-    val aspectRatio: String,
-    val exactDpiX: String,
-    val exactDpiY: String,
-    val realMetrics: String,
-    val refreshRate: String,
-    val maxRefreshRate: String,
-    val hdrSupport: String,
-    val hdrTypes: List<String>,
-    val wideColorGamut: Boolean,
-    val orientation: String,
-    val rotation: Int,
-    val brightnessLevel: String?,
-    val screenTimeout: String?,
-    val safeAreaInsets: String,
-    val displayCutout: String
-)
 
 @Composable
-fun DisplayMetricsCard(displayInfo: DisplayInfo) {
+fun DisplayMetricsCard(displayInfo: com.ivarna.finalbenchmark2.utils.DisplayInfo) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -1312,7 +1246,7 @@ fun DisplayMetricsCard(displayInfo: DisplayInfo) {
 }
 
 @Composable
-fun DisplayCapabilitiesCard(displayInfo: DisplayInfo) {
+fun DisplayCapabilitiesCard(displayInfo: com.ivarna.finalbenchmark2.utils.DisplayInfo) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -1413,7 +1347,7 @@ fun DisplayCapabilitiesCard(displayInfo: DisplayInfo) {
 }
 
 @Composable
-fun DisplaySystemStateCard(displayInfo: DisplayInfo) {
+fun DisplaySystemStateCard(displayInfo: com.ivarna.finalbenchmark2.utils.DisplayInfo) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -1544,47 +1478,8 @@ fun InfoRow(label: String, value: String, isSupported: Boolean? = null) {
 }
 
 @Composable
-fun OsTab(deviceInfo: com.ivarna.finalbenchmark2.utils.DeviceInfo) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(16.dp),
-        horizontalAlignment = Alignment.Start,
-        verticalArrangement = Arrangement.Top
-    ) {
-        Text(
-            text = "Operating System Information",
-            fontSize = 24.sp,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary,
-            textAlign = TextAlign.Start,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 16.dp)
-        )
-                
-        DeviceInfoCard("OS Version") {
-            InfoRow("Android Version", deviceInfo.androidVersion)
-            InfoRow("API Level", deviceInfo.apiLevel.toString())
-            InfoRow("Security Patch", "To be implemented")
-        }
-                
-        Spacer(modifier = Modifier.height(16.dp))
-                
-        DeviceInfoCard("System Properties") {
-            InfoRow("Kernel Version", deviceInfo.kernelVersion)
-            InfoRow("Build Number", android.os.Build.DISPLAY)
-            InfoRow("Build Fingerprint", android.os.Build.FINGERPRINT)
-        }
-                
-        Spacer(modifier = Modifier.height(16.dp))
-                
-        DeviceInfoCard("System Features") {
-            InfoRow("SELinux Status", "To be implemented")
-            InfoRow("OTA Updates", "To be implemented")
-        }
-    }
+fun OsTab(deviceInfo: com.ivarna.finalbenchmark2.utils.DeviceInfo, osViewModel: OsViewModel = viewModel()) {
+    OsTabContent(osViewModel)
 }
 @Composable
 fun HardwareTab(deviceInfo: com.ivarna.finalbenchmark2.utils.DeviceInfo) {
