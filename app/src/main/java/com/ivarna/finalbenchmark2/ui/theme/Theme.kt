@@ -696,25 +696,36 @@ val AmoledBlackColorScheme = darkColorScheme(
 
 @Composable
 fun FinalBenchmark2Theme(
-    darkTheme: Boolean = shouldUseDarkTheme(), // Use our custom theme system
-    themeMode: ThemeMode = ThemeMode.SYSTEM, // Add themeMode parameter
-    // Dynamic color is available on Android 12+
+    darkTheme: Boolean = shouldUseDarkTheme(),
+    // We default to SYSTEM here, but we will check LocalThemeMode inside
+    themeMode: ThemeMode = ThemeMode.SYSTEM,
     dynamicColor: Boolean = true,
     content: @Composable () -> Unit
 ) {
+    // FIX: Resolve the actual mode.
+    // If the parameter is SYSTEM (default), we check what is currently set in the CompositionLocal.
+    // This ensures that when the user changes settings, this Composable reads the new value.
+    val localMode = LocalThemeMode.current.value
+    val activeThemeMode = if (themeMode == ThemeMode.SYSTEM && localMode != ThemeMode.SYSTEM) {
+        localMode
+    } else {
+        // If local is SYSTEM, or if a specific mode was passed as a parameter (e.g. for Previews)
+        if (themeMode != ThemeMode.SYSTEM) themeMode else localMode
+    }
+
     val colorScheme = when {
-        // Check for specific themes first
-        themeMode == ThemeMode.GRUVBOX -> if (darkTheme) GruvboxDarkColorScheme else GruvboxLightColorScheme
-        themeMode == ThemeMode.NORD -> if (darkTheme) NordDarkColorScheme else NordLightColorScheme
-        themeMode == ThemeMode.DRACULA -> DraculaColorScheme  // Dracula is always dark
-        themeMode == ThemeMode.SOLARIZED -> if (darkTheme) SolarizedDarkColorScheme else SolarizedLightColorScheme
-        themeMode == ThemeMode.MONOKAI -> MonokaiColorScheme  // Monokai is always dark
-        themeMode == ThemeMode.SKY_BREEZE -> SkyBreezeColorScheme // Sky Breeze is light
-        themeMode == ThemeMode.LAVENDER_DREAM -> LavenderDreamColorScheme  // Lavender Dream is light
-        themeMode == ThemeMode.MINT_FRESH -> MintFreshColorScheme  // Mint Fresh is light
-        themeMode == ThemeMode.AMOLED_BLACK -> AmoledBlackColorScheme  // AMOLED Black is dark
+        // Check for specific themes using the RESOLVED mode
+        activeThemeMode == ThemeMode.GRUVBOX -> if (darkTheme) GruvboxDarkColorScheme else GruvboxLightColorScheme
+        activeThemeMode == ThemeMode.NORD -> if (darkTheme) NordDarkColorScheme else NordLightColorScheme
+        activeThemeMode == ThemeMode.DRACULA -> DraculaColorScheme
+        activeThemeMode == ThemeMode.SOLARIZED -> if (darkTheme) SolarizedDarkColorScheme else SolarizedLightColorScheme
+        activeThemeMode == ThemeMode.MONOKAI -> MonokaiColorScheme
+        activeThemeMode == ThemeMode.SKY_BREEZE -> SkyBreezeColorScheme
+        activeThemeMode == ThemeMode.LAVENDER_DREAM -> LavenderDreamColorScheme
+        activeThemeMode == ThemeMode.MINT_FRESH -> MintFreshColorScheme
+        activeThemeMode == ThemeMode.AMOLED_BLACK -> AmoledBlackColorScheme
         
-        // Then check for dynamic colors
+        // Then check for dynamic colors (Only if activeMode is SYSTEM)
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             val context = LocalContext.current
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
@@ -729,25 +740,23 @@ fun FinalBenchmark2Theme(
         SideEffect {
             val window = (view.context as Activity).window
             
-            // For AMOLED theme, ensure pure black background and navigation bar
-            val finalBackgroundColor = if (themeMode == ThemeMode.AMOLED_BLACK) {
+            // FIX: Use activeThemeMode here too
+            val finalBackgroundColor = if (activeThemeMode == ThemeMode.AMOLED_BLACK) {
                 Color.Black.toArgb()
             } else {
                 colorScheme.background.toArgb()
             }
             
-            // Set status bar color to background
             window.statusBarColor = finalBackgroundColor
-            
-            // Set navigation bar color to pure black for AMOLED theme, otherwise use theme background
             window.navigationBarColor = finalBackgroundColor
             
-            // Determine if we should use light or dark icons
-            val isLightTheme = when (themeMode) {
+            // Fix light/dark status bar icons based on the resolved theme
+            val isLightTheme = when (activeThemeMode) {
                 ThemeMode.SKY_BREEZE, ThemeMode.LAVENDER_DREAM,
                 ThemeMode.MINT_FRESH -> true
                 ThemeMode.DRACULA, ThemeMode.MONOKAI,
                 ThemeMode.AMOLED_BLACK -> false
+                ThemeMode.GRUVBOX, ThemeMode.NORD, ThemeMode.SOLARIZED -> !darkTheme
                 else -> !darkTheme
             }
             
