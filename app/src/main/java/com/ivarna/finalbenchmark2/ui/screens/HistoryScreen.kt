@@ -1,5 +1,6 @@
 package com.ivarna.finalbenchmark2.ui.screens
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -15,9 +16,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.statusBars
-import androidx.compose.ui.platform.LocalDensity
+import androidx.navigation.NavController
 import com.ivarna.finalbenchmark2.ui.theme.FinalBenchmark2Theme
 import com.ivarna.finalbenchmark2.ui.viewmodels.HistoryUiModel
 import com.ivarna.finalbenchmark2.ui.viewmodels.HistoryViewModel
@@ -27,7 +26,8 @@ import java.util.*
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HistoryScreen(
-    viewModel: HistoryViewModel
+    viewModel: HistoryViewModel,
+    navController: NavController
 ) {
     val historyState by viewModel.uiState.collectAsState()
     val formatter = SimpleDateFormat("MMM dd, yyyy HH:mm", Locale.getDefault())
@@ -41,7 +41,7 @@ fun HistoryScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(
-                        top = WindowInsets.statusBars.getTop(LocalDensity.current).dp,
+                        top = 56.dp,
                         start = 16.dp,
                         end = 16.dp,
                         bottom = 16.dp
@@ -100,7 +100,10 @@ fun HistoryScreen(
                         items(historyState) { result ->
                             BenchmarkHistoryItem(
                                 result = result,
-                                timestampFormatter = formatter
+                                timestampFormatter = formatter,
+                                onItemClick = {
+                                    navController.navigate("history-detail/${result.id}")
+                                }
                             )
                         }
                     }
@@ -113,10 +116,13 @@ fun HistoryScreen(
 @Composable
 fun BenchmarkHistoryItem(
     result: HistoryUiModel,
-    timestampFormatter: SimpleDateFormat
+    timestampFormatter: SimpleDateFormat,
+    onItemClick: () -> Unit = {}
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onItemClick() },
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Row(

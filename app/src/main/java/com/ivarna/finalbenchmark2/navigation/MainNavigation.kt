@@ -23,6 +23,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.ivarna.finalbenchmark2.ui.screens.*
 import com.ivarna.finalbenchmark2.ui.screens.DetailedResultScreen
+import com.ivarna.finalbenchmark2.ui.screens.HistoryDetailScreen
 import com.ivarna.finalbenchmark2.navigation.FrostedGlassNavigationBar
 import com.ivarna.finalbenchmark2.ui.viewmodels.RootStatus
 import dev.chrisbanes.haze.HazeState
@@ -104,7 +105,10 @@ fun MainNavigation(
                 }
                 composable("history") {
                     val historyViewModel = com.ivarna.finalbenchmark2.di.DatabaseInitializer.createHistoryViewModel(context)
-                    HistoryScreen(viewModel = historyViewModel)
+                    HistoryScreen(
+                        viewModel = historyViewModel,
+                        navController = navController
+                    )
                 }
                 composable("settings") {
                     SettingsScreen(
@@ -166,6 +170,19 @@ fun MainNavigation(
                         onBack = {
                             navController.popBackStack()
                         }
+                    )
+                }
+                composable("history-detail/{id}") { backStackEntry ->
+                    val id = backStackEntry.arguments?.getString("id")?.toLongOrNull() ?: -1
+                    val historyRepository = com.ivarna.finalbenchmark2.data.repository.HistoryRepository(
+                        com.ivarna.finalbenchmark2.data.database.AppDatabase.getDatabase(context).benchmarkDao()
+                    )
+                    HistoryDetailScreen(
+                        benchmarkId = id,
+                        onBackClick = {
+                            navController.popBackStack()
+                        },
+                        historyRepository = historyRepository
                     )
                 }
             }

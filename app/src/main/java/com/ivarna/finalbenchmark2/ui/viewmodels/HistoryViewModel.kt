@@ -63,4 +63,6 @@ class HistoryViewModel(
             repository.deleteAllResults()
         }
     }
+    
+    fun getBenchmarkDetail(id: Long) = repository.getResultById(id)
 }
