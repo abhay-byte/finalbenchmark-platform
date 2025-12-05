@@ -103,7 +103,8 @@ fun MainNavigation(
                     DeviceScreen()
                 }
                 composable("history") {
-                    HistoryScreen()
+                    val historyViewModel = com.ivarna.finalbenchmark2.di.DatabaseInitializer.createHistoryViewModel(context)
+                    HistoryScreen(viewModel = historyViewModel)
                 }
                 composable("settings") {
                     SettingsScreen(

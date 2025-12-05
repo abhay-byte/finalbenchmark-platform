@@ -7,6 +7,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -14,57 +16,17 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ivarna.finalbenchmark2.ui.theme.FinalBenchmark2Theme
+import com.ivarna.finalbenchmark2.ui.viewmodels.HistoryUiModel
+import com.ivarna.finalbenchmark2.ui.viewmodels.HistoryViewModel
 import java.text.SimpleDateFormat
 import java.util.*
 
-data class BenchmarkResult(
-    val id: String,
-    val timestamp: Long,
-    val finalScore: Double,
-    val singleCoreScore: Double,
-    val multiCoreScore: Double,
-    val testName: String
-)
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HistoryScreen() {
-    // Placeholder data for benchmark history
-    val benchmarkHistory = listOf(
-        BenchmarkResult(
-            id = "1",
-            timestamp = System.currentTimeMillis() - 864000, // 24 hours ago
-            finalScore = 1250.5,
-            singleCoreScore = 350.2,
-            multiCoreScore = 1450.8,
-            testName = "Full Benchmark"
-        ),
-        BenchmarkResult(
-            id = "2",
-            timestamp = System.currentTimeMillis() - 172800, // 48 hours ago
-            finalScore = 1180.3,
-            singleCoreScore = 340.5,
-            multiCoreScore = 1380.7,
-            testName = "Full Benchmark"
-        ),
-        BenchmarkResult(
-            id = "3",
-            timestamp = System.currentTimeMillis() - 2592000, // 72 hours ago
-            finalScore = 1320.7,
-            singleCoreScore = 360.8,
-            multiCoreScore = 1520.4,
-            testName = "Efficiency Test"
-        ),
-        BenchmarkResult(
-            id = "4",
-            timestamp = System.currentTimeMillis() - 6048000, // 1 week ago
-            finalScore = 1090.2,
-            singleCoreScore = 320.1,
-            multiCoreScore = 1280.5,
-            testName = "Throttle Test"
-        )
-    )
-    
+fun HistoryScreen(
+    viewModel: HistoryViewModel
+) {
+    val historyState by viewModel.uiState.collectAsState()
     val formatter = SimpleDateFormat("MMM dd, yyyy HH:mm", Locale.getDefault())
     
     FinalBenchmark2Theme {
@@ -89,7 +51,7 @@ fun HistoryScreen() {
                         .padding(16.dp)
                 )
                 
-                if (benchmarkHistory.isEmpty()) {
+                if (historyState.isEmpty()) {
                     // Empty state
                     Box(
                         modifier = Modifier
@@ -127,7 +89,7 @@ fun HistoryScreen() {
                             .padding(horizontal = 16.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        items(benchmarkHistory) { result ->
+                        items(historyState) { result ->
                             BenchmarkHistoryItem(
                                 result = result,
                                 timestampFormatter = formatter
@@ -142,7 +104,7 @@ fun HistoryScreen() {
 
 @Composable
 fun BenchmarkHistoryItem(
-    result: BenchmarkResult,
+    result: HistoryUiModel,
     timestampFormatter: SimpleDateFormat
 ) {
     Card(
