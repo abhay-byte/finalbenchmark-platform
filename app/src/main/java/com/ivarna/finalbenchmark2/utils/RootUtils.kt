@@ -22,61 +22,8 @@ class RootUtils {
          * Checks if root access is actually working by attempting to execute a command with root privileges
          */
         fun canExecuteRootCommand(): Boolean {
-            var process: Process? = null
-            var exitCode = -1
-            var completed = false
-            
-            return try {
-                Log.d(TAG, "Attempting to execute root command: su -c 'id'")
-                process = Runtime.getRuntime().exec("su -c 'id'")
-                
-                // Create a thread to wait for the process
-                val waitThread = Thread {
-                    try {
-                        Thread.sleep(3000) // 3 second timeout
-                        if (process != null) {
-                            try {
-                                // Check if process has exited by trying to get its exit value
-                                process.exitValue()
-                            } catch (e: Exception) {
-                                // Process is still running, terminate it
-                                Log.d(TAG, "Root command timed out after 3 seconds")
-                                process.destroy()
-                            }
-                        }
-                    } catch (e: InterruptedException) {
-                        // Thread interrupted, do nothing
-                    }
-                }
-                
-                waitThread.start()
-                
-                // Wait for the thread to complete with a timeout
-                waitThread.join(3000) // 3 second timeout
-                
-                if (!completed) {
-                    // Process didn't complete in time, destroy it
-                    Log.d(TAG, "Root command timed out after 3 seconds")
-                    process?.destroy()
-                    waitThread.interrupt()
-                    return false
-                }
-                
-                exitCode = process.waitFor()
-                Log.d(TAG, "Root command exit code: $exitCode")
-                val result = exitCode == 0
-                Log.d(TAG, "canExecuteRootCommand() result: $result")
-                result
-            } catch (e: Exception) {
-                Log.e(TAG, "Error executing root command: ${e.message}", e)
-                false
-            } finally {
-                try {
-                    process?.destroy()
-                } catch (e: Exception) {
-                    // Ignore errors during process destruction
-                }
-            }
+            // Use the robust method which is already working correctly
+            return canExecuteRootCommandRobust()
         }
         
         /**

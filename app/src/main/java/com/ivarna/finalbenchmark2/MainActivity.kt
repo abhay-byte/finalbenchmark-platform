@@ -14,10 +14,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ivarna.finalbenchmark2.navigation.MainNavigation
 import com.ivarna.finalbenchmark2.ui.theme.FinalBenchmark2Theme
 import com.ivarna.finalbenchmark2.ui.theme.LocalThemeMode
 import com.ivarna.finalbenchmark2.ui.theme.provideThemeMode
+import com.ivarna.finalbenchmark2.ui.viewmodels.MainViewModel
+import com.ivarna.finalbenchmark2.ui.viewmodels.RootStatus
 import com.ivarna.finalbenchmark2.utils.ThemePreferences
 import com.ivarna.finalbenchmark2.ui.theme.ThemeMode
 import com.topjohnwu.superuser.Shell
@@ -68,6 +72,11 @@ class MainActivity : ComponentActivity() {
         setContent {
             var currentThemeMode by remember { mutableStateOf(themeMode) }
             
+            // Initialize MainViewModel to check root access once at app startup
+            val mainViewModel: MainViewModel = viewModel()
+            val rootStatus by mainViewModel.rootState.collectAsStateWithLifecycle()
+            val isRootAvailable = rootStatus == RootStatus.ROOT_WORKING || rootStatus == RootStatus.ROOT_AVAILABLE
+            
             // Provide theme mode to the composition
             provideThemeMode(currentThemeMode) {
                 FinalBenchmark2Theme(themeMode = currentThemeMode) {
@@ -78,7 +87,8 @@ class MainActivity : ComponentActivity() {
                     ) { innerPadding ->
                         MainNavigation(
                             modifier = Modifier.padding(innerPadding),
-                            hazeState = hazeState
+                            hazeState = hazeState,
+                            rootStatus = rootStatus
                         )
                     }
                 }

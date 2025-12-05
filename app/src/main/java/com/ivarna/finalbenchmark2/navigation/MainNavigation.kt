@@ -24,6 +24,7 @@ import androidx.navigation.compose.rememberNavController
 import com.ivarna.finalbenchmark2.ui.screens.*
 import com.ivarna.finalbenchmark2.ui.screens.DetailedResultScreen
 import com.ivarna.finalbenchmark2.navigation.FrostedGlassNavigationBar
+import com.ivarna.finalbenchmark2.ui.viewmodels.RootStatus
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.haze
 import dev.chrisbanes.haze.hazeChild
@@ -31,7 +32,8 @@ import dev.chrisbanes.haze.hazeChild
 @Composable
 fun MainNavigation(
     modifier: Modifier = Modifier,
-    hazeState: HazeState // Accept hazeState as parameter, no default
+    hazeState: HazeState, // Accept hazeState as parameter, no default
+    rootStatus: RootStatus = RootStatus.NO_ROOT // Root status from MainViewModel
 ) {
     val navController = rememberNavController()
     val navBackStackEntry = navController.currentBackStackEntryAsState()
@@ -104,7 +106,9 @@ fun MainNavigation(
                     HistoryScreen()
                 }
                 composable("settings") {
-                    SettingsScreen()
+                    SettingsScreen(
+                        rootStatus = rootStatus
+                    )
                 }
                 // Keep the existing benchmark flow
                 composable("benchmark/{preset}") { backStackEntry ->

@@ -19,14 +19,16 @@ import androidx.activity.ComponentActivity
 import com.ivarna.finalbenchmark2.MainActivity
 import com.ivarna.finalbenchmark2.ui.theme.FinalBenchmark2Theme
 import com.ivarna.finalbenchmark2.ui.theme.ThemeMode
+import com.ivarna.finalbenchmark2.ui.viewmodels.RootStatus
 import com.ivarna.finalbenchmark2.utils.ThemePreferences
 import com.ivarna.finalbenchmark2.utils.PowerConsumptionPreferences
-import com.ivarna.finalbenchmark2.utils.RootUtils
 import com.ivarna.finalbenchmark2.utils.RootAccessPreferences
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen() {
+fun SettingsScreen(
+    rootStatus: RootStatus = RootStatus.NO_ROOT // Root status from MainViewModel
+) {
     val context = LocalContext.current
     val themePreferences = remember { ThemePreferences(context) }
     val rootAccessPreferences = remember { RootAccessPreferences(context) }
@@ -35,25 +37,13 @@ fun SettingsScreen() {
     val currentThemeMode = themePreferences.getThemeMode()
     var selectedThemeIndex by remember { mutableStateOf(getThemeIndex(currentThemeMode)) }
     
-    // Root access state
+    // Root access state - now comes from MainViewModel
     var useRootAccess by remember { mutableStateOf(rootAccessPreferences.getUseRootAccess()) }
-    var isDeviceRooted by remember { mutableStateOf(false) }
-    var canExecuteRoot by remember { mutableStateOf(false) }
-    var isRootCheckLoading by remember { mutableStateOf(true) }
+    val isRootCheckLoading by remember { mutableStateOf(false) } // No longer loading since MainViewModel handles it
     
-    // Check root status in background to avoid blocking UI
-    LaunchedEffect(Unit) {
-        Log.d("SettingsScreen", "Starting root access check...")
-        isDeviceRooted = RootUtils.isDeviceRooted()
-        if (isDeviceRooted) {
-            Log.d("SettingsScreen", "Device is rooted, checking if root commands work...")
-            canExecuteRoot = RootUtils.canExecuteRootCommand()
-        } else {
-            Log.d("SettingsScreen", "Device is not rooted")
-        }
-        Log.d("SettingsScreen", "Root access check completed. Rooted: $isDeviceRooted, Can execute: $canExecuteRoot")
-        isRootCheckLoading = false
-    }
+    // Get root status from the passed parameter instead of checking again
+    val isDeviceRooted = rootStatus != RootStatus.NO_ROOT
+    val canExecuteRoot = rootStatus == RootStatus.ROOT_WORKING
     
     // Update theme when selection changes
     val onThemeChange: (Int) -> Unit = remember {
@@ -152,14 +142,6 @@ fun SettingsScreen() {
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
                                 
-                                if (isRootCheckLoading) {
-                                    Text(
-                                        text = "Checking root access...",
-                                        fontSize = 14.sp,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.padding(top = 4.dp)
-                                    )
-                                } else {
                                     Text(
                                         text = if (isDeviceRooted) {
                                             if (canExecuteRoot) "Root access available and working" else "Root access available but not working"
@@ -170,7 +152,6 @@ fun SettingsScreen() {
                                         color = if (isDeviceRooted && canExecuteRoot) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
                                         modifier = Modifier.padding(top = 4.dp)
                                     )
-                                }
                             }
                             
                             Switch(
