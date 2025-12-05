@@ -1,5 +1,11 @@
 package com.ivarna.finalbenchmark2.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -7,22 +13,25 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.rounded.ArrowDropDown
+import androidx.compose.material.icons.rounded.BatteryStd
+import androidx.compose.material.icons.rounded.Bolt
+import androidx.compose.material.icons.rounded.ElectricBolt
+import androidx.compose.material.icons.rounded.Memory
+import androidx.compose.material.icons.rounded.Thermostat
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -32,9 +41,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ivarna.finalbenchmark2.R
 import com.ivarna.finalbenchmark2.ui.theme.FinalBenchmark2Theme
-import com.ivarna.finalbenchmark2.utils.TemperatureUtils
-import com.ivarna.finalbenchmark2.utils.PowerUtils
 import com.ivarna.finalbenchmark2.utils.CpuUtilizationUtils
+import com.ivarna.finalbenchmark2.utils.PowerUtils
+import com.ivarna.finalbenchmark2.utils.TemperatureUtils
 import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -45,6 +54,45 @@ fun HomeScreen(
 ) {
     var selectedPreset by remember { mutableStateOf("Auto") }
     val presets = listOf("Auto", "Slow", "Mid", "Flagship")
+
+    // --- State Holders for Data ---
+    val context = LocalContext.current
+    
+    // Temperature State
+    val tempUtils = remember { TemperatureUtils(context) }
+    var cpuTemp by remember { mutableStateOf(0f) }
+    var batteryTemp by remember { mutableStateOf(0f) }
+
+    // CPU State
+    val cpuUtilizationUtils = remember { CpuUtilizationUtils(context) }
+    var cpuUtilization by remember { mutableStateOf(0f) }
+    var coreUtilizations by remember { mutableStateOf<Map<Int, Float>>(emptyMap()) }
+    var allCoreFrequencies by remember { mutableStateOf<Map<Int, Pair<Long, Long>>>(emptyMap()) }
+
+    // Power State
+    val powerUtils = remember { PowerUtils(context) }
+    var powerInfo by remember { mutableStateOf(powerUtils.getPowerConsumptionInfo()) }
+
+    var isDataInitialized by remember { mutableStateOf(false) }
+
+    // Single LaunchedEffect to manage data polling loops
+    LaunchedEffect(Unit) {
+        isDataInitialized = true
+        while (true) {
+            // Update all data points
+            cpuTemp = tempUtils.getCpuTemperature()
+            batteryTemp = tempUtils.getBatteryTemperature()
+            
+            cpuUtilization = cpuUtilizationUtils.getCpuUtilizationPercentage()
+            coreUtilizations = cpuUtilizationUtils.getCoreUtilizationPercentages()
+            allCoreFrequencies = cpuUtilizationUtils.getAllCoreFrequencies()
+            
+            powerInfo = powerUtils.getPowerConsumptionInfo()
+            
+            delay(1000) // 1 second update rate
+        }
+    }
+
     FinalBenchmark2Theme {
         Surface(
             modifier = Modifier.fillMaxSize(),
@@ -56,28 +104,25 @@ fun HomeScreen(
                     .verticalScroll(rememberScrollState())
                     .padding(24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
+                verticalArrangement = Arrangement.Top // Changed to Top for better scrolling flow
             ) {
-                // App logo - Fixed to be perfectly circular
+                // App logo
                 Box(
                     modifier = Modifier
-                        .size(180.dp)
+                        .size(140.dp) // Slightly smaller for better layout
                         .clip(CircleShape)
                         .background(MaterialTheme.colorScheme.surface)
                         .padding(16.dp)
-                        .padding(bottom = 16.dp)
+                        .padding(bottom = 8.dp)
                 ) {
                     Image(
                         painter = painterResource(id = R.drawable.logo),
-                        contentDescription = "FinalBenchmark2 Logo",
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clip(CircleShape),
+                        contentDescription = "Logo",
+                        modifier = Modifier.fillMaxSize().clip(CircleShape),
                         contentScale = ContentScale.Crop
                     )
                 }
-                
-                // App name
+
                 Text(
                     text = "FinalBenchmark2",
                     fontSize = 32.sp,
@@ -86,8 +131,7 @@ fun HomeScreen(
                     textAlign = TextAlign.Center,
                     modifier = Modifier.padding(bottom = 16.dp)
                 )
-                
-                // Description
+
                 Text(
                     text = "A comprehensive benchmarking application that tests your device's performance across multiple components.",
                     fontSize = 16.sp,
@@ -95,218 +139,142 @@ fun HomeScreen(
                     textAlign = TextAlign.Center,
                     modifier = Modifier.padding(bottom = 16.dp)
                 )
-                
-                // Temperature Card
-                val context = LocalContext.current
-                val tempUtils = remember { TemperatureUtils(context) }
-                var cpuTemp by remember { mutableStateOf(-1f) }
-                var batteryTemp by remember { mutableStateOf(-1f) }
-                var isInitialized by remember { mutableStateOf(false) }
-                
-                LaunchedEffect(Unit) {
-                    isInitialized = true
-                    // Initial readings
-                    cpuTemp = tempUtils.getCpuTemperature()
-                    batteryTemp = tempUtils.getBatteryTemperature()
-                    
-                    // Update every 5 seconds
-                    while (true) {
-                        delay(5000)
-                        cpuTemp = tempUtils.getCpuTemperature()
-                        batteryTemp = tempUtils.getBatteryTemperature()
-                    }
-                }
-                
-                if (isInitialized) {
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 8.dp),
-                        shape = RoundedCornerShape(16.dp),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.Start
-                            ) {
-                                Icon(
-                                    painter = painterResource(id = R.drawable.mobile_24), // Using a generic icon
-                                    contentDescription = "Temperature",
-                                    modifier = Modifier.size(24.dp)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = "Device Temperatures",
-                                    fontSize = 18.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                            }
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text(
-                                    text = "CPU: ${if (cpuTemp > 0) "${cpuTemp}°C" else "N/A"}",
-                                    fontSize = 16.sp,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                                Text(
-                                    text = "Battery: ${if (batteryTemp > 0) "${batteryTemp}°C" else "N/A"}",
-                                    fontSize = 16.sp,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                            }
-                        }
-                    }
-                
-                // CPU Utilization Card - Added below temperature card
-                val cpuUtilizationUtils = remember { CpuUtilizationUtils(context) }
-                var cpuUtilization by remember { mutableStateOf(0f) }
-                var coreUtilizations by remember { mutableStateOf<Map<Int, Float>>(emptyMap()) }
-                var allCoreFrequencies by remember { mutableStateOf<Map<Int, Pair<Long, Long>>>(emptyMap()) }
-                var cpuUtilizationInitialized by remember { mutableStateOf(false) }
-                var isExpanded by remember { mutableStateOf(false) }
-                
-                LaunchedEffect(Unit) {
-                    cpuUtilizationInitialized = true
-                    
-                    // Update every 1 second
-                    while (true) {
-                        delay(1000)
-                        cpuUtilization = cpuUtilizationUtils.getCpuUtilizationPercentage()
-                        coreUtilizations = cpuUtilizationUtils.getCoreUtilizationPercentages()
-                        allCoreFrequencies = cpuUtilizationUtils.getAllCoreFrequencies()
-                    }
-                }
-                
-                if (cpuUtilizationInitialized) {
+
+                // =========================================================
+                // CONSOLIDATED SYSTEM CARD
+                // =========================================================
+                if (isDataInitialized) {
+                    var isExpanded by remember { mutableStateOf(false) }
+
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(vertical = 8.dp)
                             .clickable { isExpanded = !isExpanded },
-                        shape = RoundedCornerShape(16.dp),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                        shape = RoundedCornerShape(24.dp), // More modern rounded shape
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainer
+                        ),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                     ) {
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(16.dp)
                         ) {
+                            // --- SUMMARY ROW (Always Visible) ---
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Row(
-                                    horizontalArrangement = Arrangement.Start,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        painter = painterResource(id = R.drawable.cpu_24),
-                                        contentDescription = "CPU Utilization",
-                                        modifier = Modifier.size(24.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(
-                                        text = "CPU Utilization",
-                                        fontSize = 18.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.primary
-                                    )
-                                }
+                                // 1. Temperature Summary
+                                CompactStatItem(
+                                    icon = Icons.Rounded.Thermostat,
+                                    value = "${if(cpuTemp > 0) cpuTemp else "--"}°C",
+                                    tint = MaterialTheme.colorScheme.error
+                                )
+
+                                // 2. CPU Load Summary
+                                CompactStatItem(
+                                    icon = Icons.Rounded.Memory,
+                                    value = "${String.format("%.0f", cpuUtilization)}%",
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+
+                                // 3. Power Summary
+                                CompactStatItem(
+                                    icon = Icons.Rounded.Bolt,
+                                    value = "${String.format("%.1f", powerInfo.power)}W",
+                                    tint = MaterialTheme.colorScheme.tertiary
+                                )
+
+                                // Expand Arrow
                                 Icon(
-                                    painter = painterResource(id = R.drawable.arrow_expand_24),
-                                    contentDescription = if (isExpanded) "Collapse" else "Expand",
+                                    imageVector = Icons.Rounded.ArrowDropDown,
+                                    contentDescription = "Expand",
                                     modifier = Modifier
-                                        .size(24.dp)
-                                        .rotate(if (isExpanded) 180f else 0f)
+                                        .size(28.dp)
+                                        .rotate(if (isExpanded) 180f else 0f),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
+
+                            // --- EXPANDED DETAILS ---
+                            AnimatedVisibility(
+                                visible = isExpanded,
+                                enter = expandVertically(animationSpec = tween(300)) + fadeIn(),
+                                exit = shrinkVertically(animationSpec = tween(300)) + fadeOut()
                             ) {
-                                Text(
-                                    text = "${String.format("%.1f", cpuUtilization)}%",
-                                    fontSize = 24.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                                Text(
-                                    text = "Current Usage",
-                                    fontSize = 14.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                            
-                            // Expanded content
-                            if (isExpanded) {
-                                Spacer(modifier = Modifier.height(12.dp))
-                                
-                                // Display core utilization in a compact grid
-                                LazyVerticalGrid(
-                                    columns = GridCells.Fixed(4), // Show 4 cores in one row
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .heightIn(max = 300.dp) // Limit the height to avoid infinite constraints
-                                ) {
-                                    items(coreUtilizations.size) { index ->
-                                        val coreIndex = index
-                                        val utilization = coreUtilizations[coreIndex] ?: 0f
-                                        val (currentFreq, maxFreq) = allCoreFrequencies[coreIndex] ?: Pair(0L, 0L)
-                                        
-                                        // Circular progress indicator for each core
-                                        Column(
-                                            horizontalAlignment = Alignment.CenterHorizontally,
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .padding(4.dp) // Reduced padding
-                                        ) {
-                                            // Circular progress indicator
-                                            Box(
-                                                contentAlignment = Alignment.Center,
-                                                modifier = Modifier.size(60.dp) // Reduced size
+                                Column(modifier = Modifier.padding(top = 16.dp)) {
+                                    
+                                    HorizontalDivider(
+                                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                                        modifier = Modifier.padding(bottom = 16.dp)
+                                    )
+
+                                    // Row 1: Detailed Stats Grid
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceAround
+                                    ) {
+                                        // CPU Temp
+                                        DetailIconPair(Icons.Rounded.Memory, "${cpuTemp}°C", "CPU")
+                                        // Battery Temp
+                                        DetailIconPair(Icons.Rounded.BatteryStd, "${batteryTemp}°C", "Batt")
+                                        // Voltage
+                                        DetailIconPair(Icons.Rounded.ElectricBolt, "${String.format("%.1f", powerInfo.voltage)}V", "Volts")
+                                        // Amperage
+                                        DetailIconPair(Icons.Rounded.Bolt, "${String.format("%.1f", powerInfo.current)}A", "Amps")
+                                    }
+
+                                    Spacer(modifier = Modifier.height(24.dp))
+
+                                    // Row 2: CPU Cores Visualization
+                                    Text(
+                                        text = "Core Utilization",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.padding(bottom = 12.dp, start = 4.dp)
+                                    )
+
+                                    LazyVerticalGrid(
+                                        columns = GridCells.Fixed(4),
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .heightIn(max = 240.dp), // Limit height
+                                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        items(coreUtilizations.size) { index ->
+                                            val utilization = coreUtilizations[index] ?: 0f
+                                            val (currentFreq, _) = allCoreFrequencies[index] ?: Pair(0L, 0L)
+                                            
+                                            Column(
+                                                horizontalAlignment = Alignment.CenterHorizontally
                                             ) {
-                                                CircularProgressIndicator(
-                                                    progress = { utilization / 100f },
-                                                    modifier = Modifier.size(60.dp), // Reduced size
-                                                    strokeWidth = 4.dp, // Reduced stroke width
-                                                    color = MaterialTheme.colorScheme.primary,
-                                                    trackColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-                                                )
-                                                
-                                                // Center text
+                                                Box(contentAlignment = Alignment.Center) {
+                                                    CircularProgressIndicator(
+                                                        progress = { utilization / 100f },
+                                                        modifier = Modifier.size(48.dp),
+                                                        strokeWidth = 4.dp,
+                                                        color = MaterialTheme.colorScheme.primary,
+                                                        trackColor = MaterialTheme.colorScheme.surfaceVariant
+                                                    )
+                                                    Text(
+                                                        text = "${index}",
+                                                        style = MaterialTheme.typography.labelSmall,
+                                                        fontWeight = FontWeight.Bold
+                                                    )
+                                                }
+                                                Spacer(modifier = Modifier.height(4.dp))
                                                 Text(
-                                                    text = "${String.format("%.0f", utilization)}%",
-                                                    fontSize = 10.sp, // Reduced font size
-                                                    fontWeight = FontWeight.Bold,
-                                                    color = MaterialTheme.colorScheme.primary
+                                                    text = "${currentFreq / 1000} Mhz",
+                                                    fontSize = 9.sp,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                    maxLines = 1
                                                 )
                                             }
-                                            
-                                            Spacer(modifier = Modifier.height(2.dp)) // Reduced space
-                                            
-                                            Text(
-                                                text = "Core $coreIndex",
-                                                fontSize = 10.sp, // Reduced font size
-                                                fontWeight = FontWeight.Medium,
-                                                color = MaterialTheme.colorScheme.onSurface
-                                            )
-                                            
-                                            Text(
-                                                text = "${currentFreq / 1000}MHz", // Convert kHz to MHz
-                                                fontSize = 8.sp, // Reduced font size
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                                            )
                                         }
                                     }
                                 }
@@ -314,123 +282,21 @@ fun HomeScreen(
                         }
                     }
                 }
-                }
-                
-                // Power Consumption Card - Added below temperature card
-                val powerUtils = remember { PowerUtils(context) }
-                var powerConsumptionInfo by remember { mutableStateOf(powerUtils.getPowerConsumptionInfo()) }
-                var powerConsumptionInitialized by remember { mutableStateOf(false) }
-                
-                LaunchedEffect(Unit) {
-                    powerConsumptionInitialized = true
-                    
-                    // Update every 1 second
-                    while (true) {
-                        delay(1000)
-                        powerConsumptionInfo = powerUtils.getPowerConsumptionInfo()
-                    }
-                }
-                
-                if (powerConsumptionInitialized) {
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 8.dp)
-                            .clickable { onNavigateToSettings() }, // Make the card clickable
-                        shape = RoundedCornerShape(16.dp),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.Start
-                            ) {
-                                Icon(
-                                    painter = painterResource(id = R.drawable.power_consumption_24),
-                                    contentDescription = "Power Consumption",
-                                    modifier = Modifier.size(24.dp)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = "Power Consumption",
-                                    fontSize = 18.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                            }
-                            Spacer(modifier = Modifier.height(8.dp))
-                            // Power row
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text(
-                                    text = if (powerConsumptionInfo.power != 0f) "${String.format("%.2f", powerConsumptionInfo.power)} W" else "N/A",
-                                    fontSize = 16.sp,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                                Text(
-                                    text = if (powerConsumptionInfo.power > 0) "Charging" else if (powerConsumptionInfo.power < 0) "Discharging" else "Current Usage",
-                                    fontSize = 14.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                            Spacer(modifier = Modifier.height(4.dp))
-                            // Voltage and Current row
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text(
-                                    text = "${String.format("%.2f", powerConsumptionInfo.voltage)} V",
-                                    fontSize = 14.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                Text(
-                                    text = "${String.format("%.2f", powerConsumptionInfo.current)} A",
-                                    fontSize = 14.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-                    }
-                }
-                
+                // =========================================================
+
                 // Preset Selection Card
                 Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp),
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
                     shape = RoundedCornerShape(16.dp),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                 ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.Start,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                painter = painterResource(id = R.drawable.mobile_24), 
-                                contentDescription = "Benchmark Preset",
-                                modifier = Modifier.size(24.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "Benchmark Preset",
-                                fontSize = 18.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                        }
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            text = "Benchmark Configuration",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
                         Spacer(modifier = Modifier.height(12.dp))
                         
                         var expanded by remember { mutableStateOf(false) }
@@ -439,31 +305,14 @@ fun HomeScreen(
                             expanded = expanded,
                             onExpandedChange = { expanded = !expanded }
                         ) {
-                            TextField(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .menuAnchor(MenuAnchorType.PrimaryNotEditable),
+                            OutlinedTextField(
+                                modifier = Modifier.fillMaxWidth().menuAnchor(),
                                 value = selectedPreset,
                                 onValueChange = { },
                                 readOnly = true,
-                                label = { Text("Select Preset") },
-                                trailingIcon = {
-                                    Icon(
-                                        imageVector = Icons.Default.ArrowDropDown,
-                                        contentDescription = "Dropdown arrow"
-                                    )
-                                },
-                                supportingText = {
-                                    Text(
-                                        text = when (selectedPreset) {
-                                            "Auto" -> "Automatically detected based on device capabilities"
-                                            "Slow" -> "Low-intensity workload for older/budget devices"
-                                            "Mid" -> "Medium-intensity workload for standard devices"
-                                            "Flagship" -> "High-intensity workload for premium devices"
-                                            else -> ""
-                                        }
-                                    )
-                                }
+                                label = { Text("Performance Preset") },
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                                colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors()
                             )
                             
                             ExposedDropdownMenu(
@@ -472,17 +321,7 @@ fun HomeScreen(
                             ) {
                                 presets.forEach { preset ->
                                     DropdownMenuItem(
-                                        text = { 
-                                            Text(
-                                                text = when (preset) {
-                                                    "Auto" -> "Auto (Recommended)"
-                                                    "Slow" -> "Slow - Budget Devices"
-                                                    "Mid" -> "Mid - Standard Devices"
-                                                    "Flagship" -> "Flagship - Premium Devices"
-                                                    else -> preset
-                                                }
-                                            ) 
-                                        },
+                                        text = { Text(preset) },
                                         onClick = {
                                             selectedPreset = preset
                                             expanded = false
@@ -500,15 +339,19 @@ fun HomeScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(vertical = 16.dp)
+                        .height(56.dp),
+                    shape = RoundedCornerShape(12.dp)
                 ) {
+                    Icon(painterResource(id = R.drawable.mobile_24), contentDescription = null) // Generic icon
+                    Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "Start Benchmark",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Medium
+                        text = "START BENCHMARK",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.sp
                     )
                 }
-                
-                // Additional information
+
                 Text(
                     text = "Run comprehensive tests on CPU, GPU, RAM, and Storage performance",
                     fontSize = 14.sp,
@@ -518,5 +361,49 @@ fun HomeScreen(
                 )
             }
         }
+    }
+}
+
+// --- Helper Composables for Clean UI ---
+
+@Composable
+fun CompactStatItem(icon: ImageVector, value: String, tint: Color) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = tint,
+            modifier = Modifier.size(24.dp)
+        )
+        Spacer(modifier = Modifier.width(6.dp))
+        Text(
+            text = value,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+    }
+}
+
+@Composable
+fun DetailIconPair(icon: ImageVector, value: String, label: String) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.secondary,
+            modifier = Modifier.size(22.dp)
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(top = 2.dp)
+        )
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
