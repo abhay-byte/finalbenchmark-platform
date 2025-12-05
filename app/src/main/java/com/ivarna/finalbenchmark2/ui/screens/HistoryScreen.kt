@@ -102,7 +102,10 @@ fun HistoryScreen(
                                 result = result,
                                 timestampFormatter = formatter,
                                 onItemClick = {
-                                    navController.navigate("history-detail/${result.id}")
+                                    // Pass the initial data as URL-encoded JSON to avoid issues with special characters
+                                    val initialDataJson = """{"id":${result.id},"timestamp":${result.timestamp},"finalScore":${result.finalScore},"singleCoreScore":${result.singleCoreScore},"multiCoreScore":${result.multiCoreScore},"testName":"${result.testName.replace("\"", "\\\"")}","normalizedScore":${result.normalizedScore}}"""
+                                    val encodedData = java.net.URLEncoder.encode(initialDataJson, "UTF-8")
+                                    navController.navigate("history-detail/${result.id}?initialData=$encodedData")
                                 }
                             )
                         }

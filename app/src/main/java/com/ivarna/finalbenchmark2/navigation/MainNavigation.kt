@@ -172,13 +172,24 @@ fun MainNavigation(
                         }
                     )
                 }
-                composable("history-detail/{id}") { backStackEntry ->
+                composable(
+                    route = "history-detail/{id}?initialData={initialData}",
+                    arguments = listOf(
+                        androidx.navigation.navArgument("id") { type = androidx.navigation.NavType.StringType },
+                        androidx.navigation.navArgument("initialData") {
+                            type = androidx.navigation.NavType.StringType
+                            defaultValue = ""
+                        }
+                    )
+                ) { backStackEntry ->
                     val id = backStackEntry.arguments?.getString("id")?.toLongOrNull() ?: -1
+                    val initialDataJson = backStackEntry.arguments?.getString("initialData") ?: ""
                     val historyRepository = com.ivarna.finalbenchmark2.data.repository.HistoryRepository(
                         com.ivarna.finalbenchmark2.data.database.AppDatabase.getDatabase(context).benchmarkDao()
                     )
                     HistoryDetailScreen(
                         benchmarkId = id,
+                        initialDataJson = initialDataJson,
                         onBackClick = {
                             navController.popBackStack()
                         },
