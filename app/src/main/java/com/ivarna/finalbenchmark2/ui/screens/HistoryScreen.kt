@@ -15,6 +15,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.ui.platform.LocalDensity
 import com.ivarna.finalbenchmark2.ui.theme.FinalBenchmark2Theme
 import com.ivarna.finalbenchmark2.ui.viewmodels.HistoryUiModel
 import com.ivarna.finalbenchmark2.ui.viewmodels.HistoryViewModel
@@ -37,7 +40,12 @@ fun HistoryScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(top = 32.dp)  // Add top padding to prevent content from touching status bar
+                    .padding(
+                        top = WindowInsets.statusBars.getTop(LocalDensity.current).dp,
+                        start = 16.dp,
+                        end = 16.dp,
+                        bottom = 16.dp
+                    )
             ) {
                 // Header
                 Text(

@@ -114,19 +114,29 @@ fun MainNavigation(
                 // Keep the existing benchmark flow
                 composable("benchmark/{preset}") { backStackEntry ->
                     val preset = backStackEntry.arguments?.getString("preset") ?: "Auto"
+                    val historyRepository = com.ivarna.finalbenchmark2.data.repository.HistoryRepository(
+                        com.ivarna.finalbenchmark2.data.database.AppDatabase.getDatabase(context).benchmarkDao()
+                    )
+                    val benchmarkViewModel = com.ivarna.finalbenchmark2.ui.viewmodels.BenchmarkViewModel(historyRepository)
                     BenchmarkScreen(
                         preset = preset,
                         onBenchmarkComplete = { summaryJson ->
                             navController.navigate("result/$summaryJson")
-                        }
+                        },
+                        viewModel = benchmarkViewModel
                     )
                 }
                 composable("benchmark") { // Fallback route without preset
+                    val historyRepository = com.ivarna.finalbenchmark2.data.repository.HistoryRepository(
+                        com.ivarna.finalbenchmark2.data.database.AppDatabase.getDatabase(context).benchmarkDao()
+                    )
+                    val benchmarkViewModel = com.ivarna.finalbenchmark2.ui.viewmodels.BenchmarkViewModel(historyRepository)
                     BenchmarkScreen(
                         preset = "Auto",
                         onBenchmarkComplete = { summaryJson ->
                             navController.navigate("result/$summaryJson")
-                        }
+                        },
+                        viewModel = benchmarkViewModel
                     )
                 }
                 composable("result/{summaryJson}") { backStackEntry ->

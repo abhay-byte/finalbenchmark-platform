@@ -23,6 +23,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.ui.platform.LocalDensity
 import com.ivarna.finalbenchmark2.ui.theme.FinalBenchmark2Theme
 import com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkResult
 import org.json.JSONObject
@@ -100,10 +103,15 @@ fun ResultScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState()) // Make the entire screen scrollable
-                    .padding(16.dp)
-                    .padding(top = 16.dp), // Add top padding to prevent content from touching status bar
+                    .padding(
+                        top = WindowInsets.statusBars.getTop(LocalDensity.current).dp,
+                        start = 16.dp,
+                        end = 16.dp,
+                        bottom = 16.dp
+                    ),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
+                Spacer(modifier = Modifier.height(32.dp))
                 // Header
                 Text(
                     text = "Benchmark Complete!",

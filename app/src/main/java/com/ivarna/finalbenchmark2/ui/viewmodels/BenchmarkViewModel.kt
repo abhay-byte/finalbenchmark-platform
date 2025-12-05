@@ -206,19 +206,35 @@ class BenchmarkViewModel(
                     multiCoreScore = results.multiCoreScore
                 )
                 
-                // Create the CPU test detail entity (currently empty, but could store detailed scores later)
+                // Extract detailed scores for each benchmark type
+                val singleCoreResults = results.detailedResults.filter { !it.name.contains("Multi") }
+                val multiCoreResults = results.detailedResults.filter { it.name.contains("Multi") }
+                
+                // Calculate averages for each benchmark type to store in the CPU detail entity
+                val primeNumberScore = calculateAverageScore(singleCoreResults, "Prime Generation")
+                val fibonacciScore = calculateAverageScore(singleCoreResults, "Fibonacci")
+                val matrixMultiplicationScore = calculateAverageScore(singleCoreResults, "Matrix Multiplication")
+                val hashComputingScore = calculateAverageScore(singleCoreResults, "Hash Computing")
+                val stringSortingScore = calculateAverageScore(singleCoreResults, "String Sorting")
+                val rayTracingScore = calculateAverageScore(singleCoreResults, "Ray Tracing")
+                val compressionScore = calculateAverageScore(singleCoreResults, "Compression")
+                val monteCarloScore = calculateAverageScore(singleCoreResults, "Monte Carlo")
+                val jsonParsingScore = calculateAverageScore(singleCoreResults, "JSON Parsing")
+                val nQueensScore = calculateAverageScore(singleCoreResults, "N-Queens")
+                
+                // Create the CPU test detail entity with actual scores
                 val cpuTestDetailEntity = com.ivarna.finalbenchmark2.data.database.entities.CpuTestDetailEntity(
                     resultId = 0, // Will be set by the repository function
-                    primeNumberScore = 0.0,
-                    fibonacciScore = 0.0,
-                    matrixMultiplicationScore = 0.0,
-                    hashComputingScore = 0.0,
-                    stringSortingScore = 0.0,
-                    rayTracingScore = 0.0,
-                    compressionScore = 0.0,
-                    monteCarloScore = 0.0,
-                    jsonParsingScore = 0.0,
-                    nQueensScore = 0.0
+                    primeNumberScore = primeNumberScore,
+                    fibonacciScore = fibonacciScore,
+                    matrixMultiplicationScore = matrixMultiplicationScore,
+                    hashComputingScore = hashComputingScore,
+                    stringSortingScore = stringSortingScore,
+                    rayTracingScore = rayTracingScore,
+                    compressionScore = compressionScore,
+                    monteCarloScore = monteCarloScore,
+                    jsonParsingScore = jsonParsingScore,
+                    nQueensScore = nQueensScore
                 )
                 
                 // Save the benchmark result and details to the database
@@ -228,6 +244,15 @@ class BenchmarkViewModel(
             } catch (e: Exception) {
                 Log.e("BenchmarkViewModel", "Error saving benchmark result to database: ${e.message}", e)
             }
+        }
+    }
+    
+    private fun calculateAverageScore(results: List<com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkResult>, benchmarkName: String): Double {
+        val filteredResults = results.filter { it.name.contains(benchmarkName) }
+        return if (filteredResults.isNotEmpty()) {
+            filteredResults.map { it.opsPerSecond }.average()
+        } else {
+            0.0
         }
     }
 }

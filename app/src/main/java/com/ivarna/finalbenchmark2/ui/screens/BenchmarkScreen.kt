@@ -14,6 +14,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.ui.platform.LocalDensity
 import com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkEvent
 import com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkManager
 import com.ivarna.finalbenchmark2.ui.theme.FinalBenchmark2Theme
@@ -111,8 +114,14 @@ fun BenchmarkScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(top = 32.dp)  // Add top padding to prevent content from touching status bar
+                    .padding(
+                        top = WindowInsets.statusBars.getTop(LocalDensity.current).dp,
+                        start = 16.dp,
+                        end = 16.dp,
+                        bottom = 16.dp
+                    )
             ) {
+                Spacer(modifier = Modifier.height(32.dp))
                 // Header
                 Text(
                     text = "Running Benchmarks",
@@ -121,7 +130,7 @@ fun BenchmarkScreen(
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp),
+                        .padding(bottom = 16.dp),
                     textAlign = TextAlign.Center
                 )
                 
