@@ -95,7 +95,15 @@ Java_com_ivarna_finalbenchmark2_utils_VulkanNativeBridge_getVulkanInfoNative(JNI
     VkPhysicalDeviceFeatures deviceFeatures;
     vkGetPhysicalDeviceFeatures(device, &deviceFeatures); // Valid for Vulkan 1.0 features only
     
-    // Extensions
+    // Enumerate instance extensions
+    uint32_t instanceExtCount = 0;
+    vkEnumerateInstanceExtensionProperties(nullptr, &instanceExtCount, nullptr);
+    std::vector<VkExtensionProperties> instanceExtensions(instanceExtCount);
+    if (instanceExtCount > 0) {
+        vkEnumerateInstanceExtensionProperties(nullptr, &instanceExtCount, instanceExtensions.data());
+    }
+    
+    // Enumerate device extensions
     uint32_t deviceExtCount = 0;
     vkEnumerateDeviceExtensionProperties(device, nullptr, &deviceExtCount, nullptr);
     std::vector<VkExtensionProperties> deviceExtensions(deviceExtCount);
@@ -107,21 +115,45 @@ Java_com_ivarna_finalbenchmark2_utils_VulkanNativeBridge_getVulkanInfoNative(JNI
     std::stringstream json;
     json << "{";
     json << "\"supported\": true, ";
-    json << "\"apiVersion\": \"" << apiVersionToString(appInfo.apiVersion) << "\", ";
+    json << "\"apiVersion\": \"" << apiVersionToString(deviceProps.apiVersion) << "\", ";
     json << "\"driverVersion\": \"" << driverVersionToString(deviceProps.driverVersion, deviceProps.vendorID) << "\", ";
     json << "\"physicalDeviceName\": \"" << deviceProps.deviceName << "\", ";
     json << "\"physicalDeviceType\": \"" << deviceTypeToString(deviceProps.deviceType) << "\", ";
     json << "\"vendorId\": " << deviceProps.vendorID << ", ";
+    json << "\"deviceId\": " << deviceProps.deviceID << ", ";
     
     // Memory Heaps
     json << "\"memoryHeaps\": [";
     for (uint32_t i = 0; i < memoryProps.memoryHeapCount; ++i) {
         if (i > 0) json << ", ";
-        json << "{ \"size\": " << memoryProps.memoryHeaps[i].size << ", \"flags\": \"" << memoryHeapFlagsToString(memoryProps.memoryHeaps[i].flags) << "\"}";
+        json << "{";
+        json << "\"index\": " << i << ", ";
+        json << "\"size\": " << memoryProps.memoryHeaps[i].size << ", ";
+        json << "\"flags\": \"" << memoryHeapFlagsToString(memoryProps.memoryHeaps[i].flags) << "\"";
+        json << "}";
+    }
+    json << "], ";
+    
+    // Memory types
+    json << "\"memoryTypes\": [";
+    for (uint32_t i = 0; i < memoryProps.memoryTypeCount; ++i) {
+        if (i > 0) json << ", ";
+        json << "{";
+        json << "\"index\": " << i << ", ";
+        json << "\"heapIndex\": " << memoryProps.memoryTypes[i].heapIndex << ", ";
+        json << "\"propertyFlags\": " << memoryProps.memoryTypes[i].propertyFlags;
+        json << "}";
     }
     json << "], ";
     
     // Extensions
+    json << "\"instanceExtensions\": [";
+    for (uint32_t i = 0; i < instanceExtCount; ++i) {
+        if (i > 0) json << ", ";
+        json << "\"" << instanceExtensions[i].extensionName << "\"";
+    }
+    json << "], ";
+    
     json << "\"deviceExtensions\": [";
     for (uint32_t i = 0; i < deviceExtCount; ++i) {
         if (i > 0) json << ", ";
@@ -129,15 +161,64 @@ Java_com_ivarna_finalbenchmark2_utils_VulkanNativeBridge_getVulkanInfoNative(JNI
     }
     json << "], ";
     
-    // Features (REMOVED BROKEN FIELDS HERE)
+    // Features (ALL Vulkan 1.0 Features)
     json << "\"features\": {";
+    json << "\"robustBufferAccess\": " << (deviceFeatures.robustBufferAccess ? "true" : "false") << ", ";
+    json << "\"fullDrawIndexUint32\": " << (deviceFeatures.fullDrawIndexUint32 ? "true" : "false") << ", ";
+    json << "\"imageCubeArray\": " << (deviceFeatures.imageCubeArray ? "true" : "false") << ", ";
+    json << "\"independentBlend\": " << (deviceFeatures.independentBlend ? "true" : "false") << ", ";
     json << "\"geometryShader\": " << (deviceFeatures.geometryShader ? "true" : "false") << ", ";
     json << "\"tessellationShader\": " << (deviceFeatures.tessellationShader ? "true" : "false") << ", ";
+    json << "\"sampleRateShading\": " << (deviceFeatures.sampleRateShading ? "true" : "false") << ", ";
+    json << "\"dualSrcBlend\": " << (deviceFeatures.dualSrcBlend ? "true" : "false") << ", ";
+    json << "\"logicOp\": " << (deviceFeatures.logicOp ? "true" : "false") << ", ";
+    json << "\"multiDrawIndirect\": " << (deviceFeatures.multiDrawIndirect ? "true" : "false") << ", ";
+    json << "\"drawIndirectFirstInstance\": " << (deviceFeatures.drawIndirectFirstInstance ? "true" : "false") << ", ";
+    json << "\"depthClamp\": " << (deviceFeatures.depthClamp ? "true" : "false") << ", ";
+    json << "\"depthBiasClamp\": " << (deviceFeatures.depthBiasClamp ? "true" : "false") << ", ";
+    json << "\"fillModeNonSolid\": " << (deviceFeatures.fillModeNonSolid ? "true" : "false") << ", ";
+    json << "\"depthBounds\": " << (deviceFeatures.depthBounds ? "true" : "false") << ", ";
+    json << "\"wideLines\": " << (deviceFeatures.wideLines ? "true" : "false") << ", ";
+    json << "\"largePoints\": " << (deviceFeatures.largePoints ? "true" : "false") << ", ";
+    json << "\"alphaToOne\": " << (deviceFeatures.alphaToOne ? "true" : "false") << ", ";
     json << "\"multiViewport\": " << (deviceFeatures.multiViewport ? "true" : "false") << ", ";
+    json << "\"samplerAnisotropy\": " << (deviceFeatures.samplerAnisotropy ? "true" : "false") << ", ";
     json << "\"textureCompressionETC2\": " << (deviceFeatures.textureCompressionETC2 ? "true" : "false") << ", ";
     json << "\"textureCompressionASTC_LDR\": " << (deviceFeatures.textureCompressionASTC_LDR ? "true" : "false") << ", ";
-    json << "\"textureCompressionBC\": " << (deviceFeatures.textureCompressionBC ? "true" : "false");
-    json << "}"; // End features
+    json << "\"textureCompressionBC\": " << (deviceFeatures.textureCompressionBC ? "true" : "false") << ", ";
+    json << "\"occlusionQueryPrecise\": " << (deviceFeatures.occlusionQueryPrecise ? "true" : "false") << ", ";
+    json << "\"pipelineStatisticsQuery\": " << (deviceFeatures.pipelineStatisticsQuery ? "true" : "false") << ", ";
+    json << "\"vertexPipelineStoresAndAtomics\": " << (deviceFeatures.vertexPipelineStoresAndAtomics ? "true" : "false") << ", ";
+    json << "\"fragmentStoresAndAtomics\": " << (deviceFeatures.fragmentStoresAndAtomics ? "true" : "false") << ", ";
+    json << "\"shaderTessellationAndGeometryPointSize\": " << (deviceFeatures.shaderTessellationAndGeometryPointSize ? "true" : "false") << ", ";
+    json << "\"shaderImageGatherExtended\": " << (deviceFeatures.shaderImageGatherExtended ? "true" : "false") << ", ";
+    json << "\"shaderStorageImageExtendedFormats\": " << (deviceFeatures.shaderStorageImageExtendedFormats ? "true" : "false") << ", ";
+    json << "\"shaderStorageImageMultisample\": " << (deviceFeatures.shaderStorageImageMultisample ? "true" : "false") << ", ";
+    json << "\"shaderStorageImageReadWithoutFormat\": " << (deviceFeatures.shaderStorageImageReadWithoutFormat ? "true" : "false") << ", ";
+    json << "\"shaderStorageImageWriteWithoutFormat\": " << (deviceFeatures.shaderStorageImageWriteWithoutFormat ? "true" : "false") << ", ";
+    json << "\"shaderUniformBufferArrayDynamicIndexing\": " << (deviceFeatures.shaderUniformBufferArrayDynamicIndexing ? "true" : "false") << ", ";
+    json << "\"shaderSampledImageArrayDynamicIndexing\": " << (deviceFeatures.shaderSampledImageArrayDynamicIndexing ? "true" : "false") << ", ";
+    json << "\"shaderStorageBufferArrayDynamicIndexing\": " << (deviceFeatures.shaderStorageBufferArrayDynamicIndexing ? "true" : "false") << ", ";
+    json << "\"shaderStorageImageArrayDynamicIndexing\": " << (deviceFeatures.shaderStorageImageArrayDynamicIndexing ? "true" : "false") << ", ";
+    json << "\"shaderClipDistance\": " << (deviceFeatures.shaderClipDistance ? "true" : "false") << ", ";
+    json << "\"shaderCullDistance\": " << (deviceFeatures.shaderCullDistance ? "true" : "false") << ", ";
+    json << "\"shaderFloat64\": " << (deviceFeatures.shaderFloat64 ? "true" : "false") << ", ";
+    json << "\"shaderInt64\": " << (deviceFeatures.shaderInt64 ? "true" : "false") << ", ";
+    json << "\"shaderInt16\": " << (deviceFeatures.shaderInt16 ? "true" : "false") << ", ";
+    json << "\"shaderResourceResidency\": " << (deviceFeatures.shaderResourceResidency ? "true" : "false") << ", ";
+    json << "\"shaderResourceMinLod\": " << (deviceFeatures.shaderResourceMinLod ? "true" : "false") << ", ";
+    json << "\"sparseBinding\": " << (deviceFeatures.sparseBinding ? "true" : "false") << ", ";
+    json << "\"sparseResidencyBuffer\": " << (deviceFeatures.sparseResidencyBuffer ? "true" : "false") << ", ";
+    json << "\"sparseResidencyImage2D\": " << (deviceFeatures.sparseResidencyImage2D ? "true" : "false") << ", ";
+    json << "\"sparseResidencyImage3D\": " << (deviceFeatures.sparseResidencyImage3D ? "true" : "false") << ", ";
+    json << "\"sparseResidency2Samples\": " << (deviceFeatures.sparseResidency2Samples ? "true" : "false") << ", ";
+    json << "\"sparseResidency4Samples\": " << (deviceFeatures.sparseResidency4Samples ? "true" : "false") << ", ";
+    json << "\"sparseResidency8Samples\": " << (deviceFeatures.sparseResidency8Samples ? "true" : "false") << ", ";
+    json << "\"sparseResidency16Samples\": " << (deviceFeatures.sparseResidency16Samples ? "true" : "false") << ", ";
+    json << "\"sparseResidencyAliased\": " << (deviceFeatures.sparseResidencyAliased ? "true" : "false") << ", ";
+    json << "\"variableMultisampleRate\": " << (deviceFeatures.variableMultisampleRate ? "true" : "false") << ", ";
+    json << "\"inheritedQueries\": " << (deviceFeatures.inheritedQueries ? "true" : "false");
+    json << "}";
     
     json << "}"; // End root object
 
