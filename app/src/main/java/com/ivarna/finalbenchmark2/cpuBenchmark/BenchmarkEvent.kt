@@ -6,7 +6,7 @@ package com.ivarna.finalbenchmark2.cpuBenchmark
 data class BenchmarkEvent(
     val testName: String,
     val mode: String, // "SINGLE" | "MULTI"
-    val state: String, // "STARTED" | "FINISHED"
+    val state: String, // "STARTED" | "COMPLETED"
     val timeMs: Long,
     val score: Double
 )

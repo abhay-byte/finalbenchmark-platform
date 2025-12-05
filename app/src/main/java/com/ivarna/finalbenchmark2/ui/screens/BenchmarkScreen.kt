@@ -5,6 +5,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -23,27 +24,43 @@ import com.ivarna.finalbenchmark2.ui.theme.FinalBenchmark2Theme
 import com.ivarna.finalbenchmark2.ui.viewmodels.BenchmarkProgress
 import com.ivarna.finalbenchmark2.ui.viewmodels.BenchmarkState
 import com.ivarna.finalbenchmark2.ui.viewmodels.BenchmarkViewModel
+import com.ivarna.finalbenchmark2.ui.viewmodels.SystemMonitorViewModel
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import androidx.compose.foundation.lazy.rememberLazyListState
+import com.ivarna.finalbenchmark2.ui.models.SystemStats
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BenchmarkScreen(
     preset: String = "Auto",
     onBenchmarkComplete: (String) -> Unit,
-    viewModel: BenchmarkViewModel = viewModel()
+    viewModel: BenchmarkViewModel = viewModel(),
+    systemMonitorViewModel: SystemMonitorViewModel = viewModel()
 ) {
     val benchmarkState by viewModel.benchmarkState.collectAsState()
+    val uiState by viewModel.uiState.collectAsState()
+    val systemStats by systemMonitorViewModel.systemStats.collectAsState()
     val benchmarkManager = remember { BenchmarkManager() }
-    var benchmarkEvents by remember { mutableStateOf<Map<String, BenchmarkEvent>>(emptyMap()) }
+    val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
     
     // Collect benchmark events
     LaunchedEffect(Unit) {
         benchmarkManager.benchmarkEvents.collectLatest { event ->
-            benchmarkEvents = benchmarkEvents.toMutableMap().apply {
-                this[event.testName] = event
-            }
+            // We're now using the new uiState instead of individual events
+        }
+    }
+    
+    // Start monitoring when the screen is launched
+    LaunchedEffect(Unit) {
+        systemMonitorViewModel.startMonitoring()
+    }
+    
+    // Stop monitoring when the screen is disposed
+    DisposableEffect(Unit) {
+        onDispose {
+            systemMonitorViewModel.stopMonitoring()
         }
     }
     
@@ -106,6 +123,13 @@ fun BenchmarkScreen(
         viewModel.startBenchmark(preset)
     }
     
+    // Auto-scroll to the bottom when new items are added
+    LaunchedEffect(uiState.completedTests.size) {
+        if (uiState.completedTests.isNotEmpty()) {
+            listState.animateScrollToItem(uiState.completedTests.size - 1)
+        }
+    }
+    
     FinalBenchmark2Theme {
         Surface(
             modifier = Modifier.fillMaxSize(),
@@ -121,99 +145,164 @@ fun BenchmarkScreen(
                         bottom = 16.dp
                     )
             ) {
-                Spacer(modifier = Modifier.height(32.dp))
-                // Header
-                Text(
-                    text = "Running Benchmarks",
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary,
+                // Top Section (Overall Progress)
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(bottom = 16.dp),
-                    textAlign = TextAlign.Center
-                )
-                
-                // Progress indicator
-                when (val state = benchmarkState) {
-                    is BenchmarkState.Running -> {
-                        val progress = state.progress
-                        LinearProgressIndicator(
-                            progress = { progress.progress / 100f },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 8.dp)
-                        )
-                        
-                        // Show current benchmark name
-                        Text(
-                            text = "Current: ${progress.currentBenchmark}",
-                            fontSize = 16.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 4.dp),
-                            textAlign = TextAlign.Center
-                        )
-                        
-                        // Show progress percentage
-                        Text(
-                            text = "${progress.progress}% (${progress.completedBenchmarks}/${progress.totalBenchmarks})",
-                            fontSize = 14.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 4.dp),
-                            textAlign = TextAlign.Center
-                        )
-                    }
-                    is BenchmarkState.Completed -> {
-                        LinearProgressIndicator(
-                            progress = { 1f },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 8.dp)
-                        )
-                    }
-                    is BenchmarkState.Error -> {
-                        LinearProgressIndicator(
-                            progress = { 1f },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 8.dp)
-                        )
-                        Text(
-                            text = "Error: ${state.message}",
-                            fontSize = 16.sp,
-                            color = MaterialTheme.colorScheme.error,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 4.dp),
-                            textAlign = TextAlign.Center
-                        )
-                    }
-                    else -> {
-                        LinearProgressIndicator(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 8.dp)
-                        )
-                    }
-                }
-            
-            // Benchmark list
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                        .padding(16.dp)
                 ) {
-                    items(benchmarkEvents.values.toList()) { event ->
-                        BenchmarkEventCard(event = event)
+                    // Header
+                    Text(
+                        text = "Running Benchmarks",
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 16.dp),
+                        textAlign = TextAlign.Center
+                    )
+                    
+                    // Circular progress indicator
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .size(120.dp)
+                            .align(Alignment.CenterHorizontally)
+                    ) {
+                        CircularProgressIndicator(
+                            progress = { uiState.progress },
+                            strokeWidth = 8.dp,
+                            modifier = Modifier.fillMaxSize(),
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Text(
+                            text = "${(uiState.progress * 100).toInt()}%",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    }
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    // Current test name
+                    Text(
+                        text = "Current: ${uiState.currentTestName}",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 4.dp),
+                        textAlign = TextAlign.Center
+                    )
+                }
+                
+                // Middle Section (Test Log / Console)
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                ) {
+                    items(uiState.completedTests) { test ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.CheckCircle,
+                                contentDescription = "Completed",
+                                tint = androidx.compose.material3.MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = test.name,
+                                modifier = Modifier.weight(1f),
+                                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "${test.executionTimeMs.toInt()}ms",
+                                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                            )
+                        }
                     }
                 }
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                // Bottom Section (System Dashboard)
+                SystemMonitorCard(stats = systemStats)
+                
+                Spacer(modifier = Modifier.height(32.dp))
             }
         }
+    }
+}
+
+@Composable
+fun SystemMonitorCard(stats: SystemStats) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .padding(16.dp)
+                .fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            MonitorItem(
+                icon = Icons.Rounded.Memory,
+                value = "${stats.cpuLoad.toInt()}%",
+                label = "CPU"
+            )
+            MonitorItem(
+                icon = Icons.Rounded.Bolt,
+                value = "${String.format("%.2f", stats.power)}W",
+                label = "Power"
+            )
+            MonitorItem(
+                icon = Icons.Rounded.Thermostat,
+                value = "${stats.temp.toInt()}°C",
+                label = "Temp"
+            )
+        }
+    }
+}
+
+@Composable
+fun MonitorItem(icon: androidx.compose.ui.graphics.vector.ImageVector, value: String, label: String) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = label,
+            modifier = Modifier.size(24.dp)
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = value,
+            fontWeight = FontWeight.Bold,
+            fontSize = 14.sp,
+            color = MaterialTheme.colorScheme.primary
+        )
+        Text(
+            text = label,
+            fontSize = 12.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 

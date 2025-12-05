@@ -14,6 +14,22 @@ import android.util.Log
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 
+// Import SystemStats from SystemModels
+import com.ivarna.finalbenchmark2.ui.models.SystemStats
+
+// Updated BenchmarkUiState to hold granular state
+data class BenchmarkUiState(
+    val currentTestName: String = "",
+    val completedTests: List<com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkResult> = emptyList(),
+    val progress: Float = 0f,
+    val isSingleCoreFinished: Boolean = false,
+    val systemStats: SystemStats = SystemStats(),
+    val isRunning: Boolean = false,
+    val benchmarkResults: BenchmarkResults? = null,
+    val error: String? = null
+)
+
+// Old data class kept for compatibility
 data class BenchmarkProgress(
     val currentBenchmark: String = "",
     val progress: Int = 0,
@@ -31,6 +47,7 @@ data class BenchmarkResults(
     val detailedResults: List<BenchmarkResult> = emptyList() // Added for detailed view
 )
 
+// Keep the old BenchmarkState for compatibility if needed
 sealed class BenchmarkState {
     object Idle : BenchmarkState()
     data class Running(val progress: BenchmarkProgress) : BenchmarkState()
@@ -44,6 +61,10 @@ class BenchmarkViewModel(
     private val _benchmarkState = MutableStateFlow<BenchmarkState>(BenchmarkState.Idle)
     val benchmarkState: StateFlow<BenchmarkState> = _benchmarkState
     
+    // New state flow for granular benchmark UI state
+    private val _uiState = MutableStateFlow(BenchmarkUiState())
+    val uiState: StateFlow<BenchmarkUiState> = _uiState
+    
     private val benchmarkManager = BenchmarkManager()
     
     fun startBenchmark(preset: String = "Auto") {
@@ -51,6 +72,16 @@ class BenchmarkViewModel(
         
         viewModelScope.launch {
             try {
+                // Initialize the new UI state
+                _uiState.value = BenchmarkUiState(
+                    currentTestName = "Initializing...",
+                    completedTests = emptyList(),
+                    progress = 0f,
+                    isSingleCoreFinished = false,
+                    isRunning = true,
+                    error = null
+                )
+                
                 _benchmarkState.value = BenchmarkState.Running(
                     BenchmarkProgress(
                         currentBenchmark = "Initializing...",
@@ -84,19 +115,24 @@ class BenchmarkViewModel(
                     "Multi-Core N-Queens" to "runMultiCoreNqueens"
                 )
                 
-                val results = mutableListOf<BenchmarkResult>()
+                val results = mutableListOf<com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkResult>()
                 val totalBenchmarks = benchmarks.size
+                var singleCoreCompleted = 0
+                val singleCoreTotal = 10  // First 10 benchmarks are single-core
                 
                 // Run benchmarks sequentially with progress updates
                 for ((index, benchmarkPair) in benchmarks.withIndex()) {
                     val (name, functionName) = benchmarkPair
-                    _benchmarkState.value = BenchmarkState.Running(
-                        BenchmarkProgress(
-                            currentBenchmark = name,
-                            progress = ((index + 1) * 100 / totalBenchmarks),
-                            completedBenchmarks = index + 1,
-                            totalBenchmarks = totalBenchmarks
-                        )
+                    
+                    // Update UI state with current test
+                    _uiState.value = _uiState.value.copy(
+                        currentTestName = name
+                    )
+                    
+                    // Emit STARTED event
+                    benchmarkManager.emitBenchmarkStart(
+                        testName = name,
+                        mode = if (name.contains("Multi")) "MULTI" else "SINGLE"
                     )
                     
                     // Run the benchmark in the default dispatcher (background thread)
@@ -118,14 +154,41 @@ class BenchmarkViewModel(
                     
                     results.add(result)
                     
-                    // Emit benchmark event for UI updates
-                    benchmarkManager._benchmarkEvents.emit(
-                        BenchmarkEvent(
-                            testName = name,
-                            mode = if (name.contains("Multi")) "MULTI" else "SINGLE",
-                            state = "COMPLETED",
-                            timeMs = result.executionTimeMs.toLong(),
-                            score = result.opsPerSecond
+                    // Update completed tests in UI state
+                    val updatedCompletedTests = _uiState.value.completedTests + result
+                    val isSingleCoreFinished = if (index >= singleCoreTotal - 1) {
+                        true
+                    } else {
+                        _uiState.value.isSingleCoreFinished
+                    }
+                    
+                    // Update single core completed counter
+                    if (!name.contains("Multi")) {
+                        singleCoreCompleted++
+                    }
+                    
+                    // Update UI state with completed test
+                    _uiState.value = _uiState.value.copy(
+                        completedTests = updatedCompletedTests,
+                        progress = (index + 1).toFloat() / totalBenchmarks.toFloat(),
+                        isSingleCoreFinished = isSingleCoreFinished
+                    )
+                    
+                    // Emit COMPLETED event
+                    benchmarkManager.emitBenchmarkComplete(
+                        testName = name,
+                        mode = if (name.contains("Multi")) "MULTI" else "SINGLE",
+                        timeMs = result.executionTimeMs.toLong(),
+                        score = result.opsPerSecond
+                    )
+                    
+                    // Update the old benchmark state for compatibility
+                    _benchmarkState.value = BenchmarkState.Running(
+                        BenchmarkProgress(
+                            currentBenchmark = name,
+                            progress = ((index + 1) * 10 / totalBenchmarks),
+                            completedBenchmarks = index + 1,
+                            totalBenchmarks = totalBenchmarks
                         )
                     )
                 }
@@ -192,6 +255,12 @@ class BenchmarkViewModel(
                     detailedResults = results
                 )
                 
+                // Update UI state with final results
+                _uiState.value = _uiState.value.copy(
+                    benchmarkResults = benchmarkResults,
+                    isRunning = false
+                )
+                
                 _benchmarkState.value = BenchmarkState.Completed(benchmarkResults)
                 
                 // Save the benchmark results to the database
@@ -201,6 +270,10 @@ class BenchmarkViewModel(
                 
             } catch (e: Exception) {
                 Log.e("BenchmarkViewModel", "Error during benchmark execution", e)
+                _uiState.value = _uiState.value.copy(
+                    error = e.message ?: "Unknown error occurred",
+                    isRunning = false
+                )
                 _benchmarkState.value = BenchmarkState.Error(e.message ?: "Unknown error occurred")
             }
         }

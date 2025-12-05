@@ -1,100 +1,60 @@
 package com.ivarna.finalbenchmark2.ui.viewmodels
 
-import android.app.ActivityManager
-import android.app.ActivityManager.RunningAppProcessInfo
-import android.content.Context
-import android.content.pm.PackageManager
-import android.content.pm.PackageManager.GET_SERVICES
-import android.os.Build
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.ivarna.finalbenchmark2.ui.components.ProcessItem
-import com.ivarna.finalbenchmark2.ui.components.SystemInfoSummary
+import com.ivarna.finalbenchmark2.utils.CpuUtilizationUtils
+import com.ivarna.finalbenchmark2.utils.PowerUtils
+import com.ivarna.finalbenchmark2.utils.TemperatureUtils
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 
-class SystemMonitorViewModel : ViewModel() {
-    
-    private val _uiState = MutableStateFlow(SystemInfoSummary())
-    val uiState: StateFlow<SystemInfoSummary> = _uiState.asStateFlow()
-    
-    fun fetchSystemInfo(context: Context) {
-        viewModelScope.launch {
-            val summary = fetchSystemInfoInternal(context)
-            _uiState.value = summary
-        }
-    }
-    
-    private suspend fun fetchSystemInfoInternal(context: Context): SystemInfoSummary {
-        return withContext(Dispatchers.IO) {
-            val am = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
-            val pm = context.packageManager
-            
-            // 1. Get Running Processes
-            val runningProcesses = am.runningAppProcesses ?: emptyList()
-            val pids = runningProcesses.map { it.pid }.toIntArray()
-            
-            // Get memory info for each process
-            val memoryInfos = if (pids.isNotEmpty()) {
-                am.getProcessMemoryInfo(pids)
-            } else {
-                emptyArray()
-            }
-            
-            val processList = runningProcesses.mapIndexed { index, process ->
-                val memInfo = if (index < memoryInfos.size) memoryInfos[index] else null
-                val ramMb = if (memInfo != null) (memInfo.totalPss / 1024) else 0 // Total PSS is in KB, convert to MB
-                
-                ProcessItem(
-                    name = process.processName,
-                    pid = process.pid,
-                    ramUsage = ramMb,
-                    state = convertImportance(process.importance),
-                    packageName = process.processName
-                )
-            }
+// Import the SystemStats data class from SystemModels
+import com.ivarna.finalbenchmark2.ui.models.SystemStats
 
-            // 2. Get Totals (Requires QUERY_ALL_PACKAGES)
-            var totalPackages = 0
-            var totalServices = 0
-            try {
-                val allPackages = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    pm.getInstalledPackages(PackageManager.PackageInfoFlags.of(GET_SERVICES.toLong()))
-                } else {
-                    @Suppress("DEPRECATION")
-                    pm.getInstalledPackages(GET_SERVICES)
+class SystemMonitorViewModel(application: Application) : AndroidViewModel(application) {
+    private val _systemStats = MutableStateFlow(SystemStats())
+    val systemStats: StateFlow<SystemStats> = _systemStats.asStateFlow()
+    
+    private val cpuUtilizationUtils = CpuUtilizationUtils(application)
+    private val powerUtils = PowerUtils(application)
+    private val temperatureUtils = TemperatureUtils(application)
+    
+    private var monitoringJob: kotlinx.coroutines.Job? = null
+    
+    fun startMonitoring() {
+        if (monitoringJob?.isActive == true) return
+        
+        monitoringJob = viewModelScope.launch {
+            while (true) {
+                try {
+                    val cpuLoad = cpuUtilizationUtils.getCpuUtilizationPercentage()
+                    val powerInfo = powerUtils.getPowerConsumptionInfo()
+                    val cpuTemp = temperatureUtils.getCpuTemperature()
+                    
+                    _systemStats.value = SystemStats(
+                        cpuLoad = cpuLoad,
+                        power = powerInfo.power,
+                        temp = cpuTemp
+                    )
+                    
+                    kotlinx.coroutines.delay(100) // Update every 100ms for more responsive monitoring
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    kotlinx.coroutines.delay(2000) // On error, wait longer before retrying
                 }
-                
-                totalPackages = allPackages.size
-                totalServices = allPackages.sumOf { it.services?.size ?: 0 }
-            } catch (e: Exception) {
-                // Handle permission issues gracefully
-                e.printStackTrace()
             }
-            
-            SystemInfoSummary(
-                runningProcesses = runningProcesses.size,
-                totalPackages = totalPackages,
-                totalServices = totalServices,
-                processes = processList.sortedByDescending { it.ramUsage }
-            )
         }
     }
     
-    private fun convertImportance(importance: Int): String {
-        return when (importance) {
-            RunningAppProcessInfo.IMPORTANCE_FOREGROUND,
-            RunningAppProcessInfo.IMPORTANCE_VISIBLE,
-            RunningAppProcessInfo.IMPORTANCE_PERCEPTIBLE -> "Foreground"
-            RunningAppProcessInfo.IMPORTANCE_SERVICE,
-            RunningAppProcessInfo.IMPORTANCE_TOP_SLEEPING -> "Service"
-            RunningAppProcessInfo.IMPORTANCE_BACKGROUND,
-            RunningAppProcessInfo.IMPORTANCE_CACHED -> "Background"
-            else -> "Unknown"
-        }
+    fun stopMonitoring() {
+        monitoringJob?.cancel()
+    }
+    
+    override fun onCleared() {
+        super.onCleared()
+        stopMonitoring()
     }
 }

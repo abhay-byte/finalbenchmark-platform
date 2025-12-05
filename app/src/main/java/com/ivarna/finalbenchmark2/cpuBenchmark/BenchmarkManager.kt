@@ -35,6 +35,8 @@ class BenchmarkManager {
     // Default scaling factor for unknown benchmarks
     private val DEFAULT_SCALING_FACTOR = 0.00001
     
+    // This function is now deprecated as we use individual benchmarks in the ViewModel
+    // This remains for compatibility with the native suite call but won't be used in the new implementation
     suspend fun startBenchmark(preset: String = "Auto") {
         if (isRunning) return
         isRunning = true
@@ -79,6 +81,32 @@ class BenchmarkManager {
         } finally {
             isRunning = false
         }
+    }
+    
+    // Function to emit a benchmark start event
+    suspend fun emitBenchmarkStart(testName: String, mode: String) {
+        _benchmarkEvents.emit(
+            BenchmarkEvent(
+                testName = testName,
+                mode = mode,
+                state = "STARTED",
+                timeMs = 0,  // Start time not applicable for STARTED state
+                score = 0.0  // Score not applicable for STARTED state
+            )
+        )
+    }
+    
+    // Function to emit a benchmark completion event
+    suspend fun emitBenchmarkComplete(testName: String, mode: String, timeMs: Long, score: Double) {
+        _benchmarkEvents.emit(
+            BenchmarkEvent(
+                testName = testName,
+                mode = mode,
+                state = "COMPLETED",
+                timeMs = timeMs,
+                score = score
+            )
+        )
     }
     
     /**

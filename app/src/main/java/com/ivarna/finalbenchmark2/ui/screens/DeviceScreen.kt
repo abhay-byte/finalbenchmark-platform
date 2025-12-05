@@ -1860,42 +1860,7 @@ fun MemoryTab(deviceInfo: com.ivarna.finalbenchmark2.utils.DeviceInfo, viewModel
 
 @Composable
 fun SensorsTab(context: android.content.Context) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(16.dp),
-        horizontalAlignment = Alignment.Start,
-        verticalArrangement = Arrangement.Top
-    ) {
-        Text(
-            text = "Sensors Information",
-            fontSize = 24.sp,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary,
-            textAlign = TextAlign.Start,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 16.dp)
-        )
-                
-        DeviceInfoCard("Available Sensors") {
-            // Placeholder for sensor information
-            InfoRow("Accelerometer", "To be implemented")
-            InfoRow("Gyroscope", "To be implemented")
-            InfoRow("Magnetometer", "To be implemented")
-            InfoRow("Proximity", "To be implemented")
-            InfoRow("Ambient Light", "To be implemented")
-        }
-                
-        Spacer(modifier = Modifier.height(16.dp))
-                
-        DeviceInfoCard("Sensor Capabilities") {
-            // Placeholder for sensor capabilities
-            InfoRow("Max Sensors", "To be implemented")
-            InfoRow("Highest Precision", "To be implemented")
-        }
-    }
+    SensorsTabContent()
 }
 
 @Composable
