@@ -130,33 +130,49 @@ class BenchmarkViewModel(
                     )
                 }
                 
-                // Calculate aggregate scores from the actual results
-                val singleCoreResultsList = results.filter { !it.name.contains("Multi") }
-                val multiCoreResultsList = results.filter { it.name.contains("Multi") }
+                // Use the BenchmarkManager's weighted scoring logic instead of averaging
+                // Construct the JSON result format that BenchmarkManager expects
+                val singleCoreResultsJson = results.filter { !it.name.contains("Multi") }.map { result ->
+                    """{"name":"${result.name}","ops_per_second":${result.opsPerSecond}}"""
+                }.joinToString(prefix = "[", postfix = "]")
                 
-                val singleCoreScore = if (singleCoreResultsList.isNotEmpty()) {
-                    singleCoreResultsList.map { it.opsPerSecond }.average()
-                } else 0.0
+                val multiCoreResultsJson = results.filter { it.name.contains("Multi") }.map { result ->
+                    """{"name":"${result.name}","ops_per_second":${result.opsPerSecond}}"""
+                }.joinToString(prefix = "[", postfix = "]")
                 
-                val multiCoreScore = if (multiCoreResultsList.isNotEmpty()) {
-                    multiCoreResultsList.map { it.opsPerSecond }.average()
-                } else 0.0
+                val combinedResultsJson = """{
+                    "single_core_results": $singleCoreResultsJson,
+                    "multi_core_results": $multiCoreResultsJson
+                }"""
                 
-                val coreRatio = if (singleCoreScore > 0) {
-                    multiCoreScore / singleCoreScore
-                } else {
-                    0.0
-                }
+                // Use the BenchmarkManager's correct weighted scoring method
+                val summaryJson = benchmarkManager.calculateSummaryFromResults(combinedResultsJson)
                 
-                val finalWeightedScore = (singleCoreScore + multiCoreScore) / 2.0
+                // Parse the summary JSON to extract scores
+                var singleCoreScore = 0.0
+                var multiCoreScore = 0.0
+                var finalWeightedScore = 0.0
+                var normalizedScore = 0.0
+                var coreRatio = 0.0
                 
-                // Calculate normalized score using the same logic as BenchmarkManager
-                val normalizedScore = if (finalWeightedScore > 0) {
-                    // Scale scores to reasonable range (0-100000 instead of billions)
-                    val scaledScore = kotlin.math.log10(finalWeightedScore + 1) * 10000.0
-                    kotlin.math.min(scaledScore, 100000.0)
-                } else {
-                    0.0
+                try {
+                    val gson = Gson()
+                    val summaryMap = gson.fromJson(summaryJson, Map::class.java)
+                    singleCoreScore = (summaryMap["single_core_score"] as Double?) ?: 0.0
+                    multiCoreScore = (summaryMap["multi_core_score"] as Double?) ?: 0.0
+                    finalWeightedScore = (summaryMap["final_score"] as Double?) ?: 0.0
+                    normalizedScore = (summaryMap["normalized_score"] as Double?) ?: 0.0
+                    
+                    coreRatio = if (singleCoreScore > 0) {
+                        multiCoreScore / singleCoreScore
+                    } else {
+                        0.0
+                    }
+                    
+                    Log.d("BenchmarkViewModel", "Using weighted scoring - Single: $singleCoreScore, Multi: $multiCoreScore")
+                } catch (e: Exception) {
+                    Log.e("BenchmarkViewModel", "Error parsing summary JSON: ${e.message}", e)
+                    // Keep default values (already set to 0.0 above)
                 }
                 
                 Log.d("BenchmarkViewModel", "Individual Results: $results")
@@ -218,17 +234,17 @@ class BenchmarkViewModel(
                 val singleCoreResults = results.detailedResults.filter { !it.name.contains("Multi") }
                 val multiCoreResults = results.detailedResults.filter { it.name.contains("Multi") }
                 
-                // Calculate averages for each benchmark type to store in the CPU detail entity
-                val primeNumberScore = calculateAverageScore(singleCoreResults, "Prime Generation")
-                val fibonacciScore = calculateAverageScore(singleCoreResults, "Fibonacci")
-                val matrixMultiplicationScore = calculateAverageScore(singleCoreResults, "Matrix Multiplication")
-                val hashComputingScore = calculateAverageScore(singleCoreResults, "Hash Computing")
-                val stringSortingScore = calculateAverageScore(singleCoreResults, "String Sorting")
-                val rayTracingScore = calculateAverageScore(singleCoreResults, "Ray Tracing")
-                val compressionScore = calculateAverageScore(singleCoreResults, "Compression")
-                val monteCarloScore = calculateAverageScore(singleCoreResults, "Monte Carlo")
-                val jsonParsingScore = calculateAverageScore(singleCoreResults, "JSON Parsing")
-                val nQueensScore = calculateAverageScore(singleCoreResults, "N-Queens")
+                // Calculate weighted scores for each benchmark type using BenchmarkManager logic
+                val primeNumberScore = calculateWeightedScore(results.detailedResults, "Prime Generation")
+                val fibonacciScore = calculateWeightedScore(results.detailedResults, "Fibonacci")
+                val matrixMultiplicationScore = calculateWeightedScore(results.detailedResults, "Matrix Multiplication")
+                val hashComputingScore = calculateWeightedScore(results.detailedResults, "Hash Computing")
+                val stringSortingScore = calculateWeightedScore(results.detailedResults, "String Sorting")
+                val rayTracingScore = calculateWeightedScore(results.detailedResults, "Ray Tracing")
+                val compressionScore = calculateWeightedScore(results.detailedResults, "Compression")
+                val monteCarloScore = calculateWeightedScore(results.detailedResults, "Monte Carlo")
+                val jsonParsingScore = calculateWeightedScore(results.detailedResults, "JSON Parsing")
+                val nQueensScore = calculateWeightedScore(results.detailedResults, "N-Queens")
                 
                 // Create the CPU test detail entity with actual scores
                 val cpuTestDetailEntity = com.ivarna.finalbenchmark2.data.database.entities.CpuTestDetailEntity(
@@ -255,12 +271,33 @@ class BenchmarkViewModel(
         }
     }
     
-    private fun calculateAverageScore(results: List<com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkResult>, benchmarkName: String): Double {
+    private fun calculateWeightedScore(results: List<com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkResult>, benchmarkName: String): Double {
+        // Use the same scaling factors as BenchmarkManager
+        val scalingFactors = mapOf(
+            "Prime Generation" to 0.000001,
+            "Fibonacci" to 0.012,
+            "Matrix Multiplication" to 0.0000025,
+            "Hash Computing" to 0.000001,
+            "String Sorting" to 0.000015,
+            "Ray Tracing" to 0.00006,
+            "Compression" to 0.000007,
+            "Monte Carlo" to 0.00007,
+            "JSON Parsing" to 0.00004,
+            "N-Queens" to 0.007
+        )
+        
         val filteredResults = results.filter { it.name.contains(benchmarkName) }
-        return if (filteredResults.isNotEmpty()) {
-            filteredResults.map { it.opsPerSecond }.average()
-        } else {
-            0.0
+        if (filteredResults.isEmpty()) {
+            return 0.0
         }
+        
+        // Calculate weighted score
+        var totalWeightedScore = 0.0
+        for (result in filteredResults) {
+            val scalingFactor = scalingFactors[benchmarkName] ?: 0.00001
+            totalWeightedScore += result.opsPerSecond * scalingFactor
+        }
+        
+        return totalWeightedScore
     }
 }

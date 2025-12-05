@@ -156,11 +156,18 @@ class BenchmarkManager {
      * Calculates category score using proper weighted scoring with robust JSON parsing
      */
     private fun calculateCategoryScore(resultsJson: String, categoryKey: String): Double {
+        Log.d("BenchmarkManager", "=== CALCULATING CATEGORY SCORE for $categoryKey ===")
+        Log.d("BenchmarkManager", "Results JSON: $resultsJson")
+        
         return try {
             val root = JSONObject(resultsJson)
-            val resultsArray = root.optJSONArray(categoryKey) ?: return 0.0
+            val resultsArray = root.optJSONArray(categoryKey) ?: run {
+                Log.e("BenchmarkManager", "No results array found for category: $categoryKey")
+                return 0.0
+            }
             
             var totalWeightedScore = 0.0
+            Log.d("BenchmarkManager", "Found ${resultsArray.length()} benchmark results")
             
             for (i in 0 until resultsArray.length()) {
                 val item = resultsArray.getJSONObject(i)
@@ -172,38 +179,74 @@ class BenchmarkManager {
                 val weightedScore = ops * factor
                 totalWeightedScore += weightedScore
                 
-                Log.d("BenchmarkManager", "Benchmark: $name, ops/sec: $ops, factor: $factor, weighted: $weightedScore")
+                Log.d("BenchmarkManager", "  [$i] Benchmark: '$name'")
+                Log.d("BenchmarkManager", "      ops/sec: $ops")
+                Log.d("BenchmarkManager", "      scaling factor: $factor")
+                Log.d("BenchmarkManager", "      weighted score: $weightedScore")
             }
             
-            Log.d("BenchmarkManager", "Category $categoryKey total weighted score: $totalWeightedScore")
+            Log.d("BenchmarkManager", "=== FINAL CATEGORY $categoryKey SCORE: $totalWeightedScore ===")
             totalWeightedScore
             
         } catch (e: Exception) {
             Log.e("BenchmarkManager", "Error parsing JSON for category $categoryKey: ${e.message}")
+            e.printStackTrace()
             0.0
         }
     }
     
     /**
-     * Finds the appropriate scaling factor for a benchmark name
+     * Finds the appropriate scaling factor for a benchmark name with improved matching
      */
     private fun findScalingFactor(benchmarkName: String): Double {
+        Log.d("BenchmarkManager", "Looking for scaling factor for: '$benchmarkName'")
+        
         // Remove "Single-Core " or "Multi-Core " prefix for matching
         val cleanName = benchmarkName
             .replace("Single-Core ", "")
             .replace("Multi-Core ", "")
+            .trim()
+        
+        Log.d("BenchmarkManager", "Cleaned name: '$cleanName'")
         
         // Find exact match first
-        SCALING_FACTORS[cleanName]?.let { return it }
+        SCALING_FACTORS[cleanName]?.let { 
+            Log.d("BenchmarkManager", "Exact match found: $cleanName -> $it")
+            return it 
+        }
         
         // Find partial match for more flexible matching
-        SCALING_FACTORS.entries.find { cleanName.contains(it.key) }?.let { 
-            Log.d("BenchmarkManager", "Partial match found: $cleanName contains ${it.key}")
+        SCALING_FACTORS.entries.find { cleanName.contains(it.key, ignoreCase = true) }?.let { 
+            Log.d("BenchmarkManager", "Partial match found: '$cleanName' contains '${it.key}' -> ${it.value}")
             return it.value 
         }
         
+        // Try to match common abbreviations and variations
+        val normalizedName = cleanName.lowercase()
+        val keyMapping = mapOf(
+            "prime" to "Prime Generation",
+            "fibonacci" to "Fibonacci Recursive", 
+            "matrix" to "Matrix Multiplication",
+            "hash" to "Hash Computing",
+            "string" to "String Sorting",
+            "sort" to "String Sorting",
+            "ray" to "Ray Tracing",
+            "compression" to "Compression",
+            "monte" to "Monte Carlo",
+            "json" to "JSON Parsing",
+            "queens" to "N-Queens"
+        )
+        
+        keyMapping.entries.find { normalizedName.contains(it.key) }?.let { 
+            val factor = SCALING_FACTORS[it.value]
+            if (factor != null) {
+                Log.d("BenchmarkManager", "Abbreviation match: '$cleanName' matched to '${it.value}' -> $factor")
+                return factor
+            }
+        }
+        
         // Fall back to default scaling factor
-        Log.d("BenchmarkManager", "No scaling factor found for: $cleanName, using default: $DEFAULT_SCALING_FACTOR")
+        Log.w("BenchmarkManager", "No scaling factor found for: '$benchmarkName' (cleaned: '$cleanName'), using default: $DEFAULT_SCALING_FACTOR")
         return DEFAULT_SCALING_FACTOR
     }
     
