@@ -115,7 +115,7 @@ fun HomeScreen(
                     modifier = Modifier
                         .size(140.dp) // Slightly smaller for better layout
                         .clip(CircleShape)
-                        .background(if (isLightTheme) MaterialTheme.colorScheme.surface else Color.Transparent)
+                        .background(if (isLightTheme) MaterialTheme.colorScheme.surfaceVariant else Color.Transparent)
                         .padding(16.dp)
                         .padding(bottom = 8.dp)
                 ) {
@@ -126,6 +126,8 @@ fun HomeScreen(
                         contentScale = ContentScale.Crop
                     )
                 }
+
+                Spacer(modifier = Modifier.height(16.dp)) // Add spacing between logo and title
 
                 Text(
                     text = "FinalBenchmark2",
