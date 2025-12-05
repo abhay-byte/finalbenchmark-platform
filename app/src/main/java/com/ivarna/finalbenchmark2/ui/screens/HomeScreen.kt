@@ -117,7 +117,7 @@ fun HomeScreen(
                 val logoBackgroundColor = when (currentTheme) {
                     ThemeMode.SKY_BREEZE, ThemeMode.LAVENDER_DREAM -> {
                         // Use a darker background for these specific light themes
-                        MaterialTheme.colorScheme.surface
+                        MaterialTheme.colorScheme.surfaceVariant
                     }
                     else -> {
                         if (isLightTheme) MaterialTheme.colorScheme.surfaceVariant else Color.Transparent
