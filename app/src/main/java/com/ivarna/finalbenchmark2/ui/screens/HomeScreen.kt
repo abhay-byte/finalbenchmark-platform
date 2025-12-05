@@ -116,7 +116,7 @@ fun HomeScreen(
                         .padding(bottom = 8.dp)
                 ) {
                     Image(
-                        painter = painterResource(id = R.drawable.logo),
+                        painter = painterResource(id = R.drawable.logo_2),
                         contentDescription = "Logo",
                         modifier = Modifier.fillMaxSize().clip(CircleShape),
                         contentScale = ContentScale.Crop
