@@ -15,6 +15,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -565,7 +566,7 @@ fun GpuTab(
 @Composable
 fun GpuInfoContent(gpuInfo: com.ivarna.finalbenchmark2.utils.GpuInfo, gpuFrequencyState: com.ivarna.finalbenchmark2.utils.GpuFrequencyReader.GpuFrequencyState = com.ivarna.finalbenchmark2.utils.GpuFrequencyReader.GpuFrequencyState.NotSupported) {
     // GPU Overview Card
-    GpuOverviewCard(gpuInfo.basicInfo, gpuInfo.frequencyInfo, gpuFrequencyState)
+    GpuOverviewCard(gpuInfo, gpuFrequencyState)
     
     Spacer(modifier = Modifier.height(16.dp))
     
@@ -584,7 +585,9 @@ fun GpuInfoContent(gpuInfo: com.ivarna.finalbenchmark2.utils.GpuInfo, gpuFrequen
 }
 
 @Composable
-fun GpuOverviewCard(basicInfo: com.ivarna.finalbenchmark2.utils.GpuBasicInfo, frequencyInfo: com.ivarna.finalbenchmark2.utils.GpuFrequencyInfo?, gpuFrequencyState: com.ivarna.finalbenchmark2.utils.GpuFrequencyReader.GpuFrequencyState = com.ivarna.finalbenchmark2.utils.GpuFrequencyReader.GpuFrequencyState.NotSupported) {
+fun GpuOverviewCard(gpuInfo: com.ivarna.finalbenchmark2.utils.GpuInfo, gpuFrequencyState: com.ivarna.finalbenchmark2.utils.GpuFrequencyReader.GpuFrequencyState = com.ivarna.finalbenchmark2.utils.GpuFrequencyReader.GpuFrequencyState.NotSupported) {
+    val basicInfo = gpuInfo.basicInfo
+    val frequencyInfo = gpuInfo.frequencyInfo
     var expanded by remember { mutableStateOf(false) }
     
     Card(
@@ -653,7 +656,16 @@ fun GpuOverviewCard(basicInfo: com.ivarna.finalbenchmark2.utils.GpuBasicInfo, fr
                 InfoRow("Vendor", basicInfo.vendor)
                 InfoRow("Driver Version", basicInfo.driverVersion)
                 InfoRow("OpenGL ES", basicInfo.openGLVersion)
-                InfoRow("Vulkan", basicInfo.vulkanVersion ?: "Not Supported")
+                // Display more detailed Vulkan info if available
+                if (gpuInfo.vulkanInfo != null && gpuInfo.vulkanInfo.supported) {
+                    val vulkanInfo = gpuInfo.vulkanInfo
+                    val vulkanVersion = vulkanInfo.apiVersion ?: "Supported"
+                    InfoRow("Vulkan", vulkanVersion)
+                } else if (basicInfo.vulkanVersion != null) {
+                    InfoRow("Vulkan", basicInfo.vulkanVersion)
+                } else {
+                    InfoRow("Vulkan", "Not Supported")
+                }
                 
                 // Display frequency info from the frequency state if available, otherwise use static info
                 when (gpuFrequencyState) {
@@ -761,7 +773,7 @@ fun OpenGLInfoCard(openGLInfo: com.ivarna.finalbenchmark2.utils.OpenGLInfo?) {
                     }
                     
                     if (extensionsExpanded) {
-                        LazyColumn(
+                        Column(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .heightIn(max = 200.dp)
@@ -771,9 +783,9 @@ fun OpenGLInfoCard(openGLInfo: com.ivarna.finalbenchmark2.utils.OpenGLInfo?) {
                                 )
                                 .padding(8.dp)
                         ) {
-                            items(openGLInfo.extensions.size) { index ->
+                            openGLInfo.extensions.forEach { extension ->
                                 Text(
-                                    text = openGLInfo.extensions[index],
+                                    text = extension,
                                     fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
                                     fontSize = 12.sp,
                                     modifier = Modifier.padding(vertical = 2.dp)
@@ -867,7 +879,7 @@ fun VulkanInfoCard(vulkanInfo: com.ivarna.finalbenchmark2.utils.VulkanInfo?) {
                         }
                         
                         if (extensionsExpanded) {
-                            LazyColumn(
+                            Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .heightIn(max = 200.dp)
@@ -879,17 +891,15 @@ fun VulkanInfoCard(vulkanInfo: com.ivarna.finalbenchmark2.utils.VulkanInfo?) {
                             ) {
                                 // Instance extensions
                                 if (vulkanInfo.instanceExtensions.isNotEmpty()) {
-                                    item {
+                                    Text(
+                                        text = "Instance Extensions:",
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.padding(bottom = 4.dp)
+                                    )
+                                    vulkanInfo.instanceExtensions.forEach { extension ->
                                         Text(
-                                            text = "Instance Extensions:",
-                                            fontWeight = FontWeight.Bold,
-                                            color = MaterialTheme.colorScheme.primary,
-                                            modifier = Modifier.padding(bottom = 4.dp)
-                                        )
-                                    }
-                                    items(vulkanInfo.instanceExtensions.size) { index ->
-                                        Text(
-                                            text = vulkanInfo.instanceExtensions[index],
+                                            text = extension,
                                             fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
                                             fontSize = 12.sp,
                                             modifier = Modifier.padding(vertical = 2.dp)
@@ -898,23 +908,29 @@ fun VulkanInfoCard(vulkanInfo: com.ivarna.finalbenchmark2.utils.VulkanInfo?) {
                                 }
                                 
                                 // Device extensions
-                                if (vulkanInfo.deviceExtensions.isNotEmpty()) {
-                                    item {
-                                        Text(
-                                            text = "Device Extensions:",
-                                            fontWeight = FontWeight.Bold,
-                                            color = MaterialTheme.colorScheme.primary,
-                                            modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
-                                        )
-                                    }
-                                    items(vulkanInfo.deviceExtensions.size) { index ->
-                                        Text(
-                                            text = vulkanInfo.deviceExtensions[index],
-                                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-                                            fontSize = 12.sp,
-                                            modifier = Modifier.padding(vertical = 2.dp)
-                                        )
-                                    }
+                                if (vulkanInfo.deviceExtensions.isNotEmpty() && vulkanInfo.instanceExtensions.isNotEmpty()) {
+                                    Text(
+                                        text = "Device Extensions:",
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
+                                    )
+                                } else if (vulkanInfo.deviceExtensions.isNotEmpty()) {
+                                    Text(
+                                        text = "Vulkan Extensions:",
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.padding(bottom = 4.dp)
+                                    )
+                                }
+                                
+                                vulkanInfo.deviceExtensions.forEach { extension ->
+                                    Text(
+                                        text = extension,
+                                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                                        fontSize = 12.sp,
+                                        modifier = Modifier.padding(vertical = 2.dp)
+                                    )
                                 }
                             }
                         }
@@ -1525,15 +1541,12 @@ fun VulkanFeaturesGrid(features: com.ivarna.finalbenchmark2.utils.VulkanFeatures
                 modifier = Modifier.padding(bottom = 12.dp)
             )
 
-            // 2-Column Grid Layout using LazyVerticalGrid
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(2),
+            // Single Column List Layout
+            Column(
                 modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(sortedFeatures.size) { index ->
-                    val featurePair = sortedFeatures[index]
+                sortedFeatures.forEach { featurePair ->
                     val name = featurePair.component1()
                     val isSupported = featurePair.component2()
                     Row(
@@ -1542,8 +1555,9 @@ fun VulkanFeaturesGrid(features: com.ivarna.finalbenchmark2.utils.VulkanFeatures
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
-                            imageVector = if (isSupported) Icons.Rounded.CheckCircle else Icons.Rounded.Cancel,
-                            contentDescription = null,
+                            painter = if (isSupported) painterResource(id = com.ivarna.finalbenchmark2.R.drawable.check_24)
+                                     else painterResource(id = com.ivarna.finalbenchmark2.R.drawable.close_24),
+                            contentDescription = if (isSupported) "Supported" else "Not Supported",
                             tint = if (isSupported) Color(0xFF4CAF50) else Color(0xFFEF5350),
                             modifier = Modifier.size(18.dp)
                         )
