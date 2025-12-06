@@ -25,6 +25,8 @@ data class DeviceInfo(
     val availableRam: Long,
     val totalStorage: Long,
     val freeStorage: Long,
+    val totalSwap: Long,
+    val usedSwap: Long,
     val androidVersion: String,
     val apiLevel: Int,
     val kernelVersion: String,
@@ -53,6 +55,8 @@ class DeviceInfoCollector {
                 availableRam = getAvailableRam(context),
                 totalStorage = getTotalStorage(context),
                 freeStorage = getFreeStorage(context),
+                totalSwap = getTotalSwap(),
+                usedSwap = getUsedSwap(),
                 androidVersion = Build.VERSION.RELEASE,
                 apiLevel = Build.VERSION.SDK_INT,
                 kernelVersion = getKernelVersion(),
@@ -329,6 +333,56 @@ class DeviceInfoCollector {
             } catch (e: Exception) {
                 return null
             }
+        }
+        
+        private fun getTotalSwap(): Long {
+            try {
+                val memInfoFile = File("/proc/meminfo")
+                if (memInfoFile.exists()) {
+                    val lines = memInfoFile.readLines()
+                    for (line in lines) {
+                        if (line.startsWith("SwapTotal:")) {
+                            val parts = line.split("\\s+".toRegex())
+                            if (parts.size >= 2) {
+                                return (parts[1].toLongOrNull() ?: 0) * 1024 // Convert to bytes
+                            }
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                // If we can't read swap info, return 0
+            }
+            return 0
+        }
+        
+        private fun getUsedSwap(): Long {
+            try {
+                val memInfoFile = File("/proc/meminfo")
+                if (memInfoFile.exists()) {
+                    var totalSwap = 0L
+                    var freeSwap = 0L
+                    
+                    val lines = memInfoFile.readLines()
+                    for (line in lines) {
+                        if (line.startsWith("SwapTotal:")) {
+                            val parts = line.split("\\s+".toRegex())
+                            if (parts.size >= 2) {
+                                totalSwap = (parts[1].toLongOrNull() ?: 0) * 1024 // Convert to bytes
+                            }
+                        } else if (line.startsWith("SwapFree:")) {
+                            val parts = line.split("\\s+".toRegex())
+                            if (parts.size >= 2) {
+                                freeSwap = (parts[1].toLongOrNull() ?: 0) * 1024 // Convert to bytes
+                            }
+                        }
+                    }
+                    
+                    return totalSwap - freeSwap
+                }
+            } catch (e: Exception) {
+                // If we can't read swap info, return 0
+            }
+            return 0
         }
     }
 }

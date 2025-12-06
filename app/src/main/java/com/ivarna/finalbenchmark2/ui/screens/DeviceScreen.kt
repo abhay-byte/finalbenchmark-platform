@@ -54,6 +54,7 @@ import com.ivarna.finalbenchmark2.ui.viewmodels.OsViewModel
  * Format bytes to megabytes
  */
 fun formatBytesInMB(bytes: Long): String {
+    if (bytes == 0L) return "0 MB"
     val mb = bytes.toDouble() / (1024.0 * 1024.0)
     return "${mb.roundToInt()} MB"
 }
@@ -1559,8 +1560,25 @@ fun MemoryTab(deviceInfo: com.ivarna.finalbenchmark2.utils.DeviceInfo, viewModel
                     )
                     com.ivarna.finalbenchmark2.ui.components.InformationRow(
                         itemValue = com.ivarna.finalbenchmark2.domain.model.ItemValue.Text("Available RAM", formatBytesInMB(deviceInfo.availableRam)),
-                        isLastItem = true
+                        isLastItem = false
                     )
+                    
+                    // Swap information
+                    if (deviceInfo.totalSwap > 0) {
+                        com.ivarna.finalbenchmark2.ui.components.InformationRow(
+                            itemValue = com.ivarna.finalbenchmark2.domain.model.ItemValue.Text("Total Swap", formatBytesInMB(deviceInfo.totalSwap)),
+                            isLastItem = false
+                        )
+                        com.ivarna.finalbenchmark2.ui.components.InformationRow(
+                            itemValue = com.ivarna.finalbenchmark2.domain.model.ItemValue.Text("Used Swap", formatBytesInMB(deviceInfo.usedSwap)),
+                            isLastItem = true
+                        )
+                    } else {
+                        com.ivarna.finalbenchmark2.ui.components.InformationRow(
+                            itemValue = com.ivarna.finalbenchmark2.domain.model.ItemValue.Text("Swap", "Not available"),
+                            isLastItem = true
+                        )
+                    }
                 }
             }
         }

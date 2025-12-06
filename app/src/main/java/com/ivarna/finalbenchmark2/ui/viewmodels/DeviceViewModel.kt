@@ -59,6 +59,8 @@ class DeviceViewModel : ViewModel() {
         availableRam = 0,
         totalStorage = 0,
         freeStorage = 0,
+        totalSwap = 0,
+        usedSwap = 0,
         androidVersion = "",
         apiLevel = 0,
         kernelVersion = "",
