@@ -68,6 +68,7 @@ fun BenchmarkScreen(
             containerColor = MaterialTheme.colorScheme.background
             // Removed bottomBar to add spacing manually
         ) { paddingValues ->
+            // Main Column with side padding
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -208,10 +209,10 @@ fun BenchmarkScreen(
                 
                 // Add spacing above bottom card
                 Spacer(modifier = Modifier.height(24.dp))
-                
-                // Add the SystemMonitorDock here instead of in bottomBar
-                SystemMonitorDock(stats = uiState.systemStats)
             }
+            
+            // Add the SystemMonitorDock outside the main Column to span full width
+            SystemMonitorDock(stats = uiState.systemStats)
         }
     }
 }
@@ -219,30 +220,37 @@ fun BenchmarkScreen(
 // 4. System Monitor Dock (Attached to Bottom)
 @Composable
 fun SystemMonitorDock(stats: SystemStats) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        tonalElevation = 8.dp,
-        // Round top corners only, square bottom to sit flush
-        shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomStart = 0.dp, bottomEnd = 0.dp)
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 0.dp) // No horizontal padding to span full width
     ) {
-        Row(
-            modifier = Modifier
-                .padding(top = 24.dp, bottom = 16.dp) // Add proper bottom padding
-                .fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            tonalElevation = 8.dp,
+            // Round top corners only, square bottom to sit flush
+            shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomStart = 0.dp, bottomEnd = 0.dp)
         ) {
-            DockMetric(icon = Icons.Rounded.Memory, value = "${stats.cpuLoad.toInt()}%", label = "CPU")
-            
-            // Vertical Divider
-            VerticalDivider(modifier = Modifier.height(32.dp), color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f))
-            
-            DockMetric(icon = Icons.Rounded.Bolt, value = "${String.format("%.1f", stats.power)}W", label = "Power")
-            
-            VerticalDivider(modifier = Modifier.height(32.dp), color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f))
-            
-            DockMetric(icon = Icons.Rounded.Thermostat, value = "${stats.temp.toInt()}°C", label = "Temp")
+            Row(
+                modifier = Modifier
+                    .padding(top = 24.dp, bottom = 16.dp) // Add proper vertical padding
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp), // Add horizontal padding inside the surface
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                DockMetric(icon = Icons.Rounded.Memory, value = "${stats.cpuLoad.toInt()}%", label = "CPU")
+                
+                // Vertical Divider
+                VerticalDivider(modifier = Modifier.height(32.dp), color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f))
+                
+                DockMetric(icon = Icons.Rounded.Bolt, value = "${String.format("%.1f", stats.power)}W", label = "Power")
+                
+                VerticalDivider(modifier = Modifier.height(32.dp), color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f))
+                
+                DockMetric(icon = Icons.Rounded.Thermostat, value = "${stats.temp.toInt()}°C", label = "Temp")
+            }
         }
     }
 }
