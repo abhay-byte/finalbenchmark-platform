@@ -28,7 +28,10 @@ enum class PerformanceOptimizationStatus {
 data class PerformanceOptimizations(
     val sustainedPerformanceMode: PerformanceOptimizationStatus = PerformanceOptimizationStatus.DISABLED,
     val wakeLockStatus: PerformanceOptimizationStatus = PerformanceOptimizationStatus.ENABLED, // Ready state
-    val screenAlwaysOnStatus: PerformanceOptimizationStatus = PerformanceOptimizationStatus.ENABLED
+    val screenAlwaysOnStatus: PerformanceOptimizationStatus = PerformanceOptimizationStatus.ENABLED,
+    val highPriorityThreading: PerformanceOptimizationStatus = PerformanceOptimizationStatus.DISABLED,
+    val performanceHintApi: PerformanceOptimizationStatus = PerformanceOptimizationStatus.DISABLED,
+    val cpuAffinityControl: PerformanceOptimizationStatus = PerformanceOptimizationStatus.DISABLED
 )
 
 class MainViewModel : ViewModel() {
@@ -84,6 +87,24 @@ class MainViewModel : ViewModel() {
     fun updateScreenAlwaysOnStatus(status: PerformanceOptimizationStatus) {
         _performanceOptimizations.value = _performanceOptimizations.value.copy(
             screenAlwaysOnStatus = status
+        )
+    }
+    
+    fun updateHighPriorityThreadingStatus(status: PerformanceOptimizationStatus) {
+        _performanceOptimizations.value = _performanceOptimizations.value.copy(
+            highPriorityThreading = status
+        )
+    }
+    
+    fun updatePerformanceHintApiStatus(status: PerformanceOptimizationStatus) {
+        _performanceOptimizations.value = _performanceOptimizations.value.copy(
+            performanceHintApi = status
+        )
+    }
+    
+    fun updateCpuAffinityControlStatus(status: PerformanceOptimizationStatus) {
+        _performanceOptimizations.value = _performanceOptimizations.value.copy(
+            cpuAffinityControl = status
         )
     }
     

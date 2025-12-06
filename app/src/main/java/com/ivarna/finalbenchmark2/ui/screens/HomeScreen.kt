@@ -25,6 +25,7 @@ import androidx.compose.material.icons.rounded.ElectricBolt
 import androidx.compose.material.icons.rounded.Memory
 import androidx.compose.material.icons.rounded.Thermostat
 import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.DisabledByDefault
 import androidx.compose.material3.*
@@ -350,11 +351,47 @@ fun HomeScreen(
                     false
                 }
                 
+                // NEW: Get CPU optimization statuses
+                val highPriorityThreadingStatus = if (activity != null) {
+                    activity.isHighPriorityThreadingActive()
+                } else {
+                    false
+                }
+                
+                val performanceHintStatus = if (activity != null) {
+                    activity.isPerformanceHintActive()
+                } else {
+                    false
+                }
+                
+                val cpuAffinityStatus = if (activity != null) {
+                    activity.isCpuAffinityActive()
+                } else {
+                    false
+                }
+                
+                val bigCoreCount = if (activity != null) {
+                    activity.getBigCoreCount()
+                } else {
+                    0
+                }
+                
+                val littleCoreCount = if (activity != null) {
+                    activity.getLittleCoreCount()
+                } else {
+                    0
+                }
+                
                 PerformanceOptimizationsCard(
                     sustainedPerformanceStatus = sustainedPerformanceStatus,
                     wakeLockStatus = wakeLockStatus,
                     screenAlwaysOnStatus = screenAlwaysOnStatus,
-                    wakeLockStatusText = wakeLockStatusText
+                    wakeLockStatusText = wakeLockStatusText,
+                    highPriorityThreadingStatus = highPriorityThreadingStatus,
+                    performanceHintStatus = performanceHintStatus,
+                    cpuAffinityStatus = cpuAffinityStatus,
+                    bigCoreCount = bigCoreCount,
+                    littleCoreCount = littleCoreCount
                 )
                 
                 // Start CPU Benchmark Button
@@ -414,7 +451,12 @@ fun PerformanceOptimizationsCard(
     sustainedPerformanceStatus: Boolean,
     wakeLockStatus: Boolean,
     screenAlwaysOnStatus: Boolean,
-    wakeLockStatusText: String = if (wakeLockStatus) "Active" else "Ready"  // Changed to "Ready" when not active
+    wakeLockStatusText: String = if (wakeLockStatus) "Active" else "Ready",  // Changed to "Ready" when not active
+    highPriorityThreadingStatus: Boolean,
+    performanceHintStatus: Boolean,
+    cpuAffinityStatus: Boolean,
+    bigCoreCount: Int,
+    littleCoreCount: Int
 ) {
     var isExpanded by remember { mutableStateOf(false) }
 
@@ -451,8 +493,15 @@ fun PerformanceOptimizationsCard(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     // Count how many optimizations are active
-                    val activeCount = listOf(sustainedPerformanceStatus, wakeLockStatus, screenAlwaysOnStatus).count { it }
-                    val totalOptimizations = 3
+                    val activeCount = listOf(
+                        sustainedPerformanceStatus, 
+                        wakeLockStatus, 
+                        screenAlwaysOnStatus,
+                        highPriorityThreadingStatus,
+                        performanceHintStatus,
+                        cpuAffinityStatus
+                    ).count { it }
+                    val totalOptimizations = 6
                     
                     Text(
                         text = "$activeCount/$totalOptimizations",
@@ -516,6 +565,39 @@ fun PerformanceOptimizationsCard(
                         title = "Screen Always On",
                         description = "Prevents performance degradation from screen-off CPU throttling",
                         status = if (screenAlwaysOnStatus) {
+                            PerformanceOptimizationStatus.ENABLED
+                        } else {
+                            PerformanceOptimizationStatus.DISABLED
+                        }
+                    )
+                    
+                    // NEW: High Priority Threading Detail
+                    OptimizationDetailRow(
+                        title = "High Priority Threading",
+                        description = "Maximum CPU time allocation for benchmark threads",
+                        status = if (highPriorityThreadingStatus) {
+                            PerformanceOptimizationStatus.ENABLED
+                        } else {
+                            PerformanceOptimizationStatus.DISABLED
+                        }
+                    )
+                    
+                    // NEW: Performance Hint API Detail
+                    OptimizationDetailRow(
+                        title = "Performance Hint API",
+                        description = "Guides scheduler for optimal core selection (Android 12+)",
+                        status = if (performanceHintStatus) {
+                            PerformanceOptimizationStatus.ENABLED
+                        } else {
+                            PerformanceOptimizationStatus.NOT_SUPPORTED  // For older Android versions
+                        }
+                    )
+                    
+                    // NEW: CPU Affinity Control Detail
+                    OptimizationDetailRow(
+                        title = "CPU Affinity Control",
+                        description = "$bigCoreCount big cores, $littleCoreCount little cores detected",
+                        status = if (cpuAffinityStatus) {
                             PerformanceOptimizationStatus.ENABLED
                         } else {
                             PerformanceOptimizationStatus.DISABLED
