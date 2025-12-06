@@ -1,6 +1,9 @@
 package com.ivarna.finalbenchmark2
 
+import android.os.Build
 import android.os.Bundle
+import android.util.Log
+import android.view.Window
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -16,6 +19,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.runtime.LaunchedEffect
+import com.ivarna.finalbenchmark2.ui.viewmodels.PerformanceOptimizationStatus
 import com.ivarna.finalbenchmark2.navigation.MainNavigation
 import com.ivarna.finalbenchmark2.ui.theme.FinalBenchmark2Theme
 import com.ivarna.finalbenchmark2.ui.theme.LocalThemeMode
@@ -42,10 +47,16 @@ class MainActivity : ComponentActivity() {
         }
     }
     
+    private var mainViewModel: MainViewModel? = null
+    private var sustainedModeIntendedState = false
+    
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // Enable edge to edge for full screen experience
         enableEdgeToEdge()
+        
+        // Enable Sustained Performance Mode to prevent thermal throttling
+        enableSustainedPerformanceMode()
         
         // Use WindowInsetsController to hide system bars for full-screen immersive mode
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
@@ -74,8 +85,15 @@ class MainActivity : ComponentActivity() {
             
             // Initialize MainViewModel to check root access once at app startup
             val mainViewModel: MainViewModel = viewModel()
+            // Store reference to mainViewModel for use in Activity methods
+            this@MainActivity.mainViewModel = mainViewModel
             val rootStatus by mainViewModel.rootState.collectAsStateWithLifecycle()
             val isRootAvailable = rootStatus == RootStatus.ROOT_WORKING || rootStatus == RootStatus.ROOT_AVAILABLE
+            
+            // Update performance optimization status based on sustained performance mode
+            val performanceOptimizations by mainViewModel.performanceOptimizations.collectAsStateWithLifecycle()
+            
+            
             
             // Provide theme mode to the composition
             provideThemeMode(currentThemeMode) {
@@ -92,6 +110,59 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                 }
+            }
+        }
+    }
+    
+    /**
+     * Enable Sustained Performance Mode to prevent thermal throttling
+     * This should be called as early as possible in the Activity lifecycle
+     */
+    private fun enableSustainedPerformanceMode() {
+        // Check if device supports API 24 or higher
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            try {
+                // Enable sustained performance mode
+                window.setSustainedPerformanceMode(true)
+                sustainedModeIntendedState = true
+                
+                // Log success (optional but recommended for debugging)
+                Log.i("FinalBenchmark2", "Sustained Performance Mode: ENABLED")
+            } catch (e: Exception) {
+                // Handle any errors gracefully
+                sustainedModeIntendedState = false
+                Log.e("FinalBenchmark2", "Error enabling Sustained Performance Mode", e)
+                // Check if it's because the device doesn't support it
+                if (e is java.lang.UnsupportedOperationException) {
+                    Log.w("FinalBenchmark2", "Sustained Performance Mode: NOT SUPPORTED on this device")
+                }
+            }
+        } else {
+            // Running on Android < 7.0, feature not available
+            sustainedModeIntendedState = false
+            Log.w("FinalBenchmark2", "Sustained Performance Mode requires API 24+. Current API: ${Build.VERSION.SDK_INT}")
+        }
+    }
+    
+    /**
+     * Check if sustained performance mode is currently active by checking our internal state
+     * This method returns our intended state of the sustained performance mode
+     */
+    fun isSustainedPerformanceModeActive(): Boolean {
+        return sustainedModeIntendedState
+    }
+    
+    override fun onDestroy() {
+        super.onDestroy()
+        // Sustained mode is automatically disabled when activity is destroyed
+        // But you can manually disable it if needed:
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            try {
+                this@MainActivity.window.setSustainedPerformanceMode(false)
+                sustainedModeIntendedState = false
+            } catch (e: Exception) {
+                Log.e("FinalBenchmark2", "Error disabling Sustained Performance Mode", e)
+                sustainedModeIntendedState = false
             }
         }
     }

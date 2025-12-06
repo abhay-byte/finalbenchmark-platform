@@ -24,9 +24,13 @@ import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material.icons.rounded.ElectricBolt
 import androidx.compose.material.icons.rounded.Memory
 import androidx.compose.material.icons.rounded.Thermostat
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.DisabledByDefault
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
@@ -48,6 +52,13 @@ import com.ivarna.finalbenchmark2.utils.CpuUtilizationUtils
 import com.ivarna.finalbenchmark2.utils.PowerUtils
 import com.ivarna.finalbenchmark2.utils.TemperatureUtils
 import kotlinx.coroutines.delay
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.lazy.LazyColumn
+import com.ivarna.finalbenchmark2.ui.viewmodels.PerformanceOptimizationStatus
+import com.ivarna.finalbenchmark2.ui.viewmodels.PerformanceOptimizations
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.ivarna.finalbenchmark2.ui.viewmodels.MainViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -300,7 +311,21 @@ fun HomeScreen(
                 }
                 // =========================================================
 
-
+                // =========================================================
+                // PERFORMANCE OPTIMIZATIONS CARD
+                // =========================================================
+                // PERFORMANCE OPTIMIZATIONS CARD
+                // =========================================================
+                // Access the MainActivity to get the sustained performance mode status
+                val context = LocalContext.current
+                val activity = context as? com.ivarna.finalbenchmark2.MainActivity
+                val sustainedPerformanceStatus = if (activity != null) {
+                    activity.isSustainedPerformanceModeActive()
+                } else {
+                    false
+                }
+                
+                PerformanceOptimizationsCard(sustainedPerformanceStatus = sustainedPerformanceStatus)
                 
                 // Start CPU Benchmark Button
                 Button(
@@ -351,6 +376,177 @@ fun CompactStatItem(icon: ImageVector, value: String, tint: Color) {
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurface
         )
+    }
+}
+
+@Composable
+fun PerformanceOptimizationsCard(
+    sustainedPerformanceStatus: Boolean
+) {
+    var isExpanded by remember { mutableStateOf(false) }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp)
+            .clickable { isExpanded = !isExpanded },
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainer
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            // Header Row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Performance Optimizations",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Indicator for sustained performance mode based on the boolean parameter
+                    val sustainedStatus = if (sustainedPerformanceStatus) {
+                        PerformanceOptimizationStatus.ENABLED
+                    } else {
+                        PerformanceOptimizationStatus.DISABLED
+                    }
+                    val sustainedStatusColor = when (sustainedStatus) {
+                        PerformanceOptimizationStatus.ENABLED -> MaterialTheme.colorScheme.primary
+                        PerformanceOptimizationStatus.DISABLED -> MaterialTheme.colorScheme.error
+                        PerformanceOptimizationStatus.NOT_SUPPORTED -> MaterialTheme.colorScheme.outline
+                    }
+                    val sustainedStatusText = when (sustainedStatus) {
+                        PerformanceOptimizationStatus.ENABLED -> "ON"
+                        PerformanceOptimizationStatus.DISABLED -> "OFF"
+                        PerformanceOptimizationStatus.NOT_SUPPORTED -> "N/A"
+                    }
+
+                    Text(
+                        text = sustainedStatusText,
+                        color = sustainedStatusColor,
+                        fontWeight = FontWeight.SemiBold
+                    )
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    Icon(
+                        imageVector = Icons.Rounded.ArrowDropDown,
+                        contentDescription = "Expand",
+                        modifier = Modifier
+                            .size(28.dp)
+                            .rotate(if (isExpanded) 180f else 0f),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            // Expanded Details
+            AnimatedVisibility(
+                visible = isExpanded,
+                enter = expandVertically(animationSpec = tween(300)) + fadeIn(),
+                exit = shrinkVertically(animationSpec = tween(300)) + fadeOut()
+            ) {
+                Column(modifier = Modifier.padding(top = 16.dp)) {
+                    HorizontalDivider(
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                        modifier = Modifier.padding(bottom = 16.dp)
+                    )
+
+                    // Sustained Performance Mode Detail
+                    OptimizationDetailRow(
+                        title = "Sustained Performance Mode",
+                        description = "Prevents thermal throttling during benchmarks",
+                        status = if (sustainedPerformanceStatus) {
+                            PerformanceOptimizationStatus.ENABLED
+                        } else {
+                            PerformanceOptimizationStatus.DISABLED
+                        }
+                    )
+
+                    // Add more optimization checks here in the future
+                    // For example: High priority threads, wake locks, etc.
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun OptimizationDetailRow(
+    title: String,
+    description: String,
+    status: PerformanceOptimizationStatus
+) {
+    val statusColor = when (status) {
+        PerformanceOptimizationStatus.ENABLED -> MaterialTheme.colorScheme.primary
+        PerformanceOptimizationStatus.DISABLED -> MaterialTheme.colorScheme.error
+        PerformanceOptimizationStatus.NOT_SUPPORTED -> MaterialTheme.colorScheme.outline
+    }
+    
+    val statusText = when (status) {
+        PerformanceOptimizationStatus.ENABLED -> "Enabled"
+        PerformanceOptimizationStatus.DISABLED -> "Disabled"
+        PerformanceOptimizationStatus.NOT_SUPPORTED -> "Not Supported"
+    }
+    
+    val statusIcon = when (status) {
+        PerformanceOptimizationStatus.ENABLED -> Icons.Rounded.Check
+        PerformanceOptimizationStatus.DISABLED -> Icons.Rounded.Close
+        PerformanceOptimizationStatus.NOT_SUPPORTED -> Icons.Rounded.DisabledByDefault
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = statusText,
+                    color = statusColor,
+                    fontWeight = FontWeight.Medium
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Icon(
+                    imageVector = statusIcon,
+                    contentDescription = null,
+                    tint = statusColor
+                )
+            }
+        }
     }
 }
 

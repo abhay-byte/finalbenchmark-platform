@@ -17,10 +17,24 @@ enum class RootStatus {
     ROOT_WORKING       // Device is rooted and commands work
 }
 
+// Enum to represent performance optimization states
+enum class PerformanceOptimizationStatus {
+    NOT_SUPPORTED,     // Device doesn't support the optimization
+    DISABLED,          // Optimization is available but disabled
+    ENABLED            // Optimization is active
+}
+
+data class PerformanceOptimizations(
+    val sustainedPerformanceMode: PerformanceOptimizationStatus = PerformanceOptimizationStatus.DISABLED
+)
+
 class MainViewModel : ViewModel() {
     
     private val _rootState = MutableStateFlow(RootStatus.NO_ROOT)
     val rootState: StateFlow<RootStatus> = _rootState.asStateFlow()
+    
+    private val _performanceOptimizations = MutableStateFlow(PerformanceOptimizations())
+    val performanceOptimizations: StateFlow<PerformanceOptimizations> = _performanceOptimizations.asStateFlow()
 
     init {
         checkRootAccess()
@@ -50,5 +64,11 @@ class MainViewModel : ViewModel() {
             Log.d("MainViewModel", "Final root access result: $result")
             _rootState.value = result
         }
+    }
+    
+    fun updateSustainedPerformanceModeStatus(status: PerformanceOptimizationStatus) {
+        _performanceOptimizations.value = _performanceOptimizations.value.copy(
+            sustainedPerformanceMode = status
+        )
     }
 }
