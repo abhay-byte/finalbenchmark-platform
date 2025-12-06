@@ -108,9 +108,9 @@ fun BenchmarkScreen(
     }
     
     // Auto-scroll to the bottom when new items are added
-    LaunchedEffect(uiState.completedTests.size) {
-        if (uiState.completedTests.isNotEmpty()) {
-            listState.animateScrollToItem(uiState.completedTests.size - 1)
+    LaunchedEffect(uiState.allTestStates.size) {
+        if (uiState.allTestStates.isNotEmpty()) {
+            listState.animateScrollToItem(uiState.allTestStates.size - 1)
         }
     }
     
@@ -191,31 +191,8 @@ fun BenchmarkScreen(
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp)
                 ) {
-                    items(uiState.completedTests, key = { it.name }) { test ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Rounded.CheckCircle,
-                                contentDescription = "Completed",
-                                tint = androidx.compose.material3.MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = test.name,
-                                modifier = Modifier.weight(1f),
-                                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "${test.executionTimeMs.toInt()}ms",
-                                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
-                            )
-                        }
+                    items(uiState.allTestStates, key = { it.name }) { testState ->
+                        TestStateItem(testState = testState)
                     }
                 }
                 
@@ -295,97 +272,74 @@ fun MonitorItem(icon: androidx.compose.ui.graphics.vector.ImageVector, value: St
 */
 fun determineRating(normalizedScore: Double): String {
   return when {
-      normalizedScore >= 80000 -> "★★★★★"
+      normalizedScore >= 800 -> "★★★"
       normalizedScore >= 60000 -> "★★☆"
       normalizedScore >= 40000 -> "★★★☆☆"
-      normalizedScore >= 20000 -> "★★☆☆☆"
+      normalizedScore >= 2000 -> "★★☆☆☆"
       normalizedScore >= 10000 -> "★☆☆☆"
       else -> "☆☆☆☆☆"
   }
 }
 
 @Composable
-fun BenchmarkEventCard(event: BenchmarkEvent) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+fun TestStateItem(testState: com.ivarna.finalbenchmark2.ui.viewmodels.TestState) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = event.testName,
-                    fontWeight = FontWeight.Medium,
-                    fontSize = 16.sp
+        // Status icon
+        when (testState.status) {
+            com.ivarna.finalbenchmark2.ui.viewmodels.TestStatus.PENDING -> {
+                Icon(
+                    imageVector = Icons.Rounded.RadioButtonUnchecked,
+                    contentDescription = "Pending",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(20.dp)
                 )
-                
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    val statusColor = when (event.state) {
-                        "PENDING" -> MaterialTheme.colorScheme.onSurfaceVariant
-                        "RUNNING" -> MaterialTheme.colorScheme.primary
-                        "COMPLETED" -> MaterialTheme.colorScheme.secondary
-                        else -> MaterialTheme.colorScheme.onSurfaceVariant
-                    }
-                    
-                    val statusText = when (event.state) {
-                        "PENDING" -> "Pending"
-                        "RUNNING" -> "Running"
-                        "COMPLETED" -> "Completed"
-                        else -> event.state
-                    }
-                    
-                    Text(
-                        text = "$statusText | ${event.mode.lowercase().capitalize()}",
-                        color = statusColor,
-                        fontSize = 14.sp
-                    )
-                    
-                    if (event.state == "COMPLETED") {
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "${event.timeMs}ms | Score: ${String.format("%.2f", event.score)}",
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontSize = 14.sp
-                        )
-                    }
-                }
             }
-            
-            // Status indicator
-            when (event.state) {
-                "PENDING" -> {
-                    CircularProgressIndicator(
-                        strokeWidth = 2.dp,
-                        modifier = Modifier.size(20.dp),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                "RUNNING" -> {
-                    CircularProgressIndicator(
-                        strokeWidth = 2.dp,
-                        modifier = Modifier.size(20.dp),
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                }
-                "COMPLETED" -> {
-                    Icon(
-                        imageVector = androidx.compose.material.icons.Icons.Default.CheckCircle,
-                        contentDescription = "Completed",
-                        tint = MaterialTheme.colorScheme.secondary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-                else -> {
-                    Text(text = event.state)
-                }
+            com.ivarna.finalbenchmark2.ui.viewmodels.TestStatus.RUNNING -> {
+                CircularProgressIndicator(
+                    strokeWidth = 2.dp,
+                    modifier = Modifier.size(20.dp),
+                    color = MaterialTheme.colorScheme.primary
+                )
             }
+            com.ivarna.finalbenchmark2.ui.viewmodels.TestStatus.COMPLETED -> {
+                Icon(
+                    imageVector = Icons.Rounded.CheckCircle,
+                    contentDescription = "Completed",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
+        
+        Spacer(modifier = Modifier.width(8.dp))
+        
+        // Test name
+        Text(
+            text = testState.name,
+            modifier = Modifier.weight(1f),
+            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+            color = when (testState.status) {
+                com.ivarna.finalbenchmark2.ui.viewmodels.TestStatus.PENDING -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                com.ivarna.finalbenchmark2.ui.viewmodels.TestStatus.RUNNING -> MaterialTheme.colorScheme.primary
+                com.ivarna.finalbenchmark2.ui.viewmodels.TestStatus.COMPLETED -> MaterialTheme.colorScheme.onSurface
+            },
+            fontWeight = if (testState.status == com.ivarna.finalbenchmark2.ui.viewmodels.TestStatus.RUNNING) FontWeight.Bold else FontWeight.Normal
+        )
+        
+        Spacer(modifier = Modifier.width(8.dp))
+        
+        // Execution time (only for completed tests)
+        if (testState.status == com.ivarna.finalbenchmark2.ui.viewmodels.TestStatus.COMPLETED && testState.result != null) {
+            Text(
+                text = "${testState.result.executionTimeMs.toInt()}ms",
+                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }

@@ -27,6 +27,19 @@ import com.ivarna.finalbenchmark2.utils.CpuUtilizationUtils
 import com.ivarna.finalbenchmark2.utils.PowerUtils
 import com.ivarna.finalbenchmark2.utils.TemperatureUtils
 
+// Test state tracking
+data class TestState(
+    val name: String,
+    val status: TestStatus,
+    val result: com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkResult? = null
+)
+
+enum class TestStatus {
+    PENDING,
+    RUNNING,
+    COMPLETED
+}
+
 // Updated BenchmarkUiState to hold granular state
 data class BenchmarkUiState(
     val currentTestName: String = "",
@@ -36,7 +49,8 @@ data class BenchmarkUiState(
     val systemStats: SystemStats = SystemStats(),
     val isRunning: Boolean = false,
     val benchmarkResults: BenchmarkResults? = null,
-    val error: String? = null
+    val error: String? = null,
+    val allTestStates: List<TestState> = emptyList()
 )
 
 // Old data class kept for compatibility
@@ -117,25 +131,6 @@ class BenchmarkViewModel(
         
         viewModelScope.launch {
             try {
-                // Initialize the new UI state
-                _uiState.value = BenchmarkUiState(
-                    currentTestName = "Initializing...",
-                    completedTests = emptyList(),
-                    progress = 0f,
-                    isSingleCoreFinished = false,
-                    isRunning = true,
-                    error = null
-                )
-                
-                _benchmarkState.value = BenchmarkState.Running(
-                    BenchmarkProgress(
-                        currentBenchmark = "Initializing...",
-                        progress = 0,
-                        completedBenchmarks = 0,
-                        totalBenchmarks = 20 // 10 single-core + 10 multi-core
-                    )
-                )
-                
                 // Define all benchmark functions with names
                 val benchmarks = listOf(
                     "Single-Core Prime Generation" to "runSingleCorePrimeGeneration",
@@ -160,6 +155,35 @@ class BenchmarkViewModel(
                     "Multi-Core N-Queens" to "runMultiCoreNqueens"
                 )
                 
+                // Initialize all test states
+                val initialTestStates = benchmarks.map { (name, _) ->
+                    TestState(
+                        name = name,
+                        status = TestStatus.PENDING,
+                        result = null
+                    )
+                }
+                
+                // Initialize the new UI state
+                _uiState.value = BenchmarkUiState(
+                    currentTestName = "Initializing...",
+                    completedTests = emptyList(),
+                    progress = 0f,
+                    isSingleCoreFinished = false,
+                    isRunning = true,
+                    error = null,
+                    allTestStates = initialTestStates
+                )
+                
+                _benchmarkState.value = BenchmarkState.Running(
+                    BenchmarkProgress(
+                        currentBenchmark = "Initializing...",
+                        progress = 0,
+                        completedBenchmarks = 0,
+                        totalBenchmarks = 20 // 10 single-core + 10 multi-core
+                    )
+                )
+                
                 val results = mutableListOf<com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkResult>()
                 val totalBenchmarks = benchmarks.size
                 var singleCoreCompleted = 0
@@ -169,9 +193,16 @@ class BenchmarkViewModel(
                 for ((index, benchmarkPair) in benchmarks.withIndex()) {
                     val (name, functionName) = benchmarkPair
                     
-                    // Update UI state with current test
+                    // Update state to RUNNING
                     _uiState.value = _uiState.value.copy(
-                        currentTestName = name
+                        currentTestName = name,
+                        allTestStates = _uiState.value.allTestStates.mapIndexed { i, state ->
+                            when {
+                                i < index -> state // Keep completed
+                                i == index -> state.copy(status = TestStatus.RUNNING)
+                                else -> state // Keep pending
+                            }
+                        }
                     )
                     
                     // Emit STARTED event
@@ -216,7 +247,14 @@ class BenchmarkViewModel(
                     _uiState.value = _uiState.value.copy(
                         completedTests = updatedCompletedTests,
                         progress = (index + 1).toFloat() / totalBenchmarks.toFloat(),
-                        isSingleCoreFinished = isSingleCoreFinished
+                        isSingleCoreFinished = isSingleCoreFinished,
+                        allTestStates = _uiState.value.allTestStates.mapIndexed { i, state ->
+                            if (i == index) {
+                                state.copy(status = TestStatus.COMPLETED, result = result)
+                            } else {
+                                state
+                            }
+                        }
                     )
                     
                     // Emit COMPLETED event
@@ -237,9 +275,9 @@ class BenchmarkViewModel(
                         )
                     )
                     
-                    // UI Breathing Room: Give Compose 50ms to render the "Checkmark" 
+                    // UI Breathing Room: Give Compose 50ms to render the "Checkmark"
                     // before the next heavy native test spikes the CPU.
-                    delay(50) 
+                    delay(50)
                 }
                 
                 // Use the BenchmarkManager's weighted scoring logic instead of averaging
