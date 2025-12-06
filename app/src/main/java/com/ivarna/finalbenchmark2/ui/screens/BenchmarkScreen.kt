@@ -108,7 +108,7 @@ fun BenchmarkScreen(
     }
     
     // Auto-scroll to the currently running test
-    LaunchedEffect(uiState.allTestStates.count { it.status == com.ivarna.finalbenchmark2.ui.viewmodels.TestStatus.RUNNING }) {
+    LaunchedEffect(uiState.allTestStates) { // Watch the entire list for changes
         val runningIndex = uiState.allTestStates.indexOfFirst {
             it.status == com.ivarna.finalbenchmark2.ui.viewmodels.TestStatus.RUNNING
         }
@@ -194,7 +194,7 @@ fun BenchmarkScreen(
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp)
                 ) {
-                    items(uiState.allTestStates, key = { it.name }) { testState ->
+                    items(uiState.allTestStates, key = { "${it.name}_${it.status}" }) { testState ->
                         TestStateItem(testState = testState)
                     }
                 }

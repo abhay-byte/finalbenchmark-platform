@@ -164,6 +164,8 @@ class BenchmarkViewModel(
                     )
                 }
                 
+                Log.d("BenchmarkViewModel", "Initializing benchmark with ${initialTestStates.size} tests: ${initialTestStates.map { it.name }}")
+                
                 // Initialize the new UI state
                 _uiState.value = BenchmarkUiState(
                     currentTestName = "Initializing...",
@@ -174,6 +176,8 @@ class BenchmarkViewModel(
                     error = null,
                     allTestStates = initialTestStates
                 )
+                
+                Log.d("BenchmarkViewModel", "Initial UI state set with allTestStates: ${_uiState.value.allTestStates.map { "${it.name}(${it.status})" }}")
                 
                 _benchmarkState.value = BenchmarkState.Running(
                     BenchmarkProgress(
@@ -194,16 +198,27 @@ class BenchmarkViewModel(
                     val (name, functionName) = benchmarkPair
                     
                     // Update state to RUNNING
+                    Log.d("BenchmarkViewModel", "Setting test $index ($name) to RUNNING status")
                     _uiState.value = _uiState.value.copy(
                         currentTestName = name,
                         allTestStates = _uiState.value.allTestStates.mapIndexed { i, state ->
                             when {
-                                i < index && state.status == TestStatus.COMPLETED -> state // Keep completed tests as completed
-                                i == index -> state.copy(status = TestStatus.RUNNING) // Set current test to running
-                                else -> state // Keep pending tests as pending
+                                i < index && state.status == TestStatus.COMPLETED -> {
+                                    Log.d("BenchmarkViewModel", "Test $i remains COMPLETED: ${state.name}")
+                                    state // Keep completed tests as completed
+                                }
+                                i == index -> {
+                                    Log.d("BenchmarkViewModel", "Test $i now RUNNING: ${state.name}")
+                                    state.copy(status = TestStatus.RUNNING) // Set current test to running
+                                }
+                                else -> {
+                                    Log.d("BenchmarkViewModel", "Test $i remains PENDING: ${state.name}")
+                                    state // Keep pending tests as pending
+                                }
                             }
                         }
                     )
+                    Log.d("BenchmarkViewModel", "Current allTestStates after setting RUNNING: ${_uiState.value.allTestStates.map { "${it.name}(${it.status})" }}")
                     
                     // Emit STARTED event
                     benchmarkManager.emitBenchmarkStart(
@@ -244,18 +259,29 @@ class BenchmarkViewModel(
                     }
                     
                     // Update UI state with completed test
+                    Log.d("BenchmarkViewModel", "Setting test $index ($name) to COMPLETED status with result: ${result.executionTimeMs}ms")
                     _uiState.value = _uiState.value.copy(
                         completedTests = updatedCompletedTests,
                         progress = (index + 1).toFloat() / totalBenchmarks.toFloat(),
                         isSingleCoreFinished = isSingleCoreFinished,
                         allTestStates = _uiState.value.allTestStates.mapIndexed { i, state ->
                             when {
-                                i < index && state.status == TestStatus.COMPLETED -> state // Keep already completed tests as completed
-                                i == index -> state.copy(status = TestStatus.COMPLETED, result = result) // Set current test to completed
-                                else -> state // Keep pending tests as pending
+                                i < index && state.status == TestStatus.COMPLETED -> {
+                                    Log.d("BenchmarkViewModel", "Test $i remains COMPLETED: ${state.name}")
+                                    state // Keep already completed tests as completed
+                                }
+                                i == index -> {
+                                    Log.d("BenchmarkViewModel", "Test $i now COMPLETED: ${state.name}, time: ${result.executionTimeMs}ms")
+                                    state.copy(status = TestStatus.COMPLETED, result = result) // Set current test to completed
+                                }
+                                else -> {
+                                    Log.d("BenchmarkViewModel", "Test $i remains PENDING: ${state.name}")
+                                    state // Keep pending tests as pending
+                                }
                             }
                         }
                     )
+                    Log.d("BenchmarkViewModel", "Current allTestStates after setting COMPLETED: ${_uiState.value.allTestStates.map { "${it.name}(${it.status})" }}")
                     
                     // Emit COMPLETED event
                     benchmarkManager.emitBenchmarkComplete(
