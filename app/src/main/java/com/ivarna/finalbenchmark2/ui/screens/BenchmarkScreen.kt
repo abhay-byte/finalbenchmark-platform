@@ -39,11 +39,12 @@ fun BenchmarkScreen(
 ) {
     val benchmarkState by viewModel.benchmarkState.collectAsState()
     val uiState by viewModel.uiState.collectAsState()
-    // Use the throttled system stats from the BenchmarkViewModel instead of SystemMonitorViewModel
-    val systemStats by viewModel.throttledSystemStats.collectAsState()
     val benchmarkManager = remember { BenchmarkManager() }
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
+    
+    // Extract system stats from uiState
+    val systemStats = uiState.systemStats
     
     // Removed unnecessary LaunchedEffect that was collecting benchmarkManager.benchmarkEvents
     // The ViewModel now handles event accumulation properly

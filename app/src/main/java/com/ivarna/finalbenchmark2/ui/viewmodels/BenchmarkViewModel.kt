@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update // Required for thread-safe updates
 
 // Import SystemStats from SystemModels
 import com.ivarna.finalbenchmark2.ui.models.SystemStats
@@ -90,44 +91,43 @@ class BenchmarkViewModel(
     private val _uiState = MutableStateFlow(BenchmarkUiState())
     val uiState: StateFlow<BenchmarkUiState> = _uiState
     
-    // Throttled system stats flow for benchmark screen - Fixed to 1 second interval
+    private val benchmarkManager = BenchmarkManager()
     private val cpuUtils = CpuUtilizationUtils(application)
     private val powerUtils = PowerUtils(application)
     private val tempUtils = TemperatureUtils(application)
     
-    val throttledSystemStats = combine(
-        getThrottledCpuFlow(),
-        getThrottledPowerFlow(),
-        getThrottledTempFlow()
-    ) { cpu, power, temp ->
-        SystemStats(cpuLoad = cpu, power = power, temp = temp)
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(), SystemStats())
-    
-    private fun getThrottledCpuFlow() = flow<Float> { 
-        while (true) {
-            emit(cpuUtils.getCpuUtilizationPercentage())
-            delay(1000) // Fixed 1 second interval
+    // Guard to prevent double-execution on screen rotation
+    private var isBenchmarkRunning = false
+
+    init {
+        // Start the system monitoring loop
+        startSystemMonitoring()
+    }
+
+    private fun startSystemMonitoring() {
+        viewModelScope.launch(Dispatchers.IO) {
+            while (true) { // Changed from 'isActive' to 'true' for continuous monitoring
+                val stats = SystemStats(
+                    cpuLoad = cpuUtils.getCpuUtilizationPercentage(),
+                    power = powerUtils.getPowerConsumptionInfo().power,
+                    temp = tempUtils.getCpuTemperature()
+                )
+                
+                // FIX: Use .update for thread safety
+                // This ensures we modify the *current* state, not an old copy
+                _uiState.update { currentState ->
+                    currentState.copy(systemStats = stats)
+                }
+                
+                delay(10)
+            }
         }
     }
-    
-    private fun getThrottledPowerFlow() = flow<Float> { 
-        while (true) {
-            emit(powerUtils.getPowerConsumptionInfo().power)
-            delay(100) // Fixed 1 second interval
-        }
-    }
-    
-    private fun getThrottledTempFlow() = flow<Float> { 
-        while (true) {
-            emit(tempUtils.getCpuTemperature())
-            delay(1000) // Fixed 1 second interval
-        }
-    }
-    
-    private val benchmarkManager = BenchmarkManager()
     
     fun startBenchmark(preset: String = "Auto") {
-        if (_benchmarkState.value is BenchmarkState.Running) return
+        // Prevent restarting if already running or finished
+        if (isBenchmarkRunning) return
+        isBenchmarkRunning = true
         
         viewModelScope.launch {
             try {
@@ -167,15 +167,17 @@ class BenchmarkViewModel(
                 Log.d("BenchmarkViewModel", "Initializing benchmark with ${initialTestStates.size} tests: ${initialTestStates.map { it.name }}")
                 
                 // Initialize the new UI state
-                _uiState.value = BenchmarkUiState(
-                    currentTestName = "Initializing...",
-                    completedTests = emptyList(),
-                    progress = 0f,
-                    isSingleCoreFinished = false,
-                    isRunning = true,
-                    error = null,
-                    allTestStates = initialTestStates
-                )
+                _uiState.update { currentState ->
+                    BenchmarkUiState(
+                        currentTestName = "Initializing...",
+                        completedTests = emptyList(),
+                        progress = 0f,
+                        isSingleCoreFinished = false,
+                        isRunning = true,
+                        error = null,
+                        allTestStates = initialTestStates
+                    )
+                }
                 
                 Log.d("BenchmarkViewModel", "Initial UI state set with allTestStates: ${_uiState.value.allTestStates.map { "${it.name}(${it.status})" }}")
                 
@@ -199,25 +201,27 @@ class BenchmarkViewModel(
                     
                     // Update state to RUNNING
                     Log.d("BenchmarkViewModel", "Setting test $index ($name) to RUNNING status")
-                    _uiState.value = _uiState.value.copy(
-                        currentTestName = name,
-                        allTestStates = _uiState.value.allTestStates.mapIndexed { i, state ->
-                            when {
-                                i < index && state.status == TestStatus.COMPLETED -> {
-                                    Log.d("BenchmarkViewModel", "Test $i remains COMPLETED: ${state.name}")
-                                    state // Keep completed tests as completed
-                                }
-                                i == index -> {
-                                    Log.d("BenchmarkViewModel", "Test $i now RUNNING: ${state.name}")
-                                    state.copy(status = TestStatus.RUNNING) // Set current test to running
-                                }
-                                else -> {
-                                    Log.d("BenchmarkViewModel", "Test $i remains PENDING: ${state.name}")
-                                    state // Keep pending tests as pending
+                    _uiState.update { currentState ->
+                        currentState.copy(
+                            currentTestName = name,
+                            allTestStates = currentState.allTestStates.mapIndexed { i, state ->
+                                when {
+                                    i < index && state.status == TestStatus.COMPLETED -> {
+                                        Log.d("BenchmarkViewModel", "Test $i remains COMPLETED: ${state.name}")
+                                        state // Keep completed tests as completed
+                                    }
+                                    i == index -> {
+                                        Log.d("BenchmarkViewModel", "Test $i now RUNNING: ${state.name}")
+                                        state.copy(status = TestStatus.RUNNING) // Set current test to running
+                                    }
+                                    else -> {
+                                        Log.d("BenchmarkViewModel", "Test $i remains PENDING: ${state.name}")
+                                        state // Keep pending tests as pending
+                                    }
                                 }
                             }
-                        }
-                    )
+                        )
+                    }
                     Log.d("BenchmarkViewModel", "Current allTestStates after setting RUNNING: ${_uiState.value.allTestStates.map { "${it.name}(${it.status})" }}")
                     
                     // Emit STARTED event
@@ -246,41 +250,43 @@ class BenchmarkViewModel(
                     results.add(result)
                     
                     // Update completed tests in UI state - accumulate properly
-                    val updatedCompletedTests = _uiState.value.completedTests + result
-                    val isSingleCoreFinished = if (index >= singleCoreTotal - 1) {
-                        true
-                    } else {
-                        _uiState.value.isSingleCoreFinished
-                    }
-                    
-                    // Update single core completed counter
-                    if (!name.contains("Multi")) {
-                        singleCoreCompleted++
-                    }
-                    
                     // Update UI state with completed test
                     Log.d("BenchmarkViewModel", "Setting test $index ($name) to COMPLETED status with result: ${result.executionTimeMs}ms")
-                    _uiState.value = _uiState.value.copy(
-                        completedTests = updatedCompletedTests,
-                        progress = (index + 1).toFloat() / totalBenchmarks.toFloat(),
-                        isSingleCoreFinished = isSingleCoreFinished,
-                        allTestStates = _uiState.value.allTestStates.mapIndexed { i, state ->
-                            when {
-                                i < index && state.status == TestStatus.COMPLETED -> {
-                                    Log.d("BenchmarkViewModel", "Test $i remains COMPLETED: ${state.name}")
-                                    state // Keep already completed tests as completed
-                                }
-                                i == index -> {
-                                    Log.d("BenchmarkViewModel", "Test $i now COMPLETED: ${state.name}, time: ${result.executionTimeMs}ms")
-                                    state.copy(status = TestStatus.COMPLETED, result = result) // Set current test to completed
-                                }
-                                else -> {
-                                    Log.d("BenchmarkViewModel", "Test $i remains PENDING: ${state.name}")
-                                    state // Keep pending tests as pending
+                    _uiState.update { currentState ->
+                        val updatedCompletedTests = currentState.completedTests + result
+                        val isSingleCoreFinished = if (index >= singleCoreTotal - 1) {
+                            true
+                        } else {
+                            currentState.isSingleCoreFinished
+                        }
+                        
+                        // Update single core completed counter
+                        if (!name.contains("Multi")) {
+                            singleCoreCompleted++
+                        }
+                        
+                        currentState.copy(
+                            completedTests = updatedCompletedTests,
+                            progress = (index + 1).toFloat() / totalBenchmarks.toFloat(),
+                            isSingleCoreFinished = isSingleCoreFinished,
+                            allTestStates = currentState.allTestStates.mapIndexed { i, state ->
+                                when {
+                                    i < index && state.status == TestStatus.COMPLETED -> {
+                                        Log.d("BenchmarkViewModel", "Test $i remains COMPLETED: ${state.name}")
+                                        state // Keep already completed tests as completed
+                                    }
+                                    i == index -> {
+                                        Log.d("BenchmarkViewModel", "Test $i now COMPLETED: ${state.name}, time: ${result.executionTimeMs}ms")
+                                        state.copy(status = TestStatus.COMPLETED, result = result) // Set current test to completed
+                                    }
+                                    else -> {
+                                        Log.d("BenchmarkViewModel", "Test $i remains PENDING: ${state.name}")
+                                        state // Keep pending tests as pending
+                                    }
                                 }
                             }
-                        }
-                    )
+                        )
+                    }
                     Log.d("BenchmarkViewModel", "Current allTestStates after setting COMPLETED: ${_uiState.value.allTestStates.map { "${it.name}(${it.status})" }}")
                     
                     // Emit COMPLETED event
@@ -295,7 +301,7 @@ class BenchmarkViewModel(
                     _benchmarkState.value = BenchmarkState.Running(
                         BenchmarkProgress(
                             currentBenchmark = name,
-                            progress = ((index + 1) * 10 / totalBenchmarks),
+                            progress = ((index + 1) * 100 / totalBenchmarks),
                             completedBenchmarks = index + 1,
                             totalBenchmarks = totalBenchmarks
                         )
@@ -369,12 +375,17 @@ class BenchmarkViewModel(
                 )
                 
                 // Update UI state with final results
-                _uiState.value = _uiState.value.copy(
-                    benchmarkResults = benchmarkResults,
-                    isRunning = false
-                )
+                _uiState.update { currentState ->
+                    currentState.copy(
+                        benchmarkResults = benchmarkResults,
+                        isRunning = false
+                    )
+                }
                 
                 _benchmarkState.value = BenchmarkState.Completed(benchmarkResults)
+                
+                // Reset the running flag on completion
+                isBenchmarkRunning = false
                 
                 // Save the benchmark results to the database
                 if (historyRepository != null) {
@@ -383,11 +394,16 @@ class BenchmarkViewModel(
                 
             } catch (e: Exception) {
                 Log.e("BenchmarkViewModel", "Error during benchmark execution", e)
-                _uiState.value = _uiState.value.copy(
-                    error = e.message ?: "Unknown error occurred",
-                    isRunning = false
-                )
+                _uiState.update { currentState ->
+                    currentState.copy(
+                        error = e.message ?: "Unknown error occurred",
+                        isRunning = false
+                    )
+                }
                 _benchmarkState.value = BenchmarkState.Error(e.message ?: "Unknown error occurred")
+                
+                // Reset the running flag on error
+                isBenchmarkRunning = false
             }
         }
     }
