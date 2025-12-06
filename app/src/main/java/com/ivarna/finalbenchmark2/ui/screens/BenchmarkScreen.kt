@@ -35,38 +35,22 @@ import com.ivarna.finalbenchmark2.ui.models.SystemStats
 fun BenchmarkScreen(
     preset: String = "Auto",
     onBenchmarkComplete: (String) -> Unit,
-    viewModel: BenchmarkViewModel = viewModel(),
-    systemMonitorViewModel: SystemMonitorViewModel = viewModel()
+    viewModel: BenchmarkViewModel = viewModel()
 ) {
     val benchmarkState by viewModel.benchmarkState.collectAsState()
     val uiState by viewModel.uiState.collectAsState()
-    val systemStats by systemMonitorViewModel.systemStats.collectAsState()
+    // Use the throttled system stats from the BenchmarkViewModel instead of SystemMonitorViewModel
+    val systemStats by viewModel.throttledSystemStats.collectAsState()
     val benchmarkManager = remember { BenchmarkManager() }
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
     
-    // Collect benchmark events
-    LaunchedEffect(Unit) {
-        benchmarkManager.benchmarkEvents.collectLatest { event ->
-            // We're now using the new uiState instead of individual events
-        }
-    }
-    
-    // Start monitoring when the screen is launched
-    LaunchedEffect(Unit) {
-        systemMonitorViewModel.startMonitoring()
-    }
-    
-    // Stop monitoring when the screen is disposed
-    DisposableEffect(Unit) {
-        onDispose {
-            systemMonitorViewModel.stopMonitoring()
-        }
-    }
+    // Removed unnecessary LaunchedEffect that was collecting benchmarkManager.benchmarkEvents
+    // The ViewModel now handles event accumulation properly
     
     // Handle benchmark state changes
     LaunchedEffect(Unit) {
-        viewModel.benchmarkState.collectLatest { state ->
+        viewModel.benchmarkState.collect { state ->
             when (state) {
                 is BenchmarkState.Completed -> {
                     // Convert BenchmarkResults to JSON string for navigation
@@ -207,7 +191,7 @@ fun BenchmarkScreen(
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp)
                 ) {
-                    items(uiState.completedTests) { test ->
+                    items(uiState.completedTests, key = { it.name }) { test ->
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -237,7 +221,7 @@ fun BenchmarkScreen(
                 
                 Spacer(modifier = Modifier.height(16.dp))
                 
-                // Bottom Section (System Dashboard)
+                // Bottom Section (System Dashboard) - now using throttled system stats
                 SystemMonitorCard(stats = systemStats)
                 
                 Spacer(modifier = Modifier.height(32.dp))

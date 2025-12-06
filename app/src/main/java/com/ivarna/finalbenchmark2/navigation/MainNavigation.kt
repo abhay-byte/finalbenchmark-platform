@@ -121,7 +121,7 @@ fun MainNavigation(
                     val historyRepository = com.ivarna.finalbenchmark2.data.repository.HistoryRepository(
                         com.ivarna.finalbenchmark2.data.database.AppDatabase.getDatabase(context).benchmarkDao()
                     )
-                    val benchmarkViewModel = com.ivarna.finalbenchmark2.ui.viewmodels.BenchmarkViewModel(historyRepository)
+                    val benchmarkViewModel = com.ivarna.finalbenchmark2.ui.viewmodels.BenchmarkViewModel(historyRepository, context.applicationContext as android.app.Application)
                     BenchmarkScreen(
                         preset = preset,
                         onBenchmarkComplete = { summaryJson ->
@@ -134,7 +134,7 @@ fun MainNavigation(
                     val historyRepository = com.ivarna.finalbenchmark2.data.repository.HistoryRepository(
                         com.ivarna.finalbenchmark2.data.database.AppDatabase.getDatabase(context).benchmarkDao()
                     )
-                    val benchmarkViewModel = com.ivarna.finalbenchmark2.ui.viewmodels.BenchmarkViewModel(historyRepository)
+                    val benchmarkViewModel = com.ivarna.finalbenchmark2.ui.viewmodels.BenchmarkViewModel(historyRepository, context.applicationContext as android.app.Application)
                     BenchmarkScreen(
                         preset = "Auto",
                         onBenchmarkComplete = { summaryJson ->

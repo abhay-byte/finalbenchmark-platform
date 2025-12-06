@@ -7,15 +7,25 @@ import com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkManager
 import com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkResult
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers
 import android.util.Log
 import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
+import android.app.Application
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.stateIn
 
 // Import SystemStats from SystemModels
 import com.ivarna.finalbenchmark2.ui.models.SystemStats
+import com.ivarna.finalbenchmark2.utils.CpuUtilizationUtils
+import com.ivarna.finalbenchmark2.utils.PowerUtils
+import com.ivarna.finalbenchmark2.utils.TemperatureUtils
 
 // Updated BenchmarkUiState to hold granular state
 data class BenchmarkUiState(
@@ -56,7 +66,8 @@ sealed class BenchmarkState {
 }
 
 class BenchmarkViewModel(
-    private val historyRepository: com.ivarna.finalbenchmark2.data.repository.HistoryRepository? = null
+    private val historyRepository: com.ivarna.finalbenchmark2.data.repository.HistoryRepository? = null,
+    application: Application
 ) : ViewModel() {
     private val _benchmarkState = MutableStateFlow<BenchmarkState>(BenchmarkState.Idle)
     val benchmarkState: StateFlow<BenchmarkState> = _benchmarkState
@@ -64,6 +75,40 @@ class BenchmarkViewModel(
     // New state flow for granular benchmark UI state
     private val _uiState = MutableStateFlow(BenchmarkUiState())
     val uiState: StateFlow<BenchmarkUiState> = _uiState
+    
+    // Throttled system stats flow for benchmark screen - Fixed to 1 second interval
+    private val cpuUtils = CpuUtilizationUtils(application)
+    private val powerUtils = PowerUtils(application)
+    private val tempUtils = TemperatureUtils(application)
+    
+    val throttledSystemStats = combine(
+        getThrottledCpuFlow(),
+        getThrottledPowerFlow(),
+        getThrottledTempFlow()
+    ) { cpu, power, temp ->
+        SystemStats(cpuLoad = cpu, power = power, temp = temp)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(), SystemStats())
+    
+    private fun getThrottledCpuFlow() = flow<Float> { 
+        while (true) {
+            emit(cpuUtils.getCpuUtilizationPercentage())
+            delay(1000) // Fixed 1 second interval
+        }
+    }
+    
+    private fun getThrottledPowerFlow() = flow<Float> { 
+        while (true) {
+            emit(powerUtils.getPowerConsumptionInfo().power)
+            delay(100) // Fixed 1 second interval
+        }
+    }
+    
+    private fun getThrottledTempFlow() = flow<Float> { 
+        while (true) {
+            emit(tempUtils.getCpuTemperature())
+            delay(1000) // Fixed 1 second interval
+        }
+    }
     
     private val benchmarkManager = BenchmarkManager()
     
@@ -154,7 +199,7 @@ class BenchmarkViewModel(
                     
                     results.add(result)
                     
-                    // Update completed tests in UI state
+                    // Update completed tests in UI state - accumulate properly
                     val updatedCompletedTests = _uiState.value.completedTests + result
                     val isSingleCoreFinished = if (index >= singleCoreTotal - 1) {
                         true
@@ -191,6 +236,10 @@ class BenchmarkViewModel(
                             totalBenchmarks = totalBenchmarks
                         )
                     )
+                    
+                    // UI Breathing Room: Give Compose 50ms to render the "Checkmark" 
+                    // before the next heavy native test spikes the CPU.
+                    delay(50) 
                 }
                 
                 // Use the BenchmarkManager's weighted scoring logic instead of averaging
@@ -347,14 +396,14 @@ class BenchmarkViewModel(
     private fun calculateWeightedScore(results: List<com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkResult>, benchmarkName: String): Double {
         // Use the same scaling factors as BenchmarkManager
         val scalingFactors = mapOf(
-            "Prime Generation" to 0.000001,
+            "Prime Generation" to 0.00001,
             "Fibonacci" to 0.012,
-            "Matrix Multiplication" to 0.0000025,
-            "Hash Computing" to 0.000001,
-            "String Sorting" to 0.000015,
-            "Ray Tracing" to 0.00006,
-            "Compression" to 0.000007,
-            "Monte Carlo" to 0.00007,
+            "Matrix Multiplication" to 0.025,
+            "Hash Computing" to 0.01,
+            "String Sorting" to 0.015,
+            "Ray Tracing" to 0.0006,
+            "Compression" to 0.07,
+            "Monte Carlo" to 0.07,
             "JSON Parsing" to 0.00004,
             "N-Queens" to 0.007
         )
@@ -367,7 +416,7 @@ class BenchmarkViewModel(
         // Calculate weighted score
         var totalWeightedScore = 0.0
         for (result in filteredResults) {
-            val scalingFactor = scalingFactors[benchmarkName] ?: 0.00001
+            val scalingFactor = scalingFactors[benchmarkName] ?: 0.0001
             totalWeightedScore += result.opsPerSecond * scalingFactor
         }
         
