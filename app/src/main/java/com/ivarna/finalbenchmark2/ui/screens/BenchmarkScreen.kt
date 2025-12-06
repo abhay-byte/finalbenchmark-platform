@@ -64,193 +64,198 @@ fun BenchmarkScreen(
     }
 
     FinalBenchmark2Theme {
-        Scaffold(
-            containerColor = MaterialTheme.colorScheme.background
-            // Removed bottomBar to add spacing manually
-        ) { paddingValues ->
-            // Main Column with side padding
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-                    .padding(horizontal = 16.dp), // Side padding for main content
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                // 1. Top Spacing
-                Spacer(modifier = Modifier.windowInsetsTopHeight(WindowInsets.statusBars))
-                Spacer(modifier = Modifier.height(32.dp)) // Additional top spacing for breathing room
-
-                // --- Header Section ---
-                Text(
-                    text = "Running Benchmarks",
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                )
-
-                Spacer(modifier = Modifier.height(32.dp))
-
-                // 2. Circular Indicator with Bold Text in Center
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier.size(160.dp)
+        Box(modifier = Modifier.fillMaxSize()) {
+            // Main content with Scaffold
+            Scaffold(
+                containerColor = MaterialTheme.colorScheme.background
+                // Removed bottomBar to add spacing manually
+            ) { paddingValues ->
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues)
+                        .padding(horizontal = 16.dp), // Side padding for main content
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    // Track (Background circle)
-                    CircularProgressIndicator(
-                        progress = { 1f },
-                        modifier = Modifier.fillMaxSize(),
-                        color = MaterialTheme.colorScheme.surfaceVariant,
-                        strokeWidth = 12.dp,
-                        trackColor = MaterialTheme.colorScheme.surfaceVariant,
-                    )
-                    
-                    // Progress (Foreground circle)
-                    CircularProgressIndicator(
-                        progress = { uiState.progress },
-                        modifier = Modifier.fillMaxSize(),
-                        color = MaterialTheme.colorScheme.primary,
-                        strokeWidth = 12.dp,
-                        strokeCap = StrokeCap.Round,
-                    )
-
-                    // Center Text with bold percentage
+                    // 1. Top Spacing
+                    Spacer(modifier = Modifier.windowInsetsTopHeight(WindowInsets.statusBars))
+                    Spacer(modifier = Modifier.height(32.dp)) // Additional top spacing for breathing room
+    
+                    // --- Header Section ---
                     Text(
-                        text = "${(uiState.progress * 100).toInt()}%",
-                        style = MaterialTheme.typography.headlineLarge,
+                        text = "Running Benchmarks",
+                        style = MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary
                     )
-                }
-                
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                // Active Test Name Label
-                Text(
-                    text = uiState.currentTestName.ifEmpty { "Initializing..." },
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-
-                Spacer(modifier = Modifier.height(32.dp))
-
-                // 3. Card Container for Benchmark List (Card Table)
-                Card(
-                    modifier = Modifier
-                        .weight(1f) // Fill remaining vertical space
-                        .fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainer
-                    ),
-                    shape = RoundedCornerShape(16.dp),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(16.dp) // Internal padding for the card content
+    
+                    Spacer(modifier = Modifier.height(32.dp))
+    
+                    // 2. Circular Indicator with Bold Text in Center
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier.size(160.dp)
                     ) {
-                        // -- Table Header --
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                                .padding(vertical = 12.dp, horizontal = 16.dp)
-                                .clip(RoundedCornerShape(8.dp)),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "Status",
-                                style = MaterialTheme.typography.labelMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.secondary,
-                                modifier = Modifier.width(50.dp)
-                            )
-                            Text(
-                                text = "Benchmark Name",
-                                style = MaterialTheme.typography.labelMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.secondary,
-                                modifier = Modifier.weight(1f)
-                            )
-                            Text(
-                                text = "Time",
-                                style = MaterialTheme.typography.labelMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.secondary,
-                                textAlign = TextAlign.End,
-                                modifier = Modifier.width(60.dp)
-                            )
-                        }
-                        
-                        HorizontalDivider(
-                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
-                            modifier = Modifier.padding(vertical = 8.dp)
+                        // Track (Background circle)
+                        CircularProgressIndicator(
+                            progress = { 1f },
+                            modifier = Modifier.fillMaxSize(),
+                            color = MaterialTheme.colorScheme.surfaceVariant,
+                            strokeWidth = 12.dp,
+                            trackColor = MaterialTheme.colorScheme.surfaceVariant,
                         )
-
-                        // -- Table Rows --
-                        LazyColumn(
-                            state = listState
+                        
+                        // Progress (Foreground circle)
+                        CircularProgressIndicator(
+                            progress = { uiState.progress },
+                            modifier = Modifier.fillMaxSize(),
+                            color = MaterialTheme.colorScheme.primary,
+                            strokeWidth = 12.dp,
+                            strokeCap = StrokeCap.Round,
+                        )
+    
+                        // Center Text with bold percentage
+                        Text(
+                            text = "${(uiState.progress * 100).toInt()}%",
+                            style = MaterialTheme.typography.headlineLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    // Active Test Name Label
+                    Text(
+                        text = uiState.currentTestName.ifEmpty { "Initializing..." },
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+    
+                    Spacer(modifier = Modifier.height(32.dp))
+    
+                    // 3. Card Container for Benchmark List (Card Table)
+                    Card(
+                        modifier = Modifier
+                            .weight(1f) // Fill remaining vertical space
+                            .fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainer
+                        ),
+                        shape = RoundedCornerShape(16.dp),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(16.dp) // Internal padding for the card content
                         ) {
-                            items(uiState.allTestStates, key = { it.name }) { testState ->
-                                TestTableRow(testState)
-                                if (testState != uiState.allTestStates.last()) { // Don't add divider after last item
-                                    HorizontalDivider(
-                                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f),
-                                        modifier = Modifier.padding(horizontal = 16.dp)
-                                    )
+                            // -- Table Header --
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                                    .padding(vertical = 12.dp, horizontal = 16.dp)
+                                    .clip(RoundedCornerShape(8.dp)),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "Status",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.secondary,
+                                    modifier = Modifier.width(50.dp)
+                                )
+                                Text(
+                                    text = "Benchmark Name",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.secondary,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Text(
+                                    text = "Time",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.secondary,
+                                    textAlign = TextAlign.End,
+                                    modifier = Modifier.width(60.dp)
+                                )
+                            }
+                            
+                            HorizontalDivider(
+                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                                modifier = Modifier.padding(vertical = 8.dp)
+                            )
+    
+                            // -- Table Rows --
+                            LazyColumn(
+                                state = listState
+                            ) {
+                                items(uiState.allTestStates, key = { it.name }) { testState ->
+                                    TestTableRow(testState)
+                                    if (testState != uiState.allTestStates.last()) { // Don't add divider after last item
+                                        HorizontalDivider(
+                                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f),
+                                            modifier = Modifier.padding(horizontal = 16.dp)
+                                        )
+                                    }
                                 }
                             }
                         }
                     }
+                    
+                    // Add spacing above bottom card
+                    Spacer(modifier = Modifier.height(24.dp))
                 }
-                
-                // Add spacing above bottom card
-                Spacer(modifier = Modifier.height(24.dp))
             }
             
-            // Add the SystemMonitorDock outside the main Column to span full width
-            SystemMonitorDock(stats = uiState.systemStats)
+            // SystemMonitorDock positioned at the bottom
+            SystemMonitorDock(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.BottomCenter),
+                stats = uiState.systemStats
+            )
         }
     }
 }
 
 // 4. System Monitor Dock (Attached to Bottom)
 @Composable
-fun SystemMonitorDock(stats: SystemStats) {
-    Box(
-        modifier = Modifier
+fun SystemMonitorDock(
+    modifier: Modifier = Modifier,
+    stats: SystemStats
+) {
+    Surface(
+        modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 0.dp) // No horizontal padding to span full width
+            .padding(horizontal = 0.dp), // Remove horizontal padding to make it span full width
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        tonalElevation = 8.dp,
+        // Round top corners only, square bottom to sit flush
+        shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomStart = 0.dp, bottomEnd = 0.dp)
     ) {
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            color = MaterialTheme.colorScheme.surfaceContainerHigh,
-            tonalElevation = 8.dp,
-            // Round top corners only, square bottom to sit flush
-            shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomStart = 0.dp, bottomEnd = 0.dp)
+        Row(
+            modifier = Modifier
+                .padding(top = 24.dp, bottom = 16.dp) // Add proper bottom padding
+                .fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                modifier = Modifier
-                    .padding(top = 24.dp, bottom = 16.dp) // Add proper vertical padding
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp), // Add horizontal padding inside the surface
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                DockMetric(icon = Icons.Rounded.Memory, value = "${stats.cpuLoad.toInt()}%", label = "CPU")
-                
-                // Vertical Divider
-                VerticalDivider(modifier = Modifier.height(32.dp), color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f))
-                
-                DockMetric(icon = Icons.Rounded.Bolt, value = "${String.format("%.1f", stats.power)}W", label = "Power")
-                
-                VerticalDivider(modifier = Modifier.height(32.dp), color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f))
-                
-                DockMetric(icon = Icons.Rounded.Thermostat, value = "${stats.temp.toInt()}°C", label = "Temp")
-            }
+            DockMetric(icon = Icons.Rounded.Memory, value = "${stats.cpuLoad.toInt()}%", label = "CPU")
+            
+            // Vertical Divider
+            VerticalDivider(modifier = Modifier.height(32.dp), color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f))
+            
+            DockMetric(icon = Icons.Rounded.Bolt, value = "${String.format("%.1f", stats.power)}W", label = "Power")
+            
+            VerticalDivider(modifier = Modifier.height(32.dp), color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f))
+            
+            DockMetric(icon = Icons.Rounded.Thermostat, value = "${stats.temp.toInt()}°C", label = "Temp")
         }
     }
 }
