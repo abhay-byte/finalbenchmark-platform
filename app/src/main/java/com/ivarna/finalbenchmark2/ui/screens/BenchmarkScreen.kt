@@ -65,11 +65,8 @@ fun BenchmarkScreen(
 
     FinalBenchmark2Theme {
         Scaffold(
-            containerColor = MaterialTheme.colorScheme.background,
-            // 4. Attach bottom card with no spacing using bottomBar
-            bottomBar = {
-                SystemMonitorDock(stats = uiState.systemStats)
-            }
+            containerColor = MaterialTheme.colorScheme.background
+            // Removed bottomBar to add spacing manually
         ) { paddingValues ->
             Column(
                 modifier = Modifier
@@ -208,6 +205,12 @@ fun BenchmarkScreen(
                         }
                     }
                 }
+                
+                // Add spacing above bottom card
+                Spacer(modifier = Modifier.height(24.dp))
+                
+                // Add the SystemMonitorDock here instead of in bottomBar
+                SystemMonitorDock(stats = uiState.systemStats)
             }
         }
     }
@@ -225,7 +228,7 @@ fun SystemMonitorDock(stats: SystemStats) {
     ) {
         Row(
             modifier = Modifier
-                .padding(top = 24.dp, bottom = 0.dp) // Remove bottom padding for flush look
+                .padding(top = 24.dp, bottom = 16.dp) // Add proper bottom padding
                 .fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
