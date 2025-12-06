@@ -17,6 +17,8 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.Observer
 import com.ivarna.finalbenchmark2.ui.components.InformationRow
+import com.ivarna.finalbenchmark2.ui.components.PhoneStatePermissionRequest
+import com.ivarna.finalbenchmark2.ui.components.CameraPermissionRequest
 import com.ivarna.finalbenchmark2.ui.viewmodels.HardwareViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -108,10 +110,14 @@ fun HardwareTabContent(viewModel: HardwareViewModel) {
                 BatteryCard(batterySpecs)
             }
             item {
-                ConnectivityCard(networkSpecs)
+                PhoneStatePermissionRequest {
+                    ConnectivityCard(networkSpecs)
+                }
             }
             item {
-                CameraCard(cameraSpecs)
+                CameraPermissionRequest {
+                    CameraCard(cameraSpecs)
+                }
             }
             item {
                 MemoryStorageCard(memoryStorageSpecs)
