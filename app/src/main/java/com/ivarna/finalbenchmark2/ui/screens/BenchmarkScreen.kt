@@ -107,10 +107,13 @@ fun BenchmarkScreen(
         viewModel.startBenchmark(preset)
     }
     
-    // Auto-scroll to the bottom when new items are added
-    LaunchedEffect(uiState.allTestStates.size) {
-        if (uiState.allTestStates.isNotEmpty()) {
-            listState.animateScrollToItem(uiState.allTestStates.size - 1)
+    // Auto-scroll to the currently running test
+    LaunchedEffect(uiState.allTestStates.count { it.status == com.ivarna.finalbenchmark2.ui.viewmodels.TestStatus.RUNNING }) {
+        val runningIndex = uiState.allTestStates.indexOfFirst {
+            it.status == com.ivarna.finalbenchmark2.ui.viewmodels.TestStatus.RUNNING
+        }
+        if (runningIndex >= 0) {
+            listState.animateScrollToItem(runningIndex)
         }
     }
     
