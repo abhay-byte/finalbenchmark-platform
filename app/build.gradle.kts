@@ -26,6 +26,32 @@ android {
         ndk {
             abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86", "x86_64")
         }
+        
+        // C++ Optimization Flags for maximum performance
+        externalNativeBuild {
+            cmake {
+                cppFlags += listOf(
+                    "-O3",                    // Maximum optimization
+                    "-ffast-math",            // Fast floating-point math
+                    "-funroll-loops",         // Unroll loops for speed
+                    "-fomit-frame-pointer",   // Don't keep frame pointers
+                    "-ffunction-sections",    // Separate functions for linker optimization
+                    "-fdata-sections",        // Separate data for linker optimization
+                    "-fvisibility=hidden"     // Hide symbols by default
+                    // Note: -flto removed because NDK 25 uses gold linker which doesn't support LTO on arm64
+                )
+                cFlags += listOf(
+                    "-O3",
+                    "-ffast-math",
+                    "-funroll-loops"
+                )
+                arguments += listOf(
+                    "-DANDROID_STL=c++_shared",
+                    "-DANDROID_PLATFORM=android-24",
+                    "-DCMAKE_BUILD_TYPE=Release"
+                )
+            }
+        }
     }
 
     externalNativeBuild {

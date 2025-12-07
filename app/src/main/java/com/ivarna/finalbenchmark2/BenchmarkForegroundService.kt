@@ -3,11 +3,13 @@ package com.ivarna.finalbenchmark2
 import android.app.*
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
 import android.os.Process
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import androidx.core.app.ServiceCompat
 
 /**
  * Foreground Service for CPU Benchmark
@@ -112,12 +114,40 @@ class BenchmarkForegroundService : Service() {
             "Running performance tests..."
         )
         
-        // Start foreground service
-        // This prevents the service from being killed by Android
-        startForeground(NOTIFICATION_ID, notification)
-        isServiceRunning = true
-        
-        Log.i(TAG, "✓ Foreground Service STARTED - Maximum priority active")
+        // Start foreground service with appropriate service type for Android 14+
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                // Android 14+ requires specifying foreground service type
+                ServiceCompat.startForeground(
+                    this,
+                    NOTIFICATION_ID,
+                    notification,
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
+                )
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                // Android 10-13
+                startForeground(
+                    NOTIFICATION_ID,
+                    notification,
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_MANIFEST
+                )
+            } else {
+                // Android 9 and below
+                startForeground(NOTIFICATION_ID, notification)
+            }
+            isServiceRunning = true
+            Log.i(TAG, "✓ Foreground Service STARTED - Maximum priority active")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to start foreground service", e)
+            // Fallback: try without service type
+            try {
+                startForeground(NOTIFICATION_ID, notification)
+                isServiceRunning = true
+                Log.i(TAG, "✓ Foreground Service STARTED (fallback)")
+            } catch (e2: Exception) {
+                Log.e(TAG, "Fallback also failed", e2)
+            }
+        }
     }
 
     /**
