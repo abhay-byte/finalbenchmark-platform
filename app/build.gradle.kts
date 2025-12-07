@@ -85,6 +85,40 @@ android {
                 doNotStrip += listOf("**/*.so")
             }
         }
+        
+        // Signing configuration for release builds
+        signingConfigs {
+            create("release") {
+                storeFile = file("../keystore/my-release-key.keystore")
+            }
+        }
+        
+        buildTypes {
+            debug {
+                isDebuggable = true
+                isJniDebuggable = false
+                packaging {
+                    resources.excludes.add("META-INF/**")
+                }
+                packagingOptions {
+                    doNotStrip += listOf("**/*.so")
+                }
+            }
+            release {
+                isMinifyEnabled = false
+                proguardFiles(
+                    getDefaultProguardFile("proguard-android-optimize.txt"),
+                    "proguard-rules.pro"
+                )
+                packaging {
+                    resources.excludes.add("META-INF/**")
+                }
+                packagingOptions {
+                    doNotStrip += listOf("**/*.so")
+                }
+                signingConfig = signingConfigs.getByName("release")
+            }
+        }
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11

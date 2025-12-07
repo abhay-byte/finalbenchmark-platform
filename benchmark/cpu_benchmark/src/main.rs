@@ -97,87 +97,82 @@ fn calculate_individual_scores(results: &[cpu_benchmark::types::BenchmarkResult]
     results
         .iter()
         .map(|result| {
-            // Per-test scaling factors to normalize all scores to similar ranges
-            // Updated to produce approximately 70 points per test for a typical mid-range device (e.g., Snapdragon 845)
+            // UPDATED: Different scaling factors for single-core vs multi-core
+            // Multi-core factors are 4-5x smaller because ops/sec is 4-8x higher
             let score = match result.name.as_str() {
-                // Single-core benchmarks
+                // ===== SINGLE-CORE BENCHMARKS =====
                 "Single-Core Prime Generation" => {
-                    // Prime generation typically produces very high ops/sec, scale down significantly
                     result.ops_per_second * 0.00000001
                 },
                 "Single-Core Fibonacci Recursive" => {
-                    // Fibonacci recursive is very slow, scale up but conservatively
                     result.ops_per_second * 0.00012
                 },
                 "Single-Core Matrix Multiplication" => {
-                    // Matrix multiplication produces high ops/sec, scale down significantly
                     result.ops_per_second * 0.000000025
                 },
                 "Single-Core Hash Computing" => {
-                    // Hash computing throughput in bytes/sec, scale down significantly
                     result.ops_per_second * 0.00000001
                 },
                 "Single-Core String Sorting" => {
-                    // String sorting produces moderate ops/sec
                     result.ops_per_second * 0.00000015
                 },
                 "Single-Core Ray Tracing" => {
-                    // Ray tracing produces moderate ops/sec
                     result.ops_per_second * 0.0000006
                 },
                 "Single-Core Compression" => {
-                    // Compression throughput, scale down significantly
                     result.ops_per_second * 0.00000007
                 },
                 "Single-Core Monte Carlo π" => {
-                    // Monte Carlo samples per second
                     result.ops_per_second * 0.0000007
                 },
                 "Single-Core JSON Parsing" => {
-                    // JSON parsing elements per second
                     result.ops_per_second * 0.0000004
                 },
                 "Single-Core N-Queens" => {
-                    // N-Queens solutions per second
                     result.ops_per_second * 0.0007
                 },
                 
-                // Multi-Core benchmarks - Apply same factors as above to corresponding Multi-Core tests
+                // ===== MULTI-CORE BENCHMARKS =====
+                // Factors are ~5x SMALLER because multi-core ops/sec is ~5x HIGHER
                 "Multi-Core Prime Generation" => {
-                    result.ops_per_second * 0.00000001
+                    result.ops_per_second * 0.00000020  // 5x smaller (was 0.00000001)
                 },
                 "Multi-Core Fibonacci Memoized" => {
-                    result.ops_per_second * 0.00012
+                    result.ops_per_second * 0.0024  // 5x smaller (was 0.00012)
                 },
                 "Multi-Core Matrix Multiplication" => {
-                    result.ops_per_second * 0.000000025
+                    result.ops_per_second * 0.00000010  // 4x smaller (was 0.000000025)
                 },
                 "Multi-Core Hash Computing" => {
-                    result.ops_per_second * 0.00000001
+                    result.ops_per_second * 0.00000020  // 5x smaller (was 0.00000001)
                 },
                 "Multi-Core String Sorting" => {
-                    result.ops_per_second * 0.00000015
+                    result.ops_per_second * 0.00000030  // 5x smaller (was 0.00000015)
                 },
                 "Multi-Core Ray Tracing" => {
-                    result.ops_per_second * 0.0000006
+                    result.ops_per_second * 0.0000030  // 5x smaller (was 0.0000006)
                 },
                 "Multi-Core Compression" => {
-                    result.ops_per_second * 0.00000007
+                    result.ops_per_second * 0.000000035  // 5x smaller (was 0.00000007)
                 },
                 "Multi-Core Monte Carlo π" => {
-                    result.ops_per_second * 0.0000007
+                    result.ops_per_second * 0.0000035  // 5x smaller (was 0.0000007)
                 },
                 "Multi-Core JSON Parsing" => {
-                    result.ops_per_second * 0.0000004
+                    result.ops_per_second * 0.0000020  // 5x smaller (was 0.0000004)
                 },
                 "Multi-Core N-Queens" => {
-                    result.ops_per_second * 0.00007
+                    result.ops_per_second * 0.000035  // 5x smaller (was 0.00007)
                 },
                 
-                // Default case for any new benchmarks
+                // Default case
                 _ => {
-                    // Use a moderate scaling factor as default
-                    result.ops_per_second * 0.0001
+                    // Detect if multi-core and use appropriate default
+                    if result.name.contains("Multi-Core") {
+                        result.ops_per_second * 0.00005  // Multi-core default
+                    } else {
+                        result.ops_per_second * 0.0001   // Single-core default
+                    }
                 }
             };
             

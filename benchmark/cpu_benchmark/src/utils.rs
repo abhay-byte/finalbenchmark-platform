@@ -20,30 +20,30 @@ pub fn get_workload_params(tier: &DeviceTier) -> WorkloadParams {
             nqueens_size: 12,
         },
         DeviceTier::Mid => WorkloadParams {
-            prime_range: 6_000_000, // Reduced from 10_000_000
-            fibonacci_n_range: (32, 38),  // Reduced from (35, 42)
-            matrix_size: 600,  // Reduced from 800
-            hash_data_size_mb: 40,  // Reduced from 60
-            string_count: 500_000,  // Reduced from 750_000
-            ray_tracing_resolution: (300, 300),  // Reduced from (400, 400) - fixed typo
-            ray_tracing_depth: 3,  // Same
-            compression_data_size_mb: 25,  // Reduced from 40
-            monte_carlo_samples: 40_000_000,  // Reduced from 60_000_000
-            json_data_size_mb: 4, // Reduced from 6
-            nqueens_size: 13,  // Reduced from 14
+            prime_range: 8_000_000,         // INCREASED from 6M
+            fibonacci_n_range: (32, 38),    // Same
+            matrix_size: 700,               // INCREASED from 600
+            hash_data_size_mb: 50,          // INCREASED from 40
+            string_count: 700_000,          // INCREASED from 500K
+            ray_tracing_resolution: (350, 350), // INCREASED from (300, 300)
+            ray_tracing_depth: 3,           // Same
+            compression_data_size_mb: 30,   // INCREASED from 25
+            monte_carlo_samples: 60_000_000, // INCREASED from 40M
+            json_data_size_mb: 5,           // INCREASED from 4
+            nqueens_size: 13,               // Same
         },
         DeviceTier::Flagship => WorkloadParams {
-            prime_range: 12_000,  // High-end flagship value
-            fibonacci_n_range: (38, 45),  // High-end flagship value
-            matrix_size: 1000,  // High-end flagship value
-            hash_data_size_mb: 100,  // High-end flagship value
-            string_count: 1_250_000,  // High-end flagship value
-            ray_tracing_resolution: (500, 500),  // High-end flagship value
-            ray_tracing_depth: 5,  // High-end flagship value
-            compression_data_size_mb: 60,  // High-end flagship value
-            monte_carlo_samples: 120_000_000,  // High-end flagship value
-            json_data_size_mb: 10,  // High-end flagship value
-            nqueens_size: 15,  // High-end flagship value
+            prime_range: 20_000_000,        // INCREASED: More work for 8 cores
+            fibonacci_n_range: (35, 42),    // INCREASED from (38, 45)
+            matrix_size: 1200,              // INCREASED from 1000 (more parallel work)
+            hash_data_size_mb: 150,         // INCREASED from 100
+            string_count: 2_000_000,        // INCREASED from 1.25M (better scaling test)
+            ray_tracing_resolution: (600, 600), // INCREASED from (500, 500)
+            ray_tracing_depth: 5,           // Same
+            compression_data_size_mb: 80,   // INCREASED from 60
+            monte_carlo_samples: 150_000_000, // INCREASED from 120M (embarrassingly parallel)
+            json_data_size_mb: 15,          // INCREASED from 10
+            nqueens_size: 16,               // INCREASED from 15 (exponentially harder)
         },
     }
 }

@@ -16,12 +16,11 @@ class BenchmarkManager {
     
     private var isRunning = false
     
-    // Scaling factors to match Rust weighted scoring logic
-    // These factors normalize different benchmark operations to similar ranges (~70 points each)
-    private val SCALING_FACTORS = mapOf(
+    // SEPARATE scaling factors for single-core and multi-core tests
+    // Single-core scaling factors for normal operations (~70 points per test)
+    private val SINGLE_CORE_SCALING_FACTORS = mapOf(
         "Prime Generation" to 0.000001,
         "Fibonacci Recursive" to 0.012,
-        "Fibonacci Memoized" to 0.012,
         "Matrix Multiplication" to 0.0000025,
         "Hash Computing" to 0.000001,
         "String Sorting" to 0.000015,
@@ -30,6 +29,21 @@ class BenchmarkManager {
         "Monte Carlo" to 0.00007,
         "JSON Parsing" to 0.00004,
         "N-Queens" to 0.007
+    )
+    
+    // Multi-core scaling factors should be SMALLER because ops/sec is much higher
+    // Divide by expected speedup factor (4-6x for 8-core device)
+    private val MULTI_CORE_SCALING_FACTORS = mapOf(
+        "Prime Generation" to 0.00000020,      // ~5x smaller than single-core
+        "Fibonacci Memoized" to 0.0024,        // ~5x smaller
+        "Matrix Multiplication" to 0.00001,    // ~4x smaller (scales well)
+        "Hash Computing" to 0.0000002,         // ~5x smaller
+        "String Sorting" to 0.00003,           // ~5x smaller (scales moderately)
+        "Ray Tracing" to 0.0003,               // ~5x smaller (highly parallel)
+        "Compression" to 0.000035,             // ~5x smaller
+        "Monte Carlo" to 0.00035,              // ~5x smaller (embarrassingly parallel)
+        "JSON Parsing" to 0.0002,              // ~5x smaller
+        "N-Queens" to 0.035                    // ~5x smaller
     )
     
     // Default scaling factor for unknown benchmarks
@@ -223,22 +237,26 @@ class BenchmarkManager {
     private fun findScalingFactor(benchmarkName: String): Double {
         Log.d("BenchmarkManager", "Looking for scaling factor for: '$benchmarkName'")
         
+        // Determine if this is single-core or multi-core
+        val isMultiCore = benchmarkName.contains("Multi-Core", ignoreCase = true)
+        val factorsMap = if (isMultiCore) MULTI_CORE_SCALING_FACTORS else SINGLE_CORE_SCALING_FACTORS
+        
         // Remove "Single-Core " or "Multi-Core " prefix for matching
         val cleanName = benchmarkName
-            .replace("Single-Core ", "")
-            .replace("Multi-Core ", "")
+            .replace("Single-Core ", "", ignoreCase = true)
+            .replace("Multi-Core ", "", ignoreCase = true)
             .trim()
         
-        Log.d("BenchmarkManager", "Cleaned name: '$cleanName'")
+        Log.d("BenchmarkManager", "Cleaned name: '$cleanName', Mode: ${if (isMultiCore) "Multi-Core" else "Single-Core"}")
         
         // Find exact match first
-        SCALING_FACTORS[cleanName]?.let { 
+        factorsMap[cleanName]?.let { 
             Log.d("BenchmarkManager", "Exact match found: $cleanName -> $it")
             return it 
         }
         
         // Find partial match for more flexible matching
-        SCALING_FACTORS.entries.find { cleanName.contains(it.key, ignoreCase = true) }?.let { 
+        factorsMap.entries.find { cleanName.contains(it.key, ignoreCase = true) }?.let { 
             Log.d("BenchmarkManager", "Partial match found: '$cleanName' contains '${it.key}' -> ${it.value}")
             return it.value 
         }
@@ -247,7 +265,7 @@ class BenchmarkManager {
         val normalizedName = cleanName.lowercase()
         val keyMapping = mapOf(
             "prime" to "Prime Generation",
-            "fibonacci" to "Fibonacci Recursive", 
+            "fibonacci" to if (isMultiCore) "Fibonacci Memoized" else "Fibonacci Recursive",
             "matrix" to "Matrix Multiplication",
             "hash" to "Hash Computing",
             "string" to "String Sorting",
@@ -260,16 +278,17 @@ class BenchmarkManager {
         )
         
         keyMapping.entries.find { normalizedName.contains(it.key) }?.let { 
-            val factor = SCALING_FACTORS[it.value]
+            val factor = factorsMap[it.value]
             if (factor != null) {
                 Log.d("BenchmarkManager", "Abbreviation match: '$cleanName' matched to '${it.value}' -> $factor")
                 return factor
             }
         }
         
-        // Fall back to default scaling factor
-        Log.w("BenchmarkManager", "No scaling factor found for: '$benchmarkName' (cleaned: '$cleanName'), using default: $DEFAULT_SCALING_FACTOR")
-        return DEFAULT_SCALING_FACTOR
+        // Fall back to mode-appropriate default
+        val defaultFactor = if (isMultiCore) 0.00005 else 0.00001
+        Log.w("BenchmarkManager", "No scaling factor found for: '$benchmarkName' (cleaned: '$cleanName'), using default: $defaultFactor")
+        return defaultFactor
     }
     
     private suspend fun runIndividualBenchmarks() {
@@ -842,30 +861,31 @@ class BenchmarkManager {
                 nqueensSize = 8
             )
             "mid" -> WorkloadParams(
-                primeRange = 6_000_000,
+                primeRange = 8_000_000,         // Increased from 6M
                 fibonacciNRange = Pair(32, 38),
-                matrixSize = 600,
-                hashDataSizeMb = 40,
-                stringCount = 500_000,
-                rayTracingResolution = Pair(300, 300),
+                matrixSize = 700,               // Increased from 600
+                hashDataSizeMb = 50,            // Increased from 40
+                stringCount = 700_000,          // Increased from 500K
+                rayTracingResolution = Pair(350, 350), // Increased from (300, 300)
                 rayTracingDepth = 3,
-                compressionDataSizeMb = 25,
-                monteCarloSamples = 40_000_000,
-                jsonDataSizeMb = 4,
+                compressionDataSizeMb = 30,     // Increased from 25
+                monteCarloSamples = 60_000_000, // Increased from 40M
+                jsonDataSizeMb = 5,             // Increased from 4
                 nqueensSize = 13
             )
             "flagship" -> WorkloadParams(
-                primeRange = 12_000_000,
-                fibonacciNRange = Pair(35, 40),
-                matrixSize = 900,
-                hashDataSizeMb = 100,
-                stringCount = 1_000_000,
-                rayTracingResolution = Pair(450, 450),
-                rayTracingDepth = 4,
-                compressionDataSizeMb = 50,
-                monteCarloSamples = 80_000_000,
-                jsonDataSizeMb = 10,
-                nqueensSize = 15
+                // INCREASED: Allow multi-core tests to run longer
+                primeRange = 20_000_000,        // Increased from 12M (more work for 8 cores)
+                fibonacciNRange = Pair(35, 42), // Increased from (35, 40)
+                matrixSize = 1200,              // Increased from 900 (more parallel work)
+                hashDataSizeMb = 150,           // Increased from 100
+                stringCount = 2_000_000,        // Increased from 1M (better scaling test)
+                rayTracingResolution = Pair(600, 600), // Increased from (450, 450)
+                rayTracingDepth = 5,            // Increased from 4
+                compressionDataSizeMb = 80,     // Increased from 50
+                monteCarloSamples = 150_000_000, // Increased from 80M (embarrassingly parallel)
+                jsonDataSizeMb = 15,            // Increased from 10
+                nqueensSize = 16                // Increased from 15 (exponentially harder)
             )
             else -> WorkloadParams() // Default values from data class
         }

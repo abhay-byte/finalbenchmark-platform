@@ -15,8 +15,13 @@
 local.properties
 .idea
 .gradle
+*.apk
 
 # Rust
 target/
 Cargo.lock
 **/*.rs.bk
+
+# Keystore
+my-release-key.keystore
+keystore/
