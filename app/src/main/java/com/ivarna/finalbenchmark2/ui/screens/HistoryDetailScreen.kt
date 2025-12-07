@@ -1,5 +1,7 @@
 package com.ivarna.finalbenchmark2.ui.screens
 
+import android.content.Context
+import android.content.Intent
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -8,14 +10,16 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
 import com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkResult
 import com.ivarna.finalbenchmark2.ui.components.InformationRow
 import com.ivarna.finalbenchmark2.ui.viewmodels.HistoryUiModel
@@ -47,6 +51,9 @@ fun HistoryDetailScreen(
     
     val resultState by historyRepository.getResultById(benchmarkId).collectAsState(initial = null)
     
+    // State for delete confirmation dialog
+    var showDeleteDialog by remember { mutableStateOf(false) }
+    
     // Determine what to display: full result if loaded, initial data if available and result not loaded, or null if nothing available
     val displayData = resultState?.benchmarkResult ?: if (initialData != null) {
         // Create a minimal BenchmarkResult from initial data for immediate display
@@ -62,18 +69,121 @@ fun HistoryDetailScreen(
         )
     } else null
 
-    Scaffold(
-        topBar = {
-            CenterAlignedTopAppBar(
-                title = { Text("Benchmark Details") },
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(Icons.Rounded.ArrowBack, contentDescription = "Back")
-                    }
+    // Get context and scope for sharing and deleting functionality
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+
+    // Function to share benchmark results
+    val shareBenchmark: () -> Unit = {
+        displayData?.let { data ->
+            // Parse detailed results from JSON string if available
+            val detailedResults = try {
+                if (resultState?.benchmarkResult?.detailedResultsJson?.isNotEmpty() == true) {
+                    val gson = com.google.gson.Gson()
+                    val listType = object : com.google.gson.reflect.TypeToken<List<com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkResult>>() {}.type
+                    gson.fromJson(resultState?.benchmarkResult?.detailedResultsJson ?: "", listType) as List<com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkResult>
+                } else {
+                    emptyList()
                 }
-            )
+            } catch (e: Exception) {
+                android.util.Log.e("HistoryDetailScreen", "Error parsing detailed results JSON: ${e.message}")
+                emptyList()
+            }
+
+            // Get device info to include in the share text
+            val deviceInfo = com.ivarna.finalbenchmark2.utils.DeviceInfoCollector.getDeviceInfo(context)
+            
+            // Format the share text
+            val shareText = buildString {
+                appendLine("FinalBenchmark Result")
+                appendLine("Date: ${formatDate(data.timestamp)}")
+                appendLine("Type: ${data.type}")
+                appendLine()
+                appendLine("Device Info:")
+                appendLine("SOC: ${deviceInfo.socName}")
+                appendLine("CPU: ${deviceInfo.manufacturer} ${deviceInfo.deviceModel}")
+                appendLine("Cores: ${deviceInfo.totalCores} (${deviceInfo.bigCores} big + ${deviceInfo.smallCores} small)")
+                appendLine("GPU: ${deviceInfo.gpuModel} (${deviceInfo.gpuVendor})")
+                appendLine()
+                appendLine("Scores:")
+                appendLine("Total Score: ${String.format("%.0f", data.totalScore)}")
+                appendLine("Normalized: ${String.format("%.0f", data.normalizedScore)}")
+                appendLine()
+                appendLine("CPU Scores:")
+                appendLine("Single-Core: ${String.format("%.0f", data.singleCoreScore)}")
+                appendLine("Multi-Core: ${String.format("%.0f", data.multiCoreScore)}")
+                appendLine()
+                appendLine("Individual Details:")
+                detailedResults.forEach { result ->
+                    appendLine("- ${result.name}: ${String.format("%.0f", result.opsPerSecond)} ops/s (${String.format("%.2f", result.executionTimeMs)}ms)")
+                }
+            }
+
+            val sendIntent = Intent(Intent.ACTION_SEND).apply {
+                putExtra(Intent.EXTRA_TEXT, shareText)
+                type = "text/plain"
+            }
+            val shareIntent = Intent.createChooser(sendIntent, "Share Benchmark")
+            context.startActivity(shareIntent)
         }
-    ) { padding ->
+    }
+
+    // Function to delete benchmark
+    val deleteBenchmark: () -> Unit = {
+        displayData?.let { data ->
+            // We need to launch the suspend function in a coroutine scope
+            scope.launch {
+                historyRepository.deleteResultById(data.id)
+            }
+            onBackClick()
+        }
+    }
+
+    Scaffold(
+           topBar = {
+               CenterAlignedTopAppBar(
+                   title = { Text("Benchmark Details") },
+                   navigationIcon = {
+                       IconButton(onClick = onBackClick) {
+                           Icon(Icons.Rounded.ArrowBack, contentDescription = "Back")
+                       }
+                   },
+                   actions = {
+                       IconButton(onClick = { shareBenchmark() }) {
+                           Icon(Icons.Rounded.Share, contentDescription = "Share")
+                       }
+                       IconButton(onClick = { showDeleteDialog = true }) {
+                           Icon(Icons.Rounded.Delete, contentDescription = "Delete")
+                       }
+                   }
+               )
+           }
+       ) { padding ->
+           // Delete confirmation dialog
+           if (showDeleteDialog) {
+               AlertDialog(
+                   onDismissRequest = { showDeleteDialog = false },
+                   title = { Text("Delete Benchmark") },
+                   text = { Text("Are you sure you want to delete this benchmark? This action cannot be undone.") },
+                   confirmButton = {
+                       TextButton(
+                           onClick = {
+                               deleteBenchmark()
+                               showDeleteDialog = false
+                           }
+                       ) {
+                           Text("Delete")
+                       }
+                   },
+                   dismissButton = {
+                       TextButton(
+                           onClick = { showDeleteDialog = false }
+                       ) {
+                           Text("Cancel")
+                       }
+                   }
+               )
+           }
         // Use displayData which contains either full result or initial data
         displayData?.let { data ->
             // Parse detailed results from JSON string if available
