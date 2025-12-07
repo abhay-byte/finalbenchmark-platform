@@ -602,7 +602,7 @@ fun AboutSection() {
                             modifier = Modifier.padding(top = 4.dp)
                         )
                         Text(
-                            text = "Full Stack Developer | Mobile, Web, Game Dev & AI Enthusiast",
+                            text = "Passionate about building software, exploring hardware, and all things Linux.",
                             fontSize = 14.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(top = 8.dp),
