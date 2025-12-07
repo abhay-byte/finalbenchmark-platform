@@ -636,10 +636,10 @@ fun AboutSection() {
                 val socialLinks = listOf(
                     SocialLink("GitHub", "https://github.com/abhay-byte", R.drawable.github_icon, "View my repositories and projects"),
                     SocialLink("LinkedIn", "https://www.linkedin.com/in/abhay-byte/", R.drawable.linkedin_icon, "Let's connect professionally"),
-                    SocialLink("Portfolio", "https://abhayraj-porfolio.web.app/", R.drawable.web_icon, "Check out my work"),
+                    SocialLink("Portfolio", "https://abhayraj-porfolio.web.app/", R.drawable.ic_portfolio, "Check out my work"),
                     SocialLink("Play Store", "https://play.google.com/store/apps/dev?id=8004929841101888920", R.drawable.playstore_icon, "Download my apps"),
-                    SocialLink("Instagram", "https://www.instagram.com/abhayrajx/", R.drawable.instagram_icon, "Follow my journey"),
-                    SocialLink("X (Twitter)", "https://x.com/arch_deve", R.drawable.x_icon, "Stay updated with me")
+                    SocialLink("Instagram", "https://www.instagram.com/abhayrajx/", R.drawable.ic_instagram, "Follow my journey"),
+                    SocialLink("X (Twitter)", "https://x.com/arch_deve", R.drawable.ic_twitter_x, "Stay updated with me")
                 )
                 
                 socialLinks.forEach { link ->
