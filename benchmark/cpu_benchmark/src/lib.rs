@@ -36,6 +36,7 @@ pub mod types;
 pub mod utils;
 pub mod ffi;
 pub mod jni_interface;
+pub mod android_affinity;
 
 pub use algorithms::*;
 pub use types::*;

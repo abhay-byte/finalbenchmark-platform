@@ -30,6 +30,22 @@ class BenchmarkForegroundService : Service() {
         // Actions
         const val ACTION_START_BENCHMARK = "com.ivarna.finalbenchmark2.START_BENCHMARK"
         const val ACTION_STOP_BENCHMARK = "com.ivarna.finalbenchmark2.STOP_BENCHMARK"
+        
+        fun start(context: Context) {
+            val intent = Intent(context, BenchmarkForegroundService::class.java)
+            intent.action = ACTION_START_BENCHMARK
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                context.startForegroundService(intent)
+            } else {
+                context.startService(intent)
+            }
+        }
+        
+        fun stop(context: Context) {
+            val intent = Intent(context, BenchmarkForegroundService::class.java)
+            intent.action = ACTION_STOP_BENCHMARK
+            context.stopService(intent)
+        }
     }
 
     override fun onCreate() {

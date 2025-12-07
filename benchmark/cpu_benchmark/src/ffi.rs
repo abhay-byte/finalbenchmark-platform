@@ -32,6 +32,7 @@ use serde_json;
 use crate::types::{BenchmarkConfig, WorkloadParams};
 use crate::utils;
 use crate::algorithms;
+use crate::android_affinity;
 
 /// C-compatible result structure for benchmark results
 #[repr(C)]
@@ -1121,6 +1122,54 @@ pub unsafe extern "C" fn run_multi_core_nqueens(params_json: *const c_char) -> *
     };
     
     Box::into_raw(Box::new(c_result))
+}
+
+/// Sets the big core IDs for CPU affinity control from JNI
+///
+/// # Parameters
+/// * `env`: JNI environment pointer
+/// * `class`: JNI class reference
+/// * `core_ids`: An array of core IDs that are considered "big" cores
+///
+/// # Safety
+/// The input array must be valid and the length must match the actual array size.
+#[no_mangle]
+pub unsafe extern "C" fn Java_com_ivarna_finalbenchmark2_cpuBenchmark_CpuBenchmarkNative_setBigCoreIds(
+    env: jni::JNIEnv,
+    _class: jni::objects::JClass,
+    core_ids: jni::objects::JIntArray,
+) {
+    eprintln!("RustBenchmark: JNI setBigCoreIds called");
+    
+    let array_len = match env.get_array_length(&core_ids) {
+        Ok(len) => len as usize,
+        Err(e) => {
+            eprintln!("RustBenchmark: Failed to get array length: {:?}", e);
+            return;
+        }
+    };
+    
+    let mut buffer: Vec<jni::sys::jint> = vec![0; array_len];
+    if let Err(e) = env.get_int_array_region(core_ids, 0, &mut buffer) {
+        eprintln!("RustBenchmark: Failed to get int array region: {:?}", e);
+        return;
+    }
+    
+    let core_ids_vec: Vec<usize> = buffer.iter().map(|&x| x as usize).collect();
+    eprintln!("RustBenchmark: Received big core IDs from Java: {:?}", core_ids_vec);
+    
+    // Store the big core IDs for use in benchmarks
+    crate::android_affinity::set_big_cores(core_ids_vec);
+    eprintln!("RustBenchmark: Big core IDs stored successfully");
+}
+
+/// Initializes the Rust logger for JNI usage
+#[no_mangle]
+pub unsafe extern "C" fn Java_com_ivarna_finalbenchmark2_cpuBenchmark_CpuBenchmarkNative_initLogger(
+    env: jni::JNIEnv,
+    _class: jni::objects::JClass,
+) {
+    eprintln!("RustBenchmark: Logger initialized from JNI");
 }
 
 /// Helper function to run warmup iterations

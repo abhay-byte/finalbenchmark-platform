@@ -5,9 +5,12 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.lifecycle.viewModelScope
+import com.ivarna.finalbenchmark2.BenchmarkForegroundService
 import com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkEvent
 import com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkManager
 import com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkResult
+import com.ivarna.finalbenchmark2.cpuBenchmark.CpuTopologyDetector
+import com.ivarna.finalbenchmark2.cpuBenchmark.CpuBenchmarkNative
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -171,6 +174,25 @@ class BenchmarkViewModel(
         
         viewModelScope.launch {
             try {
+                // Start foreground service to maintain high priority during benchmarks
+                BenchmarkForegroundService.start(application)
+                
+                // Detect CPU topology and log information
+                val cpuDetector = CpuTopologyDetector()
+                cpuDetector.logTopologyInfo()
+                val bigCores = cpuDetector.getBigCoreIds()
+                val littleCores = cpuDetector.getLittleCoreIds()
+                
+                Log.i("BenchmarkViewModel", "Detected CPU topology: ${bigCores.size} big cores (${bigCores}), ${littleCores.size} little cores (${littleCores})")
+                
+                // Pass big core IDs to native code for CPU affinity control
+                if (bigCores.isNotEmpty()) {
+                    CpuBenchmarkNative.setBigCoreIds(bigCores.toIntArray())
+                    Log.i("BenchmarkViewModel", "Passed big core IDs to native code: ${bigCores.joinToString(", ")}")
+                } else {
+                    Log.w("BenchmarkViewModel", "No big cores detected, using fallback CPU affinity")
+                }
+                
                 // Define all benchmark functions with names
                 val benchmarks = listOf(
                     "Single-Core Prime Generation" to "runSingleCorePrimeGeneration",
@@ -344,7 +366,7 @@ class BenchmarkViewModel(
                     _benchmarkState.value = BenchmarkState.Running(
                         BenchmarkProgress(
                             currentBenchmark = name,
-                            progress = ((index + 1) * 100 / totalBenchmarks),
+                            progress = ((index + 1) * 10 / totalBenchmarks),
                             completedBenchmarks = index + 1,
                             totalBenchmarks = totalBenchmarks
                         )
@@ -430,6 +452,9 @@ class BenchmarkViewModel(
                 // Reset the running flag on completion
                 isBenchmarkRunning = false
                 
+                // Stop foreground service after benchmarks complete
+                BenchmarkForegroundService.stop(application)
+                
                 // Save the benchmark results to the database
                 if (historyRepository != null) {
                     saveCpuBenchmarkResult(benchmarkResults)
@@ -444,6 +469,9 @@ class BenchmarkViewModel(
                     )
                 }
                 _benchmarkState.value = BenchmarkState.Error(e.message ?: "Unknown error occurred")
+                
+                // Stop foreground service in case of error
+                BenchmarkForegroundService.stop(application)
                 
                 // Reset the running flag on error
                 isBenchmarkRunning = false

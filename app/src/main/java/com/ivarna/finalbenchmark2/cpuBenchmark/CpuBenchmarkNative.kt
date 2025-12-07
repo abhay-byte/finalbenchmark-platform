@@ -93,6 +93,9 @@ object CpuBenchmarkNative {
     external fun initLogger()
 
     @JvmStatic
+    external fun setBigCoreIds(coreIds: IntArray)
+    
+    @JvmStatic
     external fun freeCString(str: String?)
     
     /**

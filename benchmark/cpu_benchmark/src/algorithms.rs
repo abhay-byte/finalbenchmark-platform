@@ -1,5 +1,5 @@
 //! CPU benchmark algorithms implementation
-//! 
+//!
 //! This module contains implementations of all CPU benchmark algorithms
 //! as specified in the documentation.
 
@@ -10,9 +10,19 @@ use md5;
 use rand::Rng;
 use crate::types::{BenchmarkResult, WorkloadParams};
 use crate::utils;
+use crate::android_affinity;
 
 /// Single-core prime number generation using Sieve of Eratosthenes
 pub fn single_core_prime_generation(params: &WorkloadParams) -> BenchmarkResult {
+    // Pin to a single big core for single-core benchmarks
+    #[cfg(target_os = "android")]
+    {
+        let big_cores = crate::android_affinity::get_big_cores();
+        if !big_cores.is_empty() {
+            let _ = crate::android_affinity::set_thread_affinity(vec![big_cores[0]]);
+        }
+    }
+    
     let start_time = std::time::Instant::now();
     
     // Create a boolean vector to mark prime numbers
@@ -60,6 +70,15 @@ pub fn single_core_prime_generation(params: &WorkloadParams) -> BenchmarkResult 
 
 /// Single-core Fibonacci sequence (recursive)
 pub fn single_core_fibonacci_recursive(params: &WorkloadParams) -> BenchmarkResult {
+    // Pin to a single big core for single-core benchmarks
+    #[cfg(target_os = "android")]
+    {
+        let big_cores = crate::android_affinity::get_big_cores();
+        if !big_cores.is_empty() {
+            let _ = crate::android_affinity::set_thread_affinity(vec![big_cores[0]]);
+        }
+    }
+    
     fn fibonacci(n: u32) -> u64 {
         if n <= 1 {
             return n as u64;
@@ -97,6 +116,15 @@ pub fn single_core_fibonacci_recursive(params: &WorkloadParams) -> BenchmarkResu
 
 /// Single-core matrix multiplication
 pub fn single_core_matrix_multiplication(params: &WorkloadParams) -> BenchmarkResult {
+    // Pin to a single big core for single-core benchmarks
+    #[cfg(target_os = "android")]
+    {
+        let big_cores = crate::android_affinity::get_big_cores();
+        if !big_cores.is_empty() {
+            let _ = crate::android_affinity::set_thread_affinity(vec![big_cores[0]]);
+        }
+    }
+    
     let size = params.matrix_size;
     let start_time = std::time::Instant::now();
     
@@ -143,6 +171,15 @@ pub fn single_core_matrix_multiplication(params: &WorkloadParams) -> BenchmarkRe
 
 /// Single-core hash computing (SHA-256 and MD5)
 pub fn single_core_hash_computing(params: &WorkloadParams) -> BenchmarkResult {
+    // Pin to a single big core for single-core benchmarks
+    #[cfg(target_os = "android")]
+    {
+        let big_cores = crate::android_affinity::get_big_cores();
+        if !big_cores.is_empty() {
+            let _ = crate::android_affinity::set_thread_affinity(vec![big_cores[0]]);
+        }
+    }
+    
     let data_size = params.hash_data_size_mb * 1024 * 1024; // Convert MB to bytes
     let start_time = std::time::Instant::now();
     
@@ -181,6 +218,15 @@ pub fn single_core_hash_computing(params: &WorkloadParams) -> BenchmarkResult {
 
 /// Single-core string sorting
 pub fn single_core_string_sorting(params: &WorkloadParams) -> BenchmarkResult {
+    // Pin to a single big core for single-core benchmarks
+    #[cfg(target_os = "android")]
+    {
+        let big_cores = crate::android_affinity::get_big_cores();
+        if !big_cores.is_empty() {
+            let _ = crate::android_affinity::set_thread_affinity(vec![big_cores[0]]);
+        }
+    }
+    
     let count = params.string_count;
     let start_time = std::time::Instant::now();
     
@@ -724,6 +770,15 @@ pub fn single_core_nqueens(params: &WorkloadParams) -> BenchmarkResult {
 
 /// Multi-core prime number generation using parallel sieve
 pub fn multi_core_prime_generation(params: &WorkloadParams) -> BenchmarkResult {
+    // Pin to all big cores for multi-core benchmarks
+    #[cfg(target_os = "android")]
+    {
+        let big_cores = crate::android_affinity::get_big_cores();
+        if !big_cores.is_empty() {
+            let _ = crate::android_affinity::set_thread_affinity(big_cores);
+        }
+    }
+    
     let n = params.prime_range;
     let num_threads = num_cpus::get();
     let start_time = std::time::Instant::now();
@@ -789,6 +844,15 @@ pub fn multi_core_prime_generation(params: &WorkloadParams) -> BenchmarkResult {
 
 /// Multi-core Fibonacci sequence with memoization
 pub fn multi_core_fibonacci_memoized(params: &WorkloadParams) -> BenchmarkResult {
+    // Pin to all big cores for multi-core benchmarks
+    #[cfg(target_os = "android")]
+    {
+        let big_cores = crate::android_affinity::get_big_cores();
+        if !big_cores.is_empty() {
+            let _ = crate::android_affinity::set_thread_affinity(big_cores);
+        }
+    }
+    
     use std::collections::HashMap;
     
     // Use a shared memoization table across threads
@@ -855,6 +919,15 @@ pub fn multi_core_fibonacci_memoized(params: &WorkloadParams) -> BenchmarkResult
 
 /// Multi-core matrix multiplication
 pub fn multi_core_matrix_multiplication(params: &WorkloadParams) -> BenchmarkResult {
+    // Pin to all big cores for multi-core benchmarks
+    #[cfg(target_os = "android")]
+    {
+        let big_cores = crate::android_affinity::get_big_cores();
+        if !big_cores.is_empty() {
+            let _ = crate::android_affinity::set_thread_affinity(big_cores);
+        }
+    }
+    
     let size = params.matrix_size;
     let start_time = std::time::Instant::now();
     
@@ -906,6 +979,15 @@ pub fn multi_core_matrix_multiplication(params: &WorkloadParams) -> BenchmarkRes
 
 /// Multi-core hash computing
 pub fn multi_core_hash_computing(params: &WorkloadParams) -> BenchmarkResult {
+    // Pin to all big cores for multi-core benchmarks
+    #[cfg(target_os = "android")]
+    {
+        let big_cores = crate::android_affinity::get_big_cores();
+        if !big_cores.is_empty() {
+            let _ = crate::android_affinity::set_thread_affinity(big_cores);
+        }
+    }
+    
     let data_size = params.hash_data_size_mb * 1024 * 1024; // Convert MB to bytes
     let num_threads = num_cpus::get();
     let chunk_size = data_size / num_threads;
@@ -972,6 +1054,15 @@ pub fn multi_core_hash_computing(params: &WorkloadParams) -> BenchmarkResult {
 
 /// Multi-core string sorting
 pub fn multi_core_string_sorting(params: &WorkloadParams) -> BenchmarkResult {
+    // Pin to all big cores for multi-core benchmarks
+    #[cfg(target_os = "android")]
+    {
+        let big_cores = crate::android_affinity::get_big_cores();
+        if !big_cores.is_empty() {
+            let _ = crate::android_affinity::set_thread_affinity(big_cores);
+        }
+    }
+    
     let count = params.string_count;
     let start_time = std::time::Instant::now();
     
