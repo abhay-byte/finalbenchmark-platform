@@ -28,6 +28,7 @@ import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.DisabledByDefault
+import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.*
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.runtime.*
@@ -41,6 +42,7 @@ import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -61,7 +63,6 @@ import com.ivarna.finalbenchmark2.ui.viewmodels.PerformanceOptimizationStatus
 import com.ivarna.finalbenchmark2.ui.viewmodels.PerformanceOptimizations
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ivarna.finalbenchmark2.ui.viewmodels.MainViewModel
-import com.ivarna.finalbenchmark2.ui.components.AppTopBar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -109,215 +110,209 @@ fun HomeScreen(
             
             powerInfo = powerUtils.getPowerConsumptionInfo()
             
-            delay(1000) // 1 second update rate
+            delay(100) // 1 second update rate
         }
     }
 
     FinalBenchmark2Theme {
-        Scaffold(
-            topBar = {
-                AppTopBar(
-                    onSettingsClick = onNavigateToSettings
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+        ) {
+            // Main scrollable content
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(24.dp)
+                    .padding(top = 60.dp), // Add top padding to account for the floating icon
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+            
+            // App logo
+            val currentTheme by LocalThemeMode.current
+            val isLightTheme = MaterialTheme.colorScheme.background.luminance() > 0.5f
+            val logoBackgroundColor = when (currentTheme) {
+                ThemeMode.SKY_BREEZE, ThemeMode.LAVENDER_DREAM -> {
+                    // Use a darker background for these specific light themes
+                    MaterialTheme.colorScheme.surfaceVariant
+                }
+                else -> {
+                    if (isLightTheme) MaterialTheme.colorScheme.surfaceVariant else Color.Transparent
+                }
+            }
+            
+            Box(
+                modifier = Modifier
+                    .size(140.dp) // Slightly smaller for better layout
+                    .clip(CircleShape)
+                    .background(logoBackgroundColor)
+                    .padding(16.dp)
+                    .padding(bottom = 8.dp)
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.logo_2),
+                    contentDescription = "Logo",
+                    modifier = Modifier.fillMaxSize().clip(CircleShape),
+                    contentScale = ContentScale.Crop
                 )
             }
-        ) { innerPadding ->
-            Surface(
-                modifier = Modifier.fillMaxSize(),
-                color = MaterialTheme.colorScheme.background
-            ) {
-                Column(
+
+            Spacer(modifier = Modifier.height(16.dp)) // Add spacing between logo and title
+
+            Text(
+                text = "FinalBenchmark2",
+                fontSize = 32.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
+
+            Text(
+                text = "A comprehensive benchmarking application that tests your device's performance across multiple components.",
+                fontSize = 16.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
+
+            // =========================================================
+            // CONSOLIDATED SYSTEM CARD
+            // =========================================================
+            if (isDataInitialized) {
+                var isExpanded by remember { mutableStateOf(false) }
+
+                Card(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .padding(innerPadding)
-                        .verticalScroll(rememberScrollState())
-                        .padding(24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp)
+                        .clickable { isExpanded = !isExpanded },
+                    shape = RoundedCornerShape(24.dp), // More modern rounded shape
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainer
+                    ),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                 ) {
-                
-                // App logo
-                val currentTheme by LocalThemeMode.current
-                val isLightTheme = MaterialTheme.colorScheme.background.luminance() > 0.5f
-                val logoBackgroundColor = when (currentTheme) {
-                    ThemeMode.SKY_BREEZE, ThemeMode.LAVENDER_DREAM -> {
-                        // Use a darker background for these specific light themes
-                        MaterialTheme.colorScheme.surfaceVariant
-                    }
-                    else -> {
-                        if (isLightTheme) MaterialTheme.colorScheme.surfaceVariant else Color.Transparent
-                    }
-                }
-                
-                Box(
-                    modifier = Modifier
-                        .size(140.dp) // Slightly smaller for better layout
-                        .clip(CircleShape)
-                        .background(logoBackgroundColor)
-                        .padding(16.dp)
-                        .padding(bottom = 8.dp)
-                ) {
-                    Image(
-                        painter = painterResource(id = R.drawable.logo_2),
-                        contentDescription = "Logo",
-                        modifier = Modifier.fillMaxSize().clip(CircleShape),
-                        contentScale = ContentScale.Crop
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(16.dp)) // Add spacing between logo and title
-
-                Text(
-                    text = "FinalBenchmark2",
-                    fontSize = 32.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(bottom = 16.dp)
-                )
-
-                Text(
-                    text = "A comprehensive benchmarking application that tests your device's performance across multiple components.",
-                    fontSize = 16.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(bottom = 16.dp)
-                )
-
-                // =========================================================
-                // CONSOLIDATED SYSTEM CARD
-                // =========================================================
-                if (isDataInitialized) {
-                    var isExpanded by remember { mutableStateOf(false) }
-
-                    Card(
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 8.dp)
-                            .clickable { isExpanded = !isExpanded },
-                        shape = RoundedCornerShape(24.dp), // More modern rounded shape
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainer
-                        ),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                            .padding(16.dp)
                     ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp)
+                        // --- SUMMARY ROW (Always Visible) ---
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            // --- SUMMARY ROW (Always Visible) ---
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                // 1. Temperature Summary
-                                CompactStatItem(
-                                    icon = Icons.Rounded.Thermostat,
-                                    value = "${if(cpuTemp > 0) cpuTemp else "--"}°C",
-                                    tint = MaterialTheme.colorScheme.error
+                            // 1. Temperature Summary
+                            CompactStatItem(
+                                icon = Icons.Rounded.Thermostat,
+                                value = "${if(cpuTemp > 0) cpuTemp else "--"}°C",
+                                tint = MaterialTheme.colorScheme.error
+                            )
+
+                            // 2. CPU Load Summary
+                            CompactStatItem(
+                                icon = Icons.Rounded.Memory,
+                                value = "${String.format("%.0f", cpuUtilization)}%",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+
+                            // 3. Power Summary
+                            CompactStatItem(
+                                icon = Icons.Rounded.Bolt,
+                                value = "${String.format("%.1f", powerInfo.power)}W",
+                                tint = MaterialTheme.colorScheme.tertiary
+                            )
+
+                            // Expand Arrow
+                            Icon(
+                                imageVector = Icons.Rounded.ArrowDropDown,
+                                contentDescription = "Expand",
+                                modifier = Modifier
+                                    .size(28.dp)
+                                    .rotate(if (isExpanded) 180f else 0f),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+
+                        // --- EXPANDED DETAILS ---
+                        AnimatedVisibility(
+                            visible = isExpanded,
+                            enter = expandVertically(animationSpec = tween(300)) + fadeIn(),
+                            exit = shrinkVertically(animationSpec = tween(300)) + fadeOut()
+                        ) {
+                            Column(modifier = Modifier.padding(top = 16.dp)) {
+                                
+                                HorizontalDivider(
+                                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                                    modifier = Modifier.padding(bottom = 16.dp)
                                 )
 
-                                // 2. CPU Load Summary
-                                CompactStatItem(
-                                    icon = Icons.Rounded.Memory,
-                                    value = "${String.format("%.0f", cpuUtilization)}%",
-                                    tint = MaterialTheme.colorScheme.primary
+                                // Row 1: Detailed Stats Grid
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceAround
+                                ) {
+                                    // CPU Temp
+                                    DetailIconPair(Icons.Rounded.Memory, "${cpuTemp}°C", "CPU")
+                                    // Battery Temp
+                                    DetailIconPair(Icons.Rounded.BatteryStd, "${batteryTemp}°C", "Batt")
+                                    // Voltage
+                                    DetailIconPair(Icons.Rounded.ElectricBolt, "${String.format("%.1f", powerInfo.voltage)}V", "Volts")
+                                    // Amperage
+                                    DetailIconPair(Icons.Rounded.Bolt, "${String.format("%.1f", powerInfo.current)}A", "Amps")
+                                }
+
+                                Spacer(modifier = Modifier.height(24.dp))
+
+                                // Row 2: CPU Cores Visualization
+                                Text(
+                                    text = "Core Utilization",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(bottom = 12.dp, start = 4.dp)
                                 )
 
-                                // 3. Power Summary
-                                CompactStatItem(
-                                    icon = Icons.Rounded.Bolt,
-                                    value = "${String.format("%.1f", powerInfo.power)}W",
-                                    tint = MaterialTheme.colorScheme.tertiary
-                                )
-
-                                // Expand Arrow
-                                Icon(
-                                    imageVector = Icons.Rounded.ArrowDropDown,
-                                    contentDescription = "Expand",
+                                LazyVerticalGrid(
+                                    columns = GridCells.Fixed(4),
                                     modifier = Modifier
-                                        .size(28.dp)
-                                        .rotate(if (isExpanded) 180f else 0f),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-
-                            // --- EXPANDED DETAILS ---
-                            AnimatedVisibility(
-                                visible = isExpanded,
-                                enter = expandVertically(animationSpec = tween(300)) + fadeIn(),
-                                exit = shrinkVertically(animationSpec = tween(300)) + fadeOut()
-                            ) {
-                                Column(modifier = Modifier.padding(top = 16.dp)) {
-                                    
-                                    HorizontalDivider(
-                                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
-                                        modifier = Modifier.padding(bottom = 16.dp)
-                                    )
-
-                                    // Row 1: Detailed Stats Grid
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceAround
-                                    ) {
-                                        // CPU Temp
-                                        DetailIconPair(Icons.Rounded.Memory, "${cpuTemp}°C", "CPU")
-                                        // Battery Temp
-                                        DetailIconPair(Icons.Rounded.BatteryStd, "${batteryTemp}°C", "Batt")
-                                        // Voltage
-                                        DetailIconPair(Icons.Rounded.ElectricBolt, "${String.format("%.1f", powerInfo.voltage)}V", "Volts")
-                                        // Amperage
-                                        DetailIconPair(Icons.Rounded.Bolt, "${String.format("%.1f", powerInfo.current)}A", "Amps")
-                                    }
-
-                                    Spacer(modifier = Modifier.height(24.dp))
-
-                                    // Row 2: CPU Cores Visualization
-                                    Text(
-                                        text = "Core Utilization",
-                                        style = MaterialTheme.typography.labelMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.padding(bottom = 12.dp, start = 4.dp)
-                                    )
-
-                                    LazyVerticalGrid(
-                                        columns = GridCells.Fixed(4),
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .heightIn(max = 240.dp), // Limit height
-                                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                    ) {
-                                        items(coreUtilizations.size) { index ->
-                                            val utilization = coreUtilizations[index] ?: 0f
-                                            val (currentFreq, _) = allCoreFrequencies[index] ?: Pair(0L, 0L)
-                                            
-                                            Column(
-                                                horizontalAlignment = Alignment.CenterHorizontally
-                                            ) {
-                                                Box(contentAlignment = Alignment.Center) {
-                                                    CircularProgressIndicator(
-                                                        progress = { utilization / 100f },
-                                                        modifier = Modifier.size(48.dp),
-                                                        strokeWidth = 4.dp,
-                                                        color = MaterialTheme.colorScheme.primary,
-                                                        trackColor = MaterialTheme.colorScheme.surfaceVariant
-                                                    )
-                                                    Text(
-                                                        text = "${index}",
-                                                        style = MaterialTheme.typography.labelSmall,
-                                                        fontWeight = FontWeight.Bold
-                                                    )
-                                                }
-                                                Spacer(modifier = Modifier.height(4.dp))
+                                        .fillMaxWidth()
+                                        .heightIn(max = 240.dp), // Limit height
+                                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    items(coreUtilizations.size) { index ->
+                                        val utilization = coreUtilizations[index] ?: 0f
+                                        val (currentFreq, _) = allCoreFrequencies[index] ?: Pair(0L, 0L)
+                                        
+                                        Column(
+                                            horizontalAlignment = Alignment.CenterHorizontally
+                                        ) {
+                                            Box(contentAlignment = Alignment.Center) {
+                                                CircularProgressIndicator(
+                                                    progress = { utilization / 100f },
+                                                    modifier = Modifier.size(48.dp),
+                                                    strokeWidth = 4.dp,
+                                                    color = MaterialTheme.colorScheme.primary,
+                                                    trackColor = MaterialTheme.colorScheme.surfaceVariant
+                                                )
                                                 Text(
-                                                    text = "${currentFreq / 1000} Mhz",
-                                                    fontSize = 9.sp,
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                    maxLines = 1
+                                                    text = "${index}",
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    fontWeight = FontWeight.Bold
                                                 )
                                             }
+                                            Spacer(modifier = Modifier.height(4.dp))
+                                            Text(
+                                                text = "${currentFreq / 100} Mhz",
+                                                fontSize = 9.sp,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                maxLines = 1
+                                            )
                                         }
                                     }
                                 }
@@ -325,199 +320,218 @@ fun HomeScreen(
                         }
                     }
                 }
-                // =========================================================
+            }
+            // =========================================================
 
-                // =========================================================
-                // PERFORMANCE OPTIMIZATIONS CARD
-                // =========================================================
-                // PERFORMANCE OPTIMIZATIONS CARD
-                // =========================================================
-                // Access the MainActivity to get the sustained performance mode status
-                val context = LocalContext.current
-                val activity = context as? com.ivarna.finalbenchmark2.MainActivity
-                val sustainedPerformanceStatus = if (activity != null) {
-                    activity.isSustainedPerformanceModeActive()
+            // =========================================================
+            // PERFORMANCE OPTIMIZATIONS CARD
+            // =========================================================
+            // PERFORMANCE OPTIMIZATIONS CARD
+            // =========================================================
+            // Access the MainActivity to get the sustained performance mode status
+            val context = LocalContext.current
+            val activity = context as? com.ivarna.finalbenchmark2.MainActivity
+            val sustainedPerformanceStatus = if (activity != null) {
+                activity.isSustainedPerformanceModeActive()
+            } else {
+                false
+            }
+            
+            val wakeLockStatus = if (activity != null) {
+                activity.isWakeLockActive()
+            } else {
+                false
+            }
+            
+            // Determine wake lock status text for display
+            val wakeLockStatusText = if (activity != null) {
+                if (activity.isWakeLockActive()) {
+                    "Active" // When benchmark is running
+                } else if (activity.isWakeLockReady()) {
+                    "Ready" // When initialized but not yet acquired
                 } else {
-                    false
+                    "Disabled" // When not available
                 }
-                
-                val wakeLockStatus = if (activity != null) {
-                    activity.isWakeLockActive()
-                } else {
-                    false
-                }
-                
-                // Determine wake lock status text for display
-                val wakeLockStatusText = if (activity != null) {
-                    if (activity.isWakeLockActive()) {
-                        "Active" // When benchmark is running
-                    } else if (activity.isWakeLockReady()) {
-                        "Ready" // When initialized but not yet acquired
-                    } else {
-                        "Disabled" // When not available
-                    }
-                } else {
-                    "Unknown"
-                }
-                
-                val screenAlwaysOnStatus = if (activity != null) {
-                    activity.isScreenAlwaysOnActive()
-                } else {
-                    false
-                }
-                
-                // NEW: Get CPU optimization statuses
-                val highPriorityThreadingStatus = if (activity != null) {
-                    activity.isHighPriorityThreadingActive()
-                } else {
-                    false
-                }
-                
-                val performanceHintStatus = if (activity != null) {
-                    activity.isPerformanceHintActive()
-                } else {
-                    false
-                }
-                
-                val cpuAffinityStatus = if (activity != null) {
-                    activity.isCpuAffinityActive()
-                } else {
-                    false
-                }
-                
-                val bigCoreCount = if (activity != null) {
-                    activity.getBigCoreCount()
-                } else {
-                    0
-                }
-                
-                val littleCoreCount = if (activity != null) {
-                    activity.getLittleCoreCount()
-                } else {
-                    0
-                }
-                
-                // NEW: Get foreground service and governor hint statuses
-                val foregroundServiceStatus = if (activity != null) {
-                    activity.isForegroundServiceActive()
-                } else {
-                    false
-                }
-                
-                val governorHintStatus = if (activity != null) {
-                    activity.isGovernorHintApplied()
-                } else {
-                    false
-                }
-                
-                val originalGovernor = if (activity != null) {
-                    activity.getOriginalGovernor()
-                } else {
-                    "Unknown"
-                }
-                
-                PerformanceOptimizationsCard(
-                    sustainedPerformanceStatus = sustainedPerformanceStatus,
-                    wakeLockStatus = wakeLockStatus,
-                    screenAlwaysOnStatus = screenAlwaysOnStatus,
-                    wakeLockStatusText = wakeLockStatusText,
-                    highPriorityThreadingStatus = highPriorityThreadingStatus,
-                    performanceHintStatus = performanceHintStatus,
-                    cpuAffinityStatus = cpuAffinityStatus,
-                    bigCoreCount = bigCoreCount,
-                    littleCoreCount = littleCoreCount,
-                    foregroundServiceStatus = foregroundServiceStatus,
-                    governorHintStatus = governorHintStatus,
-                    originalGovernor = originalGovernor
-                )
-                
-                // Workload Selection Dropdown
-                ExposedDropdownMenuBox(
-                    expanded = isDropdownExpanded,
-                    onExpandedChange = { isDropdownExpanded = !isDropdownExpanded }
-                ) {
-                    OutlinedTextField(
-                        value = selectedWorkload,
-                        onValueChange = { },
-                        readOnly = true,
-                        label = { Text("Workload Intensity") },
-                        trailingIcon = {
-                            ExposedDropdownMenuDefaults.TrailingIcon(
-                                expanded = isDropdownExpanded
-                            )
-                        },
-                        modifier = Modifier
-                            .menuAnchor(MenuAnchorType.PrimaryNotEditable)
-                            .fillMaxWidth()
-                            .padding(vertical = 8.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = MaterialTheme.colorScheme.primary,
-                            unfocusedBorderColor = MaterialTheme.colorScheme.outline,
-                            focusedLabelColor = MaterialTheme.colorScheme.primary,
-                            unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                            focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                            unfocusedTextColor = MaterialTheme.colorScheme.onSurface
+            } else {
+                "Unknown"
+            }
+            
+            val screenAlwaysOnStatus = if (activity != null) {
+                activity.isScreenAlwaysOnActive()
+            } else {
+                false
+            }
+            
+            // NEW: Get CPU optimization statuses
+            val highPriorityThreadingStatus = if (activity != null) {
+                activity.isHighPriorityThreadingActive()
+            } else {
+                false
+            }
+            
+            val performanceHintStatus = if (activity != null) {
+                activity.isPerformanceHintActive()
+            } else {
+                false
+            }
+            
+            val cpuAffinityStatus = if (activity != null) {
+                activity.isCpuAffinityActive()
+            } else {
+                false
+            }
+            
+            val bigCoreCount = if (activity != null) {
+                activity.getBigCoreCount()
+            } else {
+                0
+            }
+            
+            val littleCoreCount = if (activity != null) {
+                activity.getLittleCoreCount()
+            } else {
+                0
+            }
+            
+            // NEW: Get foreground service and governor hint statuses
+            val foregroundServiceStatus = if (activity != null) {
+                activity.isForegroundServiceActive()
+            } else {
+                false
+            }
+            
+            val governorHintStatus = if (activity != null) {
+                activity.isGovernorHintApplied()
+            } else {
+                false
+            }
+            
+            val originalGovernor = if (activity != null) {
+                activity.getOriginalGovernor()
+            } else {
+                "Unknown"
+            }
+            
+            PerformanceOptimizationsCard(
+                sustainedPerformanceStatus = sustainedPerformanceStatus,
+                wakeLockStatus = wakeLockStatus,
+                screenAlwaysOnStatus = screenAlwaysOnStatus,
+                wakeLockStatusText = wakeLockStatusText,
+                highPriorityThreadingStatus = highPriorityThreadingStatus,
+                performanceHintStatus = performanceHintStatus,
+                cpuAffinityStatus = cpuAffinityStatus,
+                bigCoreCount = bigCoreCount,
+                littleCoreCount = littleCoreCount,
+                foregroundServiceStatus = foregroundServiceStatus,
+                governorHintStatus = governorHintStatus,
+                originalGovernor = originalGovernor
+            )
+            
+            // Workload Selection Dropdown
+            ExposedDropdownMenuBox(
+                expanded = isDropdownExpanded,
+                onExpandedChange = { isDropdownExpanded = !isDropdownExpanded }
+            ) {
+                OutlinedTextField(
+                    value = selectedWorkload,
+                    onValueChange = { },
+                    readOnly = true,
+                    label = { Text("Workload Intensity") },
+                    trailingIcon = {
+                        ExposedDropdownMenuDefaults.TrailingIcon(
+                            expanded = isDropdownExpanded
                         )
-                    )
-                    
-                    ExposedDropdownMenu(
-                        expanded = isDropdownExpanded,
-                        onDismissRequest = { isDropdownExpanded = false }
-                    ) {
-                        workloadOptions.forEach { option ->
-                            DropdownMenuItem(
-                                text = { Text(option) },
-                                onClick = {
-                                    selectedWorkload = option
-                                    isDropdownExpanded = false
-                                },
-                                contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
-                            )
-                        }
-                    }
-                }
-                
-                // Start CPU Benchmark Button
-                Button(
-                    onClick = {
-                        // Call optimizations before starting benchmark
-                        val activity = context as? com.ivarna.finalbenchmark2.MainActivity
-                        activity?.startAllOptimizations()
-                        
-                        // Map UI workload to backend device tier
-                        val deviceTier = when (selectedWorkload) {
-                            "Low" -> "slow"
-                            "Mid" -> "mid"
-                            "Flagship" -> "flagship"
-                            else -> "flagship" // fallback
-                        }
-                        
-                        onStartBenchmark(deviceTier)
                     },
                     modifier = Modifier
+                        .menuAnchor(MenuAnchorType.PrimaryNotEditable)
                         .fillMaxWidth()
-                        .padding(vertical = 16.dp)
-                        .height(56.dp),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Icon(painterResource(id = R.drawable.mobile_24), contentDescription = null) // Generic icon
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "START CPU BENCHMARK",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.sp
+                        .padding(vertical = 8.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                        focusedLabelColor = MaterialTheme.colorScheme.primary,
+                        unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface
                     )
-                }
-
-                Text(
-                    text = "Run comprehensive tests on CPU, GPU, RAM, and Storage performance",
-                    fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(top = 8.dp)
                 )
+                
+                ExposedDropdownMenu(
+                    expanded = isDropdownExpanded,
+                    onDismissRequest = { isDropdownExpanded = false }
+                ) {
+                    workloadOptions.forEach { option ->
+                        DropdownMenuItem(
+                            text = { Text(option) },
+                            onClick = {
+                                selectedWorkload = option
+                                isDropdownExpanded = false
+                            },
+                            contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
+                        )
+                    }
                 }
+            }
+            
+            // Start CPU Benchmark Button
+            Button(
+                onClick = {
+                    // Call optimizations before starting benchmark
+                    val activity = context as? com.ivarna.finalbenchmark2.MainActivity
+                    activity?.startAllOptimizations()
+                    
+                    // Map UI workload to backend device tier
+                    val deviceTier = when (selectedWorkload) {
+                        "Low" -> "slow"
+                        "Mid" -> "mid"
+                        "Flagship" -> "flagship"
+                        else -> "flagship" // fallback
+                    }
+                    
+                    onStartBenchmark(deviceTier)
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 16.dp)
+                    .height(56.dp),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Icon(painterResource(id = R.drawable.mobile_24), contentDescription = null) // Generic icon
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "START CPU BENCHMARK",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.sp
+                )
+            }
+
+            Text(
+                text = "Run comprehensive tests on CPU, GPU, RAM, and Storage performance",
+                fontSize = 14.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(top = 8.dp)
+            )
+            }
+            
+            // Floating Settings Icon in Top Right Corner (on top of everything)
+            IconButton(
+                onClick = onNavigateToSettings,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(16.dp)
+                    .background(
+                        color = MaterialTheme.colorScheme.surfaceVariant,
+                        shape = CircleShape
+                    )
+                    .padding(8.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Settings,
+                    contentDescription = "Settings",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }
@@ -660,7 +674,7 @@ fun PerformanceOptimizationsCard(
                         } else {
                             PerformanceOptimizationStatus.DISABLED
                         },
-                        statusText = wakeLockStatusText  // Pass the custom status text
+                        statusText = wakeLockStatusText // Pass the custom status text
                     )
                     
                     // Screen Always On Detail
@@ -739,7 +753,7 @@ fun OptimizationDetailRow(
     title: String,
     description: String,
     status: PerformanceOptimizationStatus,  // This should be defined in MainViewModel
-    statusText: String? = null  // New optional parameter for custom status text
+    statusText: String? = null // New optional parameter for custom status text
 ) {
     val statusColor = when (status) {
         PerformanceOptimizationStatus.ENABLED -> MaterialTheme.colorScheme.primary
@@ -759,7 +773,7 @@ fun OptimizationDetailRow(
         PerformanceOptimizationStatus.ENABLED -> Icons.Rounded.Check
         PerformanceOptimizationStatus.DISABLED -> Icons.Rounded.Close
         PerformanceOptimizationStatus.NOT_SUPPORTED -> Icons.Rounded.DisabledByDefault
-        PerformanceOptimizationStatus.READY -> Icons.Rounded.CheckCircle  // Using check circle for ready state
+        PerformanceOptimizationStatus.READY -> Icons.Rounded.CheckCircle // Using check circle for ready state
     }
 
     Column(
