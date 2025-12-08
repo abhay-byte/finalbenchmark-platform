@@ -347,17 +347,18 @@ class KotlinBenchmarkManager {
                 nqueensSize = 13
             )
             "flagship" -> WorkloadParams(
-                primeRange = 2_000_000,        // Reduced from 20M to 2M - still substantial but mobile-safe
-                fibonacciNRange = Pair(35, 40), // Reduced upper bound from 42 to 40
-                matrixSize = 512,              // Reduced from 1200 to 512 - cubic complexity reduction
-                hashDataSizeMb = 10,           // Reduced from 150MB to 10MB - mobile-safe
-                stringCount = 100_000,         // Reduced from 2M to 100K - major memory reduction
-                rayTracingResolution = Pair(600, 600), // Keep reasonable resolution
-                rayTracingDepth = 5,           // Keep depth for meaningful test
-                compressionDataSizeMb = 1,     // Reduced from 80MB to 1MB - mobile-safe
-                monteCarloSamples = 10_000_000, // Reduced from 150M to 10M - still good for parallelism
-                jsonDataSizeMb = 5,            // Reduced from 15MB to 5MB - reasonable
-                nqueensSize = 14               // Keep at 14 - exponential complexity limit
+                // CRISIS FIX: Ultra-aggressive mobile-safe parameters for 2-5 second tests
+                primeRange = 500_000,           // Reduced from 2M to 500K - mobile-safe range
+                fibonacciNRange = Pair(35, 38), // Reduced upper bound from 40 to 38
+                matrixSize = 350,               // CRITICAL FIX: Reduced from 512 to 350 (40% less work)
+                hashDataSizeMb = 1,             // CRITICAL FIX: Reduced from 10MB to 1MB (10x reduction)
+                stringCount = 12_000,           // CRITICAL FIX: Reduced from 100K to 12K (mobile-safe)
+                rayTracingResolution = Pair(400, 400), // Reduced from 600x600 for speed
+                rayTracingDepth = 3,            // Reduced from 5 to 3 for speed
+                compressionDataSizeMb = 0,      // CRITICAL FIX: 0MB - use fixed 512KB buffer instead
+                monteCarloSamples = 2_000_000,  // Reduced from 10M to 2M for speed
+                jsonDataSizeMb = 2,             // Reduced from 5MB to 2MB for speed
+                nqueensSize = 12                // Reduced from 14 to 12 for speed
             )
             else -> WorkloadParams() // Default values
         }

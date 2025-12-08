@@ -25,3 +25,4 @@ Cargo.lock
 # Keystore
 my-release-key.keystore
 keystore/
+.kotlin

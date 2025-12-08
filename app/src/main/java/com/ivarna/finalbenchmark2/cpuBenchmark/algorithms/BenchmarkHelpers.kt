@@ -1,5 +1,6 @@
 package com.ivarna.finalbenchmark2.cpuBenchmark.algorithms
 
+import kotlinx.coroutines.yield
 import kotlin.random.Random
 import kotlin.system.measureTimeMillis
 
@@ -9,6 +10,18 @@ object BenchmarkHelpers {
      * Run a benchmark function and measure execution time
      */
     inline fun <T> measureBenchmark(block: () -> T): Pair<T, Long> {
+        val startTime = System.nanoTime()
+        val result = block()
+        val endTime = System.nanoTime()
+        val durationMs = (endTime - startTime) / 1_000_000
+        return Pair(result, durationMs)
+    }
+    
+    /**
+     * Run a suspend benchmark function and measure execution time
+     * Allows yielding to prevent UI freeze
+     */
+    suspend inline fun <T> measureBenchmarkSuspend(crossinline block: suspend () -> T): Pair<T, Long> {
         val startTime = System.nanoTime()
         val result = block()
         val endTime = System.nanoTime()
