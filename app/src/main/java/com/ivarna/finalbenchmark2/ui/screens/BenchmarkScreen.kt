@@ -155,7 +155,25 @@ fun BenchmarkScreen(
                         color = MaterialTheme.colorScheme.primary
                     )
 
-                    Spacer(modifier = Modifier.height(32.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Workload Preset Badge
+                    Surface(
+                        shape = androidx.compose.foundation.shape.CircleShape,
+                        color = MaterialTheme.colorScheme.tertiaryContainer,
+                        tonalElevation = 2.dp,
+                        modifier = Modifier.padding(vertical = 8.dp)
+                    ) {
+                        Text(
+                            text = "Workload: ${uiState.workloadPreset}",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onTertiaryContainer,
+                            fontWeight = FontWeight.Medium,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
 
                     // 2. Circular Indicator with Bold Text in Center
                     Box(

@@ -64,7 +64,8 @@ data class BenchmarkUiState(
     val isRunning: Boolean = false,
     val benchmarkResults: BenchmarkResults? = null,
     val error: String? = null,
-    val testStates: List<TestState> = emptyList() // CHANGED: from allTestStates to testStates for clarity
+    val testStates: List<TestState> = emptyList(), // CHANGED: from allTestStates to testStates for clarity
+    val workloadPreset: String = "Auto" // ADDED: Track the current workload preset for UI display
 )
 
 // Old data class kept for compatibility
@@ -170,7 +171,7 @@ class BenchmarkViewModel(
     }
     
     // NEW IMPLEMENTATION: Simplified, reactive benchmark runner
-    fun runBenchmarks() {
+    fun runBenchmarks(preset: String = "Auto") {
         // FIX: Reset state immediately to prevent stale navigation
         _benchmarkState.value = BenchmarkState.Idle
         
@@ -223,7 +224,8 @@ class BenchmarkViewModel(
                     progress = 0f,
                     currentTestName = "Initializing...",
                     testStates = testNames.map { name -> TestState(name = name, status = TestStatus.PENDING) },
-                    error = null
+                    error = null,
+                    workloadPreset = preset // FIXED: Store the actual preset parameter
                 ) }
                 
                 val totalTests = testNames.size
@@ -319,7 +321,7 @@ class BenchmarkViewModel(
     
     // Helper function to run individual benchmark based on name
     private suspend fun runSingleBenchmark(testName: String): com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkResult {
-        val deviceTier = "Flagship"
+        val deviceTier = _uiState.value.workloadPreset // FIXED: Use the actual preset from UI state instead of hardcoded "Flagship"
         val params = getWorkloadParams(deviceTier)
         
         return when {
@@ -463,7 +465,7 @@ class BenchmarkViewModel(
     
     // Legacy function kept for compatibility
     fun startBenchmark(preset: String = "Auto") {
-        runBenchmarks()
+        runBenchmarks(preset)
     }
     
     fun saveCpuBenchmarkResult(results: BenchmarkResults) {
