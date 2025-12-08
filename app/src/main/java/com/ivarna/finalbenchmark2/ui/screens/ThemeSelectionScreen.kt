@@ -174,10 +174,19 @@ fun ThemeSelectionScreen(
                 .fillMaxSize()
                 .background(
                     brush = Brush.verticalGradient(
-                        colors = listOf(
-                            MaterialTheme.colorScheme.surface,
-                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-                        )
+                        colors = if (useDarkTheme) {
+                            // Dark theme gradient: surface to surfaceVariant with alpha
+                            listOf(
+                                MaterialTheme.colorScheme.surface,
+                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                            )
+                        } else {
+                            // Light theme gradient: surface to a very subtle surfaceVariant
+                            listOf(
+                                MaterialTheme.colorScheme.surface,
+                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.1f) // Much lighter alpha for light theme
+                            )
+                        }
                     )
                 )
         ) {
@@ -262,55 +271,47 @@ fun ThemeSelectionScreen(
                     }
                 }
                 
-                // Beautiful Action Button
-                Card(
+                // Beautiful Action Button - Remove the Card wrapper and vertical padding
+                Button(
+                    onClick = {
+                        scope.launch {
+                            // Mark onboarding as completed when continuing
+                            val onboardingPreferences = com.ivarna.finalbenchmark2.utils.OnboardingPreferences(context)
+                            onboardingPreferences.setOnboardingCompleted()
+                        }
+                        // Apply the selected theme when continuing to main app
+                        val activity = context as? ComponentActivity
+                        if (activity is com.ivarna.finalbenchmark2.MainActivity) {
+                            activity.updateTheme(selectedTheme)
+                        } else {
+                            // Fallback to the default approach if not MainActivity
+                            when (selectedTheme) {
+                                com.ivarna.finalbenchmark2.ui.theme.ThemeMode.LIGHT -> androidx.appcompat.app.AppCompatDelegate.setDefaultNightMode(androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_NO)
+                                com.ivarna.finalbenchmark2.ui.theme.ThemeMode.DARK -> androidx.appcompat.app.AppCompatDelegate.setDefaultNightMode(androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES)
+                                com.ivarna.finalbenchmark2.ui.theme.ThemeMode.SYSTEM -> androidx.appcompat.app.AppCompatDelegate.setDefaultNightMode(androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM)
+                                // For custom themes, default to dark mode
+                                else -> androidx.appcompat.app.AppCompatDelegate.setDefaultNightMode(androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES)
+                            }
+                            activity?.recreate()
+                        }
+                        onNextClicked()
+                    },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 8.dp),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
-                    shape = RoundedCornerShape(20.dp)
+                        .padding(horizontal = 16.dp), // Only horizontal padding, no vertical padding
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary
+                    ),
+                    shape = RoundedCornerShape(16.dp)
                 ) {
-                    Button(
-                        onClick = {
-                            scope.launch {
-                                // Mark onboarding as completed when continuing
-                                val onboardingPreferences = com.ivarna.finalbenchmark2.utils.OnboardingPreferences(context)
-                                onboardingPreferences.setOnboardingCompleted()
-                            }
-                            // Apply the selected theme when continuing to main app
-                            val activity = context as? ComponentActivity
-                            if (activity is com.ivarna.finalbenchmark2.MainActivity) {
-                                activity.updateTheme(selectedTheme)
-                            } else {
-                                // Fallback to the default approach if not MainActivity
-                                when (selectedTheme) {
-                                    com.ivarna.finalbenchmark2.ui.theme.ThemeMode.LIGHT -> androidx.appcompat.app.AppCompatDelegate.setDefaultNightMode(androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_NO)
-                                    com.ivarna.finalbenchmark2.ui.theme.ThemeMode.DARK -> androidx.appcompat.app.AppCompatDelegate.setDefaultNightMode(androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES)
-                                    com.ivarna.finalbenchmark2.ui.theme.ThemeMode.SYSTEM -> androidx.appcompat.app.AppCompatDelegate.setDefaultNightMode(androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM)
-                                    // For custom themes, default to dark mode
-                                    else -> androidx.appcompat.app.AppCompatDelegate.setDefaultNightMode(androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES)
-                                }
-                                activity?.recreate()
-                            }
-                            onNextClicked()
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary
+                    Text(
+                        text = "Continue",
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 18.sp
                         ),
-                        shape = RoundedCornerShape(16.dp)
-                    ) {
-                        Text(
-                            text = "Continue",
-                            style = MaterialTheme.typography.titleLarge.copy(
-                                fontWeight = FontWeight.SemiBold,
-                                fontSize = 18.sp
-                            ),
-                            modifier = Modifier.padding(vertical = 8.dp)
-                        )
-                    }
+                        modifier = Modifier
+                    )
                 }
             }
         }
