@@ -23,32 +23,32 @@ class KotlinBenchmarkManager {
     companion object {
         private const val TAG = "KotlinBenchmarkManager"
         
-        // Calibrated scaling factors for realistic scoring (Target: 8,000-12,000 for flagship)
-        // Based on reference data: Fibonacci ~343B ops/s → 1000pts (factor: 2.9e-9), N-Queens ~400k ops/s → 1000pts (factor: 0.0025)
+        // UPDATED SCALING FACTORS - Optimized algorithms with new factors
+        // Target: ~10,000 total points for flagship devices with optimized algorithms
         private val SINGLE_CORE_FACTORS = mapOf(
-            "Prime Generation" to 3.2e-9,     // ~1250 pts for 400M ops/s
-            "Fibonacci Recursive" to 2.9e-9,  // Reference: 1000 pts for 343B ops/s
-            "Matrix Multiplication" to 5.5e-8, // ~1100 pts for 20B FLOPs
-            "Hash Computing" to 1.5e-7,       // ~1000 pts for 6.5M hashes/s
-            "String Sorting" to 2.1e-5,       // ~1050 pts for 50k comparisons/s
-            "Ray Tracing" to 1.2e-4,          // ~1020 pts for 8.5M rays/s
-            "Compression" to 1.4e-7,          // ~1000 pts for 7MB/s
-            "Monte Carlo" to 6.0e-7,          // ~1000 pts for 1.6M samples/s
-            "JSON Parsing" to 2.2e-6,         // ~1000 pts for 450k elements/s
-            "N-Queens" to 0.0025              // Reference: 1000 pts for 400k ops/s
+            "Prime Generation" to 2.5e-5,     // Optimized: Higher due to reduced allocations
+            "Fibonacci Recursive" to 1.2e-5,  // Optimized: Raw CPU usage without memoization
+            "Matrix Multiplication" to 4.0e-6, // Optimized: Cache-friendly algorithms
+            "Hash Computing" to 6.0e-3,       // Optimized: SHA-256 throughput focus
+            "String Sorting" to 5.0e-3,       // Optimized: Pre-generated strings, measure only sort
+            "Ray Tracing" to 1.5e-3,          // Optimized: Parallel ray computation
+            "Compression" to 5.0e-4,          // Optimized: Static buffer, zero allocation
+            "Monte Carlo" to 2.0e-4,          // Optimized: ThreadLocalRandom, primitive only
+            "JSON Parsing" to 1.8e-3,         // Optimized: Element counting focus
+            "N-Queens" to 8.0e-2              // Optimized: Backtracking efficiency
         )
         
         private val MULTI_CORE_FACTORS = mapOf(
-            "Prime Generation" to 2.8e-9,     // ~1400 pts for 500M ops/s (8-core scaling)
-            "Fibonacci Memoized" to 1.2e-9,   // ~1200 pts for 1T ops/s (multi-core efficiency)
-            "Matrix Multiplication" to 4.2e-8, // ~1200 pts for 28B FLOPs (parallel efficiency)
-            "Hash Computing" to 1.1e-7,       // ~1100 pts for 10M hashes/s (8-core scaling)
-            "String Sorting" to 1.8e-5,       // ~1200 pts for 65k comparisons/s (parallel merge)
-            "Ray Tracing" to 9.5e-5,          // ~1150 pts for 12M rays/s (parallel rendering)
-            "Compression" to 1.2e-7,          // ~1200 pts for 10MB/s (parallel compression)
-            "Monte Carlo" to 4.5e-7,          // ~1300 pts for 2.8M samples/s (8-core scaling)
-            "JSON Parsing" to 1.8e-6,         // ~1200 pts for 650k elements/s (parallel parsing)
-            "N-Queens" to 0.0018              // ~1100 pts for 600k ops/s (parallel backtracking)
+            "Prime Generation" to 6.0e-6,     // Optimized: Parallel prime counting
+            "Fibonacci Recursive" to 1.0e-5,  // Optimized: No memoization, pure parallel
+            "Matrix Multiplication" to 3.5e-6, // Optimized: Parallel matrix operations
+            "Hash Computing" to 3.0e-3,       // Optimized: Parallel SHA-256 hashing
+            "String Sorting" to 3.0e-3,       // Optimized: Pre-generated, parallel sort
+            "Ray Tracing" to 1.0e-3,          // Optimized: Parallel ray tracing
+            "Compression" to 6.0e-4,          // Optimized: Static buffer, parallel compression
+            "Monte Carlo" to 3.5e-4,          // Optimized: ThreadLocalRandom, parallel samples
+            "JSON Parsing" to 3.5e-3,         // Optimized: Parallel JSON parsing
+            "N-Queens" to 3.0e-3              // Optimized: Work-stealing parallel backtracking
         )
     }
     
@@ -163,10 +163,10 @@ class KotlinBenchmarkManager {
         emitBenchmarkComplete("Multi-Core Prime Generation", "MULTI",
             multiPrimeResult.executionTimeMs.toLong(), multiPrimeResult.opsPerSecond)
         
-        // Fibonacci Memoized
-        emitBenchmarkStart("Multi-Core Fibonacci Memoized", "MULTI")
+        // Fibonacci Recursive
+        emitBenchmarkStart("Multi-Core Fibonacci Recursive", "MULTI")
         val multiFibResult = withContext(Dispatchers.Default) {
-            MultiCoreBenchmarks.fibonacciMemoized(params)
+            MultiCoreBenchmarks.fibonacciRecursive(params)
         }
         multiResults.add(multiFibResult)
         emitBenchmarkComplete("Multi-Core Fibonacci Memoized", "MULTI",

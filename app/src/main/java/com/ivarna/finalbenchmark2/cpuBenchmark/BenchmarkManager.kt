@@ -415,8 +415,8 @@ class BenchmarkManager {
                 }
                 "runMultiCoreFibonacciMemoized" -> {
                     runBlocking {
-                        val result = MultiCoreBenchmarks.fibonacciMemoized(workloadParams)
-                        Log.d("BenchmarkManager", "Result from multi-core fibonacciMemoized: $result")
+                        val result = MultiCoreBenchmarks.fibonacciRecursive(workloadParams)
+                        Log.d("BenchmarkManager", "Result from multi-core fibonacciRecursive: $result")
                         result
                     }
                 }

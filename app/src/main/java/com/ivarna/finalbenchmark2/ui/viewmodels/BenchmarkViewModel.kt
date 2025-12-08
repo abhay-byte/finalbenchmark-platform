@@ -358,8 +358,8 @@ class BenchmarkViewModel(
             testName.contains("Multi-Core Prime Generation") -> {
                 com.ivarna.finalbenchmark2.cpuBenchmark.algorithms.MultiCoreBenchmarks.primeGeneration(params)
             }
-            testName.contains("Multi-Core Fibonacci Memoized") -> {
-                com.ivarna.finalbenchmark2.cpuBenchmark.algorithms.MultiCoreBenchmarks.fibonacciMemoized(params)
+            testName.contains("Multi-Core Fibonacci Recursive") -> {
+                com.ivarna.finalbenchmark2.cpuBenchmark.algorithms.MultiCoreBenchmarks.fibonacciRecursive(params)
             }
             testName.contains("Multi-Core Matrix Multiplication") -> {
                 com.ivarna.finalbenchmark2.cpuBenchmark.algorithms.MultiCoreBenchmarks.matrixMultiplication(params)
