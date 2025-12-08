@@ -31,6 +31,7 @@ import com.ivarna.finalbenchmark2.ui.screens.DetailedResultScreen
 import com.ivarna.finalbenchmark2.ui.screens.RootCheckScreen
 import com.ivarna.finalbenchmark2.ui.screens.ThemeSelectionScreen
 import com.ivarna.finalbenchmark2.ui.screens.PermissionsScreen
+import com.ivarna.finalbenchmark2.ui.screens.PowerCalibrationScreen
 import com.ivarna.finalbenchmark2.ui.viewmodels.HistoryViewModel
 import com.ivarna.finalbenchmark2.ui.screens.HistoryDetailScreen
 import com.ivarna.finalbenchmark2.navigation.FrostedGlassNavigationBar
@@ -110,36 +111,50 @@ fun MainNavigation(
                 composable("welcome") {
                     WelcomeScreen(
                         onNextClicked = {
-                            navController.navigate("root-check") {
-                                popUpTo("welcome") { inclusive = true }
-                            }
+                            navController.navigate("root-check")
                         }
                     )
                 }
                 composable("root-check") {
                     RootCheckScreen(
                         onNextClicked = {
-                            navController.navigate("permissions") {
-                                popUpTo("root-check") { inclusive = true }
-                            }
+                            navController.navigate("permissions")
+                        },
+                        onBackClicked = {
+                            navController.popBackStack()
                         }
                     )
                 }
                 composable("permissions") {
                     PermissionsScreen(
                         onNextClicked = {
-                            navController.navigate("theme-selection") {
-                                popUpTo("permissions") { inclusive = true }
-                            }
+                            navController.navigate("theme-selection")
+                        },
+                        onBackClicked = {
+                            navController.popBackStack()
                         }
                     )
                 }
                 composable("theme-selection") {
                     ThemeSelectionScreen(
                         onNextClicked = {
-                            navController.navigate("benchmark/flagship") {
-                                popUpTo("theme-selection") { inclusive = true }
+                            navController.navigate("power-calibration")
+                        },
+                        onBackClicked = {
+                            navController.popBackStack()
+                        }
+                    )
+                }
+                composable("power-calibration") {
+                    PowerCalibrationScreen(
+                        onNextClicked = {
+                            // Clear onboarding stack and go to home
+                            navController.navigate("home") {
+                                popUpTo("welcome") { inclusive = true }
                             }
+                        },
+                        onBackClicked = {
+                            navController.popBackStack()
                         }
                     )
                 }

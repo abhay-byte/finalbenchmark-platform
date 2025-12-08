@@ -3,6 +3,7 @@ package com.ivarna.finalbenchmark2.ui.viewmodels
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.ivarna.finalbenchmark2.utils.RootAccessManager
 import com.ivarna.finalbenchmark2.utils.RootUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -50,14 +51,22 @@ class MainViewModel : ViewModel() {
 
     private fun checkRootAccess() {
         viewModelScope.launch(Dispatchers.IO) {
-            // This runs only ONCE when the app starts
+            // First check if we have a cached result
+            val cachedResult = RootAccessManager.getCachedRootAccess()
+            if (cachedResult != null) {
+                Log.d("MainViewModel", "Using cached root access result: $cachedResult")
+                _rootState.value = if (cachedResult) RootStatus.ROOT_WORKING else RootStatus.NO_ROOT
+                return@launch
+            }
+            
+            // No cached result, perform the check
             Log.d("MainViewModel", "Starting root access check...")
             val isRoot = RootUtils.isDeviceRooted()
             Log.d("MainViewModel", "Device rooted check result: $isRoot")
             var canExecuteRoot = false
             if (isRoot) {
                 Log.d("MainViewModel", "Checking if root commands work...")
-                canExecuteRoot = RootUtils.canExecuteRootCommand()
+                canExecuteRoot = RootAccessManager.hasRootAccess()
                 Log.d("MainViewModel", "Root command execution check result: $canExecuteRoot")
             } else {
                 Log.d("MainViewModel", "Skipping root command check since device is not rooted")

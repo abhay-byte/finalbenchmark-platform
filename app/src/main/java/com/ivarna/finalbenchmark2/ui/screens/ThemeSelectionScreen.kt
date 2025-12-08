@@ -1,9 +1,11 @@
 package com.ivarna.finalbenchmark2.ui.screens
 
+import androidx.activity.ComponentActivity
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -11,6 +13,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material3.*
@@ -22,16 +25,16 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.platform.LocalContext
-import com.ivarna.finalbenchmark2.utils.ThemePreferences
 import com.ivarna.finalbenchmark2.ui.theme.ThemeMode
+import com.ivarna.finalbenchmark2.utils.OnboardingPreferences
+import com.ivarna.finalbenchmark2.utils.ThemePreferences
 import kotlinx.coroutines.launch
-import androidx.activity.ComponentActivity
 
 // Data class for theme options
 data class ThemeOption(
@@ -45,21 +48,22 @@ data class ThemeOption(
 @Composable
 fun ThemeSelectionScreen(
     onNextClicked: () -> Unit,
+    onBackClicked: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     val themePreferences = remember { ThemePreferences(context) }
     var selectedThemeId by remember { mutableStateOf(themePreferences.getThemeMode().name) }
     val scope = rememberCoroutineScope()
-    
+
     // Get the selected theme
     val selectedTheme = remember(selectedThemeId) { ThemeMode.valueOf(selectedThemeId) }
-    
+
     // Update the theme when selection changes to provide immediate visual feedback
     LaunchedEffect(selectedThemeId) {
         themePreferences.setThemeMode(selectedTheme)
     }
-    
+
     // Define the theme options with all available themes
     val themeOptions = remember {
         listOf(
@@ -109,7 +113,7 @@ fun ThemeSelectionScreen(
                 id = "MONOKAI",
                 label = "Monokai",
                 primaryColor = Color(0xFFA6E22E),
-                containerColor = Color(0xFF27282)
+                containerColor = Color(0xFF272822)
             ),
             ThemeOption(
                 id = "SKY_BREEZE",
@@ -137,13 +141,13 @@ fun ThemeSelectionScreen(
             )
         )
     }
-    
+
     // Create a theme-aware MaterialTheme by using the current selected theme
     val currentTheme = remember(selectedTheme) { selectedTheme }
     val useDarkTheme = when (currentTheme) {
         ThemeMode.LIGHT -> false
         ThemeMode.DARK -> true
-        ThemeMode.SYSTEM -> androidx.compose.foundation.isSystemInDarkTheme()
+        ThemeMode.SYSTEM -> isSystemInDarkTheme()
         ThemeMode.GRUVBOX -> true
         ThemeMode.NORD -> true
         ThemeMode.DRACULA -> true
@@ -154,7 +158,7 @@ fun ThemeSelectionScreen(
         ThemeMode.MINT_FRESH -> false
         ThemeMode.AMOLED_BLACK -> true
     }
-    
+
     val colorScheme = when (currentTheme) {
         ThemeMode.GRUVBOX -> if (useDarkTheme) com.ivarna.finalbenchmark2.ui.theme.GruvboxDarkColorScheme else com.ivarna.finalbenchmark2.ui.theme.GruvboxLightColorScheme
         ThemeMode.NORD -> if (useDarkTheme) com.ivarna.finalbenchmark2.ui.theme.NordDarkColorScheme else com.ivarna.finalbenchmark2.ui.theme.NordLightColorScheme
@@ -167,7 +171,7 @@ fun ThemeSelectionScreen(
         ThemeMode.AMOLED_BLACK -> com.ivarna.finalbenchmark2.ui.theme.AmoledBlackColorScheme
         else -> if (useDarkTheme) com.ivarna.finalbenchmark2.ui.theme.DarkColorScheme else com.ivarna.finalbenchmark2.ui.theme.LightColorScheme
     }
-    
+
     MaterialTheme(colorScheme = colorScheme) {
         Box(
             modifier = modifier
@@ -175,13 +179,11 @@ fun ThemeSelectionScreen(
                 .background(
                     brush = Brush.verticalGradient(
                         colors = if (useDarkTheme) {
-                            // Dark theme gradient: surface to surfaceVariant with alpha
                             listOf(
                                 MaterialTheme.colorScheme.surface,
                                 MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
                             )
                         } else {
-                            // FIX: Use pure white/light colors for Light Mode to avoid muddy appearance
                             listOf(
                                 Color(0xFFFFFFFF),
                                 Color(0xFFF5F5F5)
@@ -197,12 +199,34 @@ fun ThemeSelectionScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.SpaceBetween
             ) {
+                // Top Navigation Row
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(onClick = onBackClicked) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                            contentDescription = "Back",
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                    TextButton(onClick = onNextClicked) {
+                        Text(
+                            text = "Skip",
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+
                 // Header Section
                 Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.padding(top = 20.dp)
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    // Beautiful Header with Icon
+                    // Icon Container
                     Card(
                         modifier = Modifier.size(100.dp),
                         shape = CircleShape,
@@ -223,34 +247,32 @@ fun ThemeSelectionScreen(
                             )
                         }
                     }
-                    
+
                     Spacer(modifier = Modifier.height(32.dp))
-                    
-                    // Beautiful Headlines
+
+                    // Headline
                     Text(
                         text = "Choose Your Style",
                         style = MaterialTheme.typography.headlineLarge.copy(
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 32.sp
+                            fontWeight = FontWeight.Bold
                         ),
-                        color = MaterialTheme.colorScheme.primary,
+                        color = MaterialTheme.colorScheme.onSurface,
                         textAlign = TextAlign.Center
                     )
-                    
+
                     Spacer(modifier = Modifier.height(12.dp))
-                    
+
+                    // Subtext
                     Text(
                         text = "Select a theme that matches your personality",
-                        style = MaterialTheme.typography.bodyLarge.copy(
-                            fontSize = 16.sp
-                        ),
+                        style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center,
                         lineHeight = 24.sp
                     )
                 }
-                
-                // Theme Grid - Increased to 3 columns for better layout with more padding
+
+                // Theme Grid
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(3),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -259,7 +281,7 @@ fun ThemeSelectionScreen(
                         .weight(1f, fill = false),
                     contentPadding = PaddingValues(
                         top = 16.dp,
-                        bottom = 100.dp // Extra padding to account for the floating button
+                        bottom = 100.dp
                     )
                 ) {
                     items(themeOptions) { theme ->
@@ -270,26 +292,23 @@ fun ThemeSelectionScreen(
                         )
                     }
                 }
-                
-                // Beautiful Action Button - Remove the Card wrapper and vertical padding
+
+                // Action Button
                 Button(
                     onClick = {
                         scope.launch {
-                            // Mark onboarding as completed when continuing
-                            val onboardingPreferences = com.ivarna.finalbenchmark2.utils.OnboardingPreferences(context)
-                            onboardingPreferences.setOnboardingCompleted()
+                            // Save the theme preference
+                            themePreferences.setThemeMode(selectedTheme)
                         }
-                        // Apply the selected theme when continuing to main app
+                        // Apply the selected theme when continuing
                         val activity = context as? ComponentActivity
                         if (activity is com.ivarna.finalbenchmark2.MainActivity) {
                             activity.updateTheme(selectedTheme)
                         } else {
-                            // Fallback to the default approach if not MainActivity
                             when (selectedTheme) {
-                                com.ivarna.finalbenchmark2.ui.theme.ThemeMode.LIGHT -> androidx.appcompat.app.AppCompatDelegate.setDefaultNightMode(androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_NO)
-                                com.ivarna.finalbenchmark2.ui.theme.ThemeMode.DARK -> androidx.appcompat.app.AppCompatDelegate.setDefaultNightMode(androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES)
-                                com.ivarna.finalbenchmark2.ui.theme.ThemeMode.SYSTEM -> androidx.appcompat.app.AppCompatDelegate.setDefaultNightMode(androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM)
-                                // For custom themes, default to dark mode
+                                ThemeMode.LIGHT -> androidx.appcompat.app.AppCompatDelegate.setDefaultNightMode(androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_NO)
+                                ThemeMode.DARK -> androidx.appcompat.app.AppCompatDelegate.setDefaultNightMode(androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES)
+                                ThemeMode.SYSTEM -> androidx.appcompat.app.AppCompatDelegate.setDefaultNightMode(androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM)
                                 else -> androidx.appcompat.app.AppCompatDelegate.setDefaultNightMode(androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES)
                             }
                             activity?.recreate()
@@ -298,7 +317,7 @@ fun ThemeSelectionScreen(
                     },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp), // Only horizontal padding, no vertical padding
+                        .height(56.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.primary
                     ),
@@ -306,11 +325,9 @@ fun ThemeSelectionScreen(
                 ) {
                     Text(
                         text = "Continue",
-                        style = MaterialTheme.typography.titleLarge.copy(
-                            fontWeight = FontWeight.SemiBold,
-                            fontSize = 18.sp
-                        ),
-                        modifier = Modifier
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.SemiBold
+                        )
                     )
                 }
             }
@@ -329,7 +346,7 @@ fun EnhancedThemeCard(
         targetValue = if (isSelected) 1.05f else 1f,
         animationSpec = tween(durationMillis = 200)
     )
-    
+
     Card(
         onClick = onThemeSelected,
         modifier = modifier
@@ -376,7 +393,7 @@ fun EnhancedThemeCard(
                 verticalArrangement = Arrangement.Center,
                 modifier = Modifier.fillMaxSize()
             ) {
-                // Enhanced Color Preview with better styling
+                // Enhanced Color Preview
                 Box(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier.size(48.dp)
@@ -393,7 +410,7 @@ fun EnhancedThemeCard(
                                 shape = CircleShape
                             )
                     )
-                    
+
                     // Primary Color Dot
                     Box(
                         modifier = Modifier
@@ -407,10 +424,10 @@ fun EnhancedThemeCard(
                             )
                     )
                 }
-                
+
                 Spacer(modifier = Modifier.height(16.dp))
-                
-                // Enhanced Theme Name with better typography
+
+                // Theme Name
                 Text(
                     text = theme.label,
                     style = MaterialTheme.typography.labelLarge.copy(
@@ -427,15 +444,14 @@ fun EnhancedThemeCard(
                     overflow = TextOverflow.Ellipsis
                 )
             }
-            
-            // Enhanced Selection Indicator with better icon
+
+            // Selection Indicator
             if (isSelected) {
                 Box(
                     modifier = Modifier
                         .align(Alignment.TopEnd)
                         .padding(8.dp)
                 ) {
-                    // Selection Background Circle
                     Box(
                         modifier = Modifier
                             .size(28.dp)
@@ -450,7 +466,6 @@ fun EnhancedThemeCard(
                             )
                             .shadow(8.dp, CircleShape)
                     ) {
-                        // Check Icon with animation
                         Icon(
                             imageVector = Icons.Filled.CheckCircle,
                             contentDescription = "Selected",
