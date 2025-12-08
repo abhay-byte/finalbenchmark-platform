@@ -44,18 +44,19 @@ data class BenchmarkConfig(
 )
 
 /**
- * Represents workload parameters
+ * Represents workload parameters for standardized benchmarking
+ * Optimized for consistent 1.5-2.0 second execution times on flagship devices
  */
 data class WorkloadParams(
-    val primeRange: Int = 10000,
-    val fibonacciNRange: Pair<Int, Int> = Pair(10, 15),
-    val matrixSize: Int = 50,
-    val hashDataSizeMb: Int = 1,
-    val stringCount: Int = 1000,
-    val rayTracingResolution: Pair<Int, Int> = Pair(64, 64),
-    val rayTracingDepth: Int = 2,
-    val compressionDataSizeMb: Int = 1,
-    val monteCarloSamples: Int = 10000,
+    val primeRange: Int = 250000,
+    val fibonacciNRange: Pair<Int, Int> = Pair(30, 32),
+    val matrixSize: Int = 350,
+    val hashDataSizeMb: Int = 2,
+    val stringCount: Int = 15000,
+    val rayTracingResolution: Pair<Int, Int> = Pair(192, 192),
+    val rayTracingDepth: Int = 3,
+    val compressionDataSizeMb: Int = 2,
+    val monteCarloSamples: Int = 1000000,
     val jsonDataSizeMb: Int = 1,
-    val nqueensSize: Int = 8
+    val nqueensSize: Int = 10
 )

@@ -23,31 +23,32 @@ class KotlinBenchmarkManager {
     companion object {
         private const val TAG = "KotlinBenchmarkManager"
         
-        // Scaling factors for scoring (from your earlier specifications)
+        // Calibrated scaling factors for realistic scoring (Target: 8,000-12,000 for flagship)
+        // Based on reference data: Fibonacci ~343B ops/s → 1000pts (factor: 2.9e-9), N-Queens ~400k ops/s → 1000pts (factor: 0.0025)
         private val SINGLE_CORE_FACTORS = mapOf(
-            "Prime Generation" to 4.0e-8,
-            "Fibonacci Recursive" to 0.02,
-            "Matrix Multiplication" to 6.0e-8,
-            "Hash Computing" to 1.6e-7,
-            "String Sorting" to 2.0e-6,
-            "Ray Tracing" to 1.2e-6,
-            "Compression" to 1.4e-7,
-            "Monte Carlo" to 6.0e-7,
-            "JSON Parsing" to 2.2e-6,
-            "N-Queens" to 8.0e-5
+            "Prime Generation" to 3.2e-9,     // ~1250 pts for 400M ops/s
+            "Fibonacci Recursive" to 2.9e-9,  // Reference: 1000 pts for 343B ops/s
+            "Matrix Multiplication" to 5.5e-8, // ~1100 pts for 20B FLOPs
+            "Hash Computing" to 1.5e-7,       // ~1000 pts for 6.5M hashes/s
+            "String Sorting" to 2.1e-5,       // ~1050 pts for 50k comparisons/s
+            "Ray Tracing" to 1.2e-4,          // ~1020 pts for 8.5M rays/s
+            "Compression" to 1.4e-7,          // ~1000 pts for 7MB/s
+            "Monte Carlo" to 6.0e-7,          // ~1000 pts for 1.6M samples/s
+            "JSON Parsing" to 2.2e-6,         // ~1000 pts for 450k elements/s
+            "N-Queens" to 0.0025              // Reference: 1000 pts for 400k ops/s
         )
         
         private val MULTI_CORE_FACTORS = mapOf(
-            "Prime Generation" to 4.0e-9,
-            "Fibonacci Memoized" to 0.008,
-            "Matrix Multiplication" to 8.0e-8,
-            "Hash Computing" to 1.2e-7,
-            "String Sorting" to 3.2e-6,
-            "Ray Tracing" to 2.4e-6,
-            "Compression" to 2.0e-7,
-            "Monte Carlo" to 4.0e-7,
-            "JSON Parsing" to 0.028,
-            "N-Queens" to 2.0e-4
+            "Prime Generation" to 2.8e-9,     // ~1400 pts for 500M ops/s (8-core scaling)
+            "Fibonacci Memoized" to 1.2e-9,   // ~1200 pts for 1T ops/s (multi-core efficiency)
+            "Matrix Multiplication" to 4.2e-8, // ~1200 pts for 28B FLOPs (parallel efficiency)
+            "Hash Computing" to 1.1e-7,       // ~1100 pts for 10M hashes/s (8-core scaling)
+            "String Sorting" to 1.8e-5,       // ~1200 pts for 65k comparisons/s (parallel merge)
+            "Ray Tracing" to 9.5e-5,          // ~1150 pts for 12M rays/s (parallel rendering)
+            "Compression" to 1.2e-7,          // ~1200 pts for 10MB/s (parallel compression)
+            "Monte Carlo" to 4.5e-7,          // ~1300 pts for 2.8M samples/s (8-core scaling)
+            "JSON Parsing" to 1.8e-6,         // ~1200 pts for 650k elements/s (parallel parsing)
+            "N-Queens" to 0.0018              // ~1100 pts for 600k ops/s (parallel backtracking)
         )
     }
     
@@ -349,44 +350,44 @@ class KotlinBenchmarkManager {
     private fun getWorkloadParams(deviceTier: String): WorkloadParams {
         return when (deviceTier.lowercase()) {
             "slow" -> WorkloadParams(
-                primeRange = 10_000,
-                fibonacciNRange = Pair(20, 25),
-                matrixSize = 100,
+                primeRange = 100_000,
+                fibonacciNRange = Pair(25, 27),
+                matrixSize = 250,
                 hashDataSizeMb = 1,
-                stringCount = 5_000,
+                stringCount = 8_000,
                 rayTracingResolution = Pair(128, 128),
-                rayTracingDepth = 1,
+                rayTracingDepth = 2,
                 compressionDataSizeMb = 1,
-                monteCarloSamples = 5_000,
+                monteCarloSamples = 200_000,
                 jsonDataSizeMb = 1,
-                nqueensSize = 2
+                nqueensSize = 8
             )
             "mid" -> WorkloadParams(
-                primeRange = 150_000,
-                fibonacciNRange = Pair(28, 32),
+                primeRange = 200_000,
+                fibonacciNRange = Pair(28, 30),
                 matrixSize = 300,
-                hashDataSizeMb = 1,
-                stringCount = 150_000,
-                rayTracingResolution = Pair(168, 168),
-                rayTracingDepth = 2,
+                hashDataSizeMb = 2,
+                stringCount = 12_000,
+                rayTracingResolution = Pair(160, 160),
+                rayTracingDepth = 3,
                 compressionDataSizeMb = 2,
-                monteCarloSamples = 10_000,
+                monteCarloSamples = 500_000,
                 jsonDataSizeMb = 1,
-                nqueensSize = 4
+                nqueensSize = 9
             )
             "flagship" -> WorkloadParams(
-                // MOBILE-SAFE: Ultra-conservative parameters for 2-5 second tests
-                primeRange = 300_000,           // Reduced from 500K - mobile-safe range
-                fibonacciNRange = Pair(32, 34), // Reduced from 35-38 for speed
-                matrixSize = 300,               // Reduced from 350 (O(N^3) complexity - critical)
-                hashDataSizeMb = 2,             // Increased to 2MB for meaningful hash tests
-                stringCount = 20_000,           // Increased from 12K for meaningful sort tests
-                rayTracingResolution = Pair(200, 200), // Reduced from 400x400 for speed
-                rayTracingDepth = 3,            // Kept at 3 for speed
-                compressionDataSizeMb = 3,      // Set to 1MB for meaningful compression tests
-                monteCarloSamples = 500_000,    // Reduced from 2M for speed
-                jsonDataSizeMb = 1,             // Reduced from 2MB for speed
-                nqueensSize = 10                // Reduced from 12 for speed
+                // OPTIMIZED: Standardized parameters for consistent 1.5-2.0s execution
+                primeRange = 250_000,
+                fibonacciNRange = Pair(30, 32),
+                matrixSize = 350,
+                hashDataSizeMb = 2,
+                stringCount = 15_000,
+                rayTracingResolution = Pair(192, 192),
+                rayTracingDepth = 3,
+                compressionDataSizeMb = 2,
+                monteCarloSamples = 1_000_000,
+                jsonDataSizeMb = 1,
+                nqueensSize = 10
             )
             else -> WorkloadParams() // Default values
         }

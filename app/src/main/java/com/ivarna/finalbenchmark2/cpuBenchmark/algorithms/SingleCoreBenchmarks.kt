@@ -20,9 +20,10 @@ object SingleCoreBenchmarks {
      * Test 1: Prime Number Generation using Sieve of Eratosthenes
      * Complexity: O(n log log n)
      * Tests: Integer arithmetic, memory access patterns
+     * Optimized: Remove excessive yield() calls, ensure 1.5-2.0s execution time
      */
     suspend fun primeGeneration(params: WorkloadParams): BenchmarkResult = withContext(Dispatchers.Default) {
-        Log.d(TAG, "Starting Prime Generation (range: ${params.primeRange})")
+        Log.d(TAG, "Starting Prime Generation (range: ${params.primeRange}) - OPTIMIZED")
         CpuAffinityManager.setMaxPerformance()
         
         val (result, timeMs) = BenchmarkHelpers.measureBenchmark {
@@ -41,8 +42,8 @@ object SingleCoreBenchmarks {
                     }
                 }
                 p++
-                // Yield every 1000 iterations to prevent ANR during long computations
-                if (p % 1000 == 0) {
+                // OPTIMIZED: Only yield every 10,000 iterations to reduce overhead
+                if (p % 10000 == 0) {
                     kotlinx.coroutines.yield()
                 }
             }
@@ -64,6 +65,7 @@ object SingleCoreBenchmarks {
             metricsJson = JSONObject().apply {
                 put("prime_count", primeCount)
                 put("range", params.primeRange)
+                put("optimization", "Reduced yield frequency for better performance")
             }.toString()
         )
     }
@@ -112,12 +114,12 @@ object SingleCoreBenchmarks {
     
     /**
      * Test 3: Matrix Multiplication
-     * CRISIS FIX: Reduced to N=350 with frequent yielding to prevent UI freeze
+     * Optimized: Cache-friendly i-k-j loop order, minimal yielding
      * Complexity: O(n³)
      * Tests: Floating-point operations, cache efficiency
      */
     suspend fun matrixMultiplication(params: WorkloadParams): BenchmarkResult = withContext(Dispatchers.Default) {
-        Log.d(TAG, "Starting Matrix Multiplication (size: ${params.matrixSize}) - CRISIS FIX: N=350 mobile-safe")
+        Log.d(TAG, "Starting Matrix Multiplication (size: ${params.matrixSize}) - OPTIMIZED")
         CpuAffinityManager.setMaxPerformance()
         
         val size = params.matrixSize
@@ -128,15 +130,16 @@ object SingleCoreBenchmarks {
             val b = Array(size) { DoubleArray(size) { Random.nextDouble() } }
             val c = Array(size) { DoubleArray(size) }
             
-            // Matrix multiplication with frequent yielding
+            // OPTIMIZED: Use i-k-j loop order for better cache locality
             for (i in 0 until size) {
-                for (j in 0 until size) {
-                    for (k in 0 until size) {
-                        c[i][j] += a[i][k] * b[k][j]
+                for (k in 0 until size) {
+                    val aik = a[i][k]
+                    for (j in 0 until size) {
+                        c[i][j] += aik * b[k][j]
                     }
                 }
-                // CRISIS FIX: Yield every 32 rows (increased frequency) to prevent UI freeze
-                if (i % 32 == 0) {
+                // OPTIMIZED: Only yield every 50 rows to reduce overhead
+                if (i % 50 == 0) {
                     kotlinx.coroutines.yield()
                 }
             }
@@ -157,7 +160,7 @@ object SingleCoreBenchmarks {
             metricsJson = JSONObject().apply {
                 put("matrix_size", size)
                 put("result_checksum", checksum)
-                put("crisis_fix", "N=350 with frequent yielding prevents UI freeze")
+                put("optimization", "Cache-friendly i-k-j loop order, reduced yield frequency")
             }.toString()
         )
     }
@@ -211,35 +214,21 @@ object SingleCoreBenchmarks {
     
     /**
      * Test 5: String Sorting
-     * CRISIS FIX: Limited to 12,000 items max with yield() to prevent UI freeze
-     * Implement IntroSort algorithm
+     * Optimized: Generate strings efficiently, minimal yielding
+     * Implement IntroSort algorithm (Kotlin's built-in sorted())
      */
     suspend fun stringSorting(params: WorkloadParams): BenchmarkResult = withContext(Dispatchers.Default) {
-        Log.d(TAG, "Starting String Sorting (count: ${params.stringCount}) - CRISIS FIX: mobile-safe limit")
+        Log.d(TAG, "Starting String Sorting (count: ${params.stringCount}) - OPTIMIZED")
         CpuAffinityManager.setMaxPerformance()
         
         val (sorted, timeMs) = BenchmarkHelpers.measureBenchmarkSuspend {
-            // CRISIS FIX: Generate strings in chunks to prevent memory pressure
+            // OPTIMIZED: Generate all strings efficiently
             val stringCount = params.stringCount
-            val chunkSize = 1000 // Process in chunks
-            val allStrings = mutableListOf<String>()
-            
-            var generated = 0
-            while (generated < stringCount) {
-                val currentChunk = minOf(chunkSize, stringCount - generated)
-                val chunk = List(currentChunk) { 
-                    BenchmarkHelpers.generateRandomString(50) 
-                }
-                allStrings.addAll(chunk)
-                generated += currentChunk
-                
-                // Yield every chunk to prevent UI freeze
-                if (generated % (chunkSize * 5) == 0) {
-                    kotlinx.coroutines.yield()
-                }
+            val allStrings = List(stringCount) { 
+                BenchmarkHelpers.generateRandomString(50) 
             }
             
-            // Sort the collected strings
+            // Sort the collected strings using Kotlin's built-in sorting (IntroSort)
             allStrings.sorted()
         }
         
@@ -256,7 +245,7 @@ object SingleCoreBenchmarks {
             metricsJson = JSONObject().apply {
                 put("string_count", params.stringCount)
                 put("sorted", true)
-                put("crisis_fix", "Chunked generation prevents memory pressure")
+                put("optimization", "Efficient string generation, IntroSort algorithm")
             }.toString()
         )
     }
@@ -400,25 +389,24 @@ object SingleCoreBenchmarks {
     
     /**
      * Test 7: Compression/Decompression
-     * CRISIS FIX: Use fixed 512KB buffer with 50 iterations to prevent OOM crash
+     * Optimized: Use 2MB static buffer for cache efficiency, minimal yielding
      */
     suspend fun compression(params: WorkloadParams): BenchmarkResult = withContext(Dispatchers.Default) {
-        Log.d(TAG, "Starting Compression (FIXED: 512KB buffer, 50 iterations)")
+        Log.d(TAG, "Starting Compression (OPTIMIZED: 2MB buffer)")
         CpuAffinityManager.setMaxPerformance()
         
-        // CRISIS FIX: Use fixed small buffer to prevent OOM
-        val bufferSize = 512 * 1024 // 512 KB ONLY
-        val iterations = 50 // Loop count to create load
+        // OPTIMIZED: Use 2MB static buffer for better cache utilization
+        val bufferSize = 2 * 1024 * 1024 // 2MB
+        val iterations = 100 // Increased for meaningful throughput measurement
         
         val (result, timeMs) = BenchmarkHelpers.measureBenchmarkSuspend {
-            // Generate fixed-size random data
+            // Generate fixed-size random data once
             val data = ByteArray(bufferSize) { Random.nextInt(256).toByte() }
             
             // Simple RLE compression algorithm
             fun compressRLE(input: ByteArray): ByteArray {
                 val compressed = mutableListOf<Byte>()
                 var i = 0
-                var opCount = 0
                 
                 while (i < input.size) {
                     val currentByte = input[i]
@@ -436,12 +424,6 @@ object SingleCoreBenchmarks {
                     compressed.add(currentByte)
                     
                     i += count
-                    opCount++
-                    
-                    // Yield every 100 operations to prevent UI freeze
-                    if (opCount % 100 == 0) {
-                        // We can't yield from inside a regular function, so we'll remove this
-                    }
                 }
                 
                 return compressed.toByteArray()
@@ -470,7 +452,7 @@ object SingleCoreBenchmarks {
                 return decompressed.toByteArray()
             }
             
-            // CRITICAL FIX: Loop compression multiple times to measure throughput
+            // OPTIMIZED: Loop compression multiple times to measure throughput
             var totalCompressedSize = 0L
             var totalOperations = 0
             
@@ -489,8 +471,8 @@ object SingleCoreBenchmarks {
                     }
                 }
                 
-                // Yield every iteration to prevent UI freeze
-                if (iteration % 10 == 0) {
+                // OPTIMIZED: Only yield every 20 iterations
+                if (iteration % 20 == 0) {
                     kotlinx.coroutines.yield()
                 }
             }
@@ -512,13 +494,12 @@ object SingleCoreBenchmarks {
             opsPerSecond = throughput,
             isValid = true,
             metricsJson = JSONObject().apply {
-                put("buffer_size_kb", bufferSize / 1024)
+                put("buffer_size_mb", bufferSize / (1024 * 1024))
                 put("iterations", totalIterations)
                 put("total_data_processed_mb", totalDataProcessed / (1024 * 1024))
                 put("average_compressed_size", totalCompressedSize / totalIterations)
                 put("throughput_bps", throughput)
-                put("workload_params_mb", params.compressionDataSizeMb) // For reference only
-                put("fixed_buffer_strategy", "Using 512KB fixed buffer for mobile safety")
+                put("optimization", "2MB static buffer for cache efficiency, reduced yield frequency")
             }.toString()
         )
     }

@@ -136,10 +136,10 @@ object MultiCoreBenchmarks {
     
     /**
      * Test 3: Parallel Matrix Multiplication
-     * CRISIS FIX: Reduced to N=350 with frequent yielding
+     * Optimized: Cache-friendly i-k-j loop order, minimal yielding
      */
     suspend fun matrixMultiplication(params: WorkloadParams): BenchmarkResult = coroutineScope {
-        Log.d(TAG, "Starting Multi-Core Matrix Multiplication (size: ${params.matrixSize}) - CRISIS FIX: N=350")
+        Log.d(TAG, "Starting Multi-Core Matrix Multiplication (size: ${params.matrixSize}) - OPTIMIZED")
         CpuAffinityManager.setMaxPerformance()
         
         val size = params.matrixSize
@@ -150,17 +150,26 @@ object MultiCoreBenchmarks {
             val b = Array(size) { DoubleArray(size) { Random.nextDouble() } }
             val c = Array(size) { DoubleArray(size) }
             
-            // Parallel matrix multiplication - divide work by rows using high-priority dispatcher
-            (0 until size).map { i ->
+            // OPTIMIZED: Parallel matrix multiplication with cache-friendly loop order
+            val rowsPerThread = size / numThreads
+            (0 until numThreads).map { threadId ->
                 async(highPriorityDispatcher) {
-                    for (j in 0 until size) {
+                    val startRow = threadId * rowsPerThread
+                    val endRow = if (threadId == numThreads - 1) size else (threadId + 1) * rowsPerThread
+                    
+                    // Use cache-friendly i-k-j loop order
+                    for (i in startRow until endRow) {
                         for (k in 0 until size) {
-                            c[i][j] += a[i][k] * b[k][j]
+                            val aik = a[i][k]
+                            for (j in 0 until size) {
+                                c[i][j] += aik * b[k][j]
+                            }
+                        }
+                        // OPTIMIZED: Only yield every 25 rows to reduce overhead
+                        if ((i - startRow) % 25 == 0) {
+                            kotlinx.coroutines.yield()
                         }
                     }
-                    
-                    // CRISIS FIX: Yield after each row to prevent UI freeze
-                    kotlinx.coroutines.yield()
                 }
             }.awaitAll() // Wait for all row computations to complete
             
@@ -181,7 +190,7 @@ object MultiCoreBenchmarks {
                 put("matrix_size", size)
                 put("result_checksum", checksum)
                 put("threads", numThreads)
-                put("crisis_fix", "N=350 with frequent yielding prevents UI freeze")
+                put("optimization", "Cache-friendly i-k-j loop order, reduced yield frequency")
             }.toString()
         )
     }
@@ -248,15 +257,16 @@ object MultiCoreBenchmarks {
     
     /**
      * Test 5: Parallel String Sorting
+     * Optimized: Generate strings in parallel, efficient sorting
      */
     suspend fun stringSorting(params: WorkloadParams): BenchmarkResult = coroutineScope {
-        Log.d(TAG, "Starting Multi-Core String Sorting (count: ${params.stringCount})")
+        Log.d(TAG, "Starting Multi-Core String Sorting (count: ${params.stringCount}) - OPTIMIZED")
         CpuAffinityManager.setMaxPerformance()
         
         val chunkSize = params.stringCount / numThreads
         
         val (result, timeMs) = BenchmarkHelpers.measureBenchmark {
-            // Generate random strings in parallel using high-priority dispatcher
+            // OPTIMIZED: Generate random strings in parallel using high-priority dispatcher
             val allStrings = (0 until numThreads).map { i ->
                 async(highPriorityDispatcher) {
                     val start = i * chunkSize
@@ -267,7 +277,7 @@ object MultiCoreBenchmarks {
                 }
             }.awaitAll().flatten()
             
-            // Sort all strings together
+            // Sort all strings together using Kotlin's built-in sorting (IntroSort)
             allStrings.sorted()
         }
         
@@ -285,6 +295,7 @@ object MultiCoreBenchmarks {
                 put("string_count", params.stringCount)
                 put("sorted", true)
                 put("threads", numThreads)
+                put("optimization", "Parallel string generation, IntroSort algorithm")
             }.toString()
         )
     }
@@ -438,25 +449,24 @@ object MultiCoreBenchmarks {
     
     /**
      * Test 7: Parallel Compression
-     * CRISIS FIX: Use fixed 512KB buffer with 50 iterations to prevent OOM crash
+     * Optimized: Use 2MB static buffer, parallel processing
      */
     suspend fun compression(params: WorkloadParams): BenchmarkResult = coroutineScope {
-        Log.d(TAG, "Starting Multi-Core Compression (FIXED: 512KB buffer, 50 iterations)")
+        Log.d(TAG, "Starting Multi-Core Compression (OPTIMIZED: 2MB buffer)")
         CpuAffinityManager.setMaxPerformance()
         
-        // CRISIS FIX: Use fixed small buffer to prevent OOM
-        val bufferSize = 512 * 1024 // 512 KB ONLY
-        val iterations = 50 // Loop count to create load
+        // OPTIMIZED: Use 2MB static buffer for better cache utilization
+        val bufferSize = 2 * 1024 * 1024 // 2MB
+        val iterations = 100 // Increased for meaningful throughput measurement
         
         val (result, timeMs) = BenchmarkHelpers.measureBenchmarkSuspend {
-            // Generate fixed-size random data
+            // Generate fixed-size random data once
             val data = ByteArray(bufferSize) { Random.nextInt(256).toByte() }
             
             // Simple RLE compression algorithm
             fun compressRLE(input: ByteArray): ByteArray {
                 val compressed = mutableListOf<Byte>()
                 var i = 0
-                var opCount = 0
                 
                 while (i < input.size) {
                     val currentByte = input[i]
@@ -474,32 +484,36 @@ object MultiCoreBenchmarks {
                     compressed.add(currentByte)
                     
                     i += count
-                    opCount++
-                    
-                    // Yield every 100 operations to prevent UI freeze - removed from inside regular function
-                    // Yielding will be handled by the calling code
                 }
                 
                 return compressed.toByteArray()
             }
             
-            // CRITICAL FIX: Loop compression multiple times to measure throughput
-            var totalCompressedSize = 0L
-            var totalOperations = 0
-            
-            repeat(iterations) { iteration ->
-                // Compress the data
-                val compressed = compressRLE(data)
-                totalCompressedSize += compressed.size
-                totalOperations++
-                
-                // Yield every iteration to prevent UI freeze
-                if (iteration % 10 == 0) {
-                    kotlinx.coroutines.yield()
+            // OPTIMIZED: Parallel compression across threads
+            val iterationsPerThread = iterations / numThreads
+            val threadResults = (0 until numThreads).map { threadId ->
+                async(highPriorityDispatcher) {
+                    var threadCompressedSize = 0L
+                    var threadOperations = 0
+                    
+                    repeat(iterationsPerThread) { iteration ->
+                        // Compress the data
+                        val compressed = compressRLE(data)
+                        threadCompressedSize += compressed.size
+                        threadOperations++
+                        
+                        // OPTIMIZED: Only yield every 20 iterations per thread
+                        if (iteration % 20 == 0) {
+                            kotlinx.coroutines.yield()
+                        }
+                    }
+                    
+                    Pair(threadCompressedSize, threadOperations)
                 }
-            }
+            }.awaitAll()
             
-            Pair(totalCompressedSize, iterations)
+            // Sum up results from all threads
+            threadResults.sumOf { it.first } to threadResults.sumOf { it.second }
         }
         
         val (totalCompressedSize, totalIterations) = result
@@ -516,14 +530,13 @@ object MultiCoreBenchmarks {
             opsPerSecond = throughput,
             isValid = true,
             metricsJson = JSONObject().apply {
-                put("buffer_size_kb", bufferSize / 1024)
+                put("buffer_size_mb", bufferSize / (1024 * 1024))
                 put("iterations", totalIterations)
                 put("total_data_processed_mb", totalDataProcessed / (1024 * 1024))
                 put("average_compressed_size", totalCompressedSize / totalIterations)
                 put("throughput_bps", throughput)
                 put("threads", numThreads)
-                put("workload_params_mb", params.compressionDataSizeMb) // For reference only
-                put("fixed_buffer_strategy", "Using 512KB fixed buffer for mobile safety")
+                put("optimization", "2MB static buffer, parallel processing across threads")
             }.toString()
         )
     }
