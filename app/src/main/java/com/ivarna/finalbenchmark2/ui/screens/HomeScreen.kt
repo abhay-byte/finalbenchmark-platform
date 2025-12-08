@@ -525,7 +525,7 @@ fun HomeScreen(
                         color = MaterialTheme.colorScheme.surfaceVariant,
                         shape = CircleShape
                     )
-                    .padding(8.dp)
+                    .padding(4.dp)
             ) {
                 Icon(
                     imageVector = Icons.Rounded.Settings,
