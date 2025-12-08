@@ -419,7 +419,7 @@ class BenchmarkViewModel(
                 fibonacciNRange = Pair(20, 25),
                 matrixSize = 100,
                 hashDataSizeMb = 5,
-                stringCount = 50_000,
+                stringCount = 1_000,  // REDUCED from 50_000 for faster startup
                 rayTracingResolution = Pair(128, 128),
                 rayTracingDepth = 1,
                 compressionDataSizeMb = 5,
@@ -432,7 +432,7 @@ class BenchmarkViewModel(
                 fibonacciNRange = Pair(32, 38),
                 matrixSize = 700,
                 hashDataSizeMb = 50,
-                stringCount = 700_000,
+                stringCount = 5_000,  // REDUCED from 700_000 for faster startup
                 rayTracingResolution = Pair(350, 350),
                 rayTracingDepth = 3,
                 compressionDataSizeMb = 30,
@@ -445,7 +445,7 @@ class BenchmarkViewModel(
                 fibonacciNRange = Pair(35, 42),
                 matrixSize = 1200,
                 hashDataSizeMb = 150,
-                stringCount = 2_000_000,
+                stringCount = 2_500,  // REDUCED from 2_000_000 for faster startup
                 rayTracingResolution = Pair(600, 600),
                 rayTracingDepth = 5,
                 compressionDataSizeMb = 80,

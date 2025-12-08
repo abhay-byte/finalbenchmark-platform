@@ -35,7 +35,7 @@ class BenchmarkManager {
     
     private val MULTI_CORE_FACTORS = mapOf(
         "Prime Generation" to 1.25e-5,       // 9,420,631 * 1.25e-5 ≈ 118 points
-        "Fibonacci Memoized" to 1.18e-4,    // Set for when fixed
+        "Fibonacci Recursive" to 1.18e-4,    // Set for when fixed
         "Matrix Multiplication" to 1.85e-10, // 636,346,897 * 1.85e-10 ≈ 118 points
         "Hash Computing" to 2.9e-4,          // 407,609 * 2.9e-4 ≈ 118 points
         "String Sorting" to 2.2e-5,          // 5,312,581 * 2.2e-5 ≈ 118 points
@@ -263,7 +263,7 @@ class BenchmarkManager {
         val normalizedName = cleanName.lowercase()
         val keyMapping = mapOf(
             "prime" to "Prime Generation",
-            "fibonacci" to if (isMultiCore) "Fibonacci Memoized" else "Fibonacci Recursive",
+            "fibonacci" to if (isMultiCore) "Fibonacci Recursive" else "Fibonacci Recursive",
             "matrix" to "Matrix Multiplication",
             "hash" to "Hash Computing",
             "string" to "String Sorting",

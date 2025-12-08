@@ -52,7 +52,7 @@ data class WorkloadParams(
     val fibonacciNRange: Pair<Int, Int> = Pair(30, 32),
     val matrixSize: Int = 350,
     val hashDataSizeMb: Int = 2,
-    val stringCount: Int = 15000,
+    val stringCount: Int = 2500,
     val rayTracingResolution: Pair<Int, Int> = Pair(192, 192),
     val rayTracingDepth: Int = 3,
     val compressionDataSizeMb: Int = 2,

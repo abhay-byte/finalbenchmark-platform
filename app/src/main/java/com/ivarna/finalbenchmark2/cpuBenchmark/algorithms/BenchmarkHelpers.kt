@@ -3,6 +3,7 @@ package com.ivarna.finalbenchmark2.cpuBenchmark.algorithms
 import kotlinx.coroutines.yield
 import kotlin.random.Random
 import kotlin.system.measureTimeMillis
+import java.util.concurrent.ThreadLocalRandom
 
 object BenchmarkHelpers {
     
@@ -30,13 +31,22 @@ object BenchmarkHelpers {
     }
     
     /**
-     * Generate random string of specified length
+     * Generate random string of specified length - OPTIMIZED for performance
+     * Uses static character set and efficient string building
      */
     fun generateRandomString(length: Int): String {
-        val chars = ('a'..'z') + ('A'..'Z') + ('0'..'9')
-        return (1..length)
-            .map { chars.random() }
-            .joinToString("")
+        // OPTIMIZED: Static character set to avoid recreation overhead
+        val chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+        val charArray = CharArray(length)
+        
+        // OPTIMIZED: Use ThreadLocalRandom for better performance and thread safety
+        val random = ThreadLocalRandom.current()
+        
+        repeat(length) { index ->
+            charArray[index] = chars[random.nextInt(chars.length)]
+        }
+        
+        return String(charArray)
     }
     
     /**
