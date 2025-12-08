@@ -26,3 +26,4 @@ Cargo.lock
 my-release-key.keystore
 keystore/
 .kotlin
+web/node_modules
