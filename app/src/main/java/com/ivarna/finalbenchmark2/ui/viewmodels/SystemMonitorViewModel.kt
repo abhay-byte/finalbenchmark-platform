@@ -45,8 +45,8 @@ class SystemMonitorViewModel(application: Application) : AndroidViewModel(applic
                         temp = cpuTemp
                     )
                     
-                    // 3. THROTTLE (The Fix) - Update only once per second
-                    delay(1000L)
+                    // 3. THROTTLE (The Fix) - Update every 0.1 seconds (100ms)
+                    delay(100L)
                 } catch (e: Exception) {
                     e.printStackTrace()
                     delay(2000L) // On error, wait longer before retrying
