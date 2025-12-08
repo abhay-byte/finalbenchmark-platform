@@ -287,27 +287,26 @@ class KotlinBenchmarkManager {
         
         Log.d(TAG, "Final scoring - Single: $calculatedSingleCoreScore, Multi: $calculatedMultiCoreScore, Final: $calculatedFinalScore, Normalized: $calculatedNormalizedScore")
         
-        // CRITICAL FIX: Include the result arrays that BenchmarkManager expects
-        val singleCoreResultsArray = JSONArray().apply {
+        // CRITICAL FIX: Include detailed_results array that ResultScreen expects
+        val detailedResultsArray = JSONArray().apply {
+            // Add single core results
             singleResults.forEach { result ->
                 put(JSONObject().apply {
                     put("name", result.name)
-                    put("ops_per_second", result.opsPerSecond)
-                    put("execution_time_ms", result.executionTimeMs)
-                    put("is_valid", result.isValid)
-                    put("metrics_json", result.metricsJson)
+                    put("opsPerSecond", result.opsPerSecond)
+                    put("executionTimeMs", result.executionTimeMs)
+                    put("isValid", result.isValid)
+                    put("metricsJson", result.metricsJson)
                 })
             }
-        }
-        
-        val multiCoreResultsArray = JSONArray().apply {
+            // Add multi core results
             multiResults.forEach { result ->
                 put(JSONObject().apply {
                     put("name", result.name)
-                    put("ops_per_second", result.opsPerSecond)
-                    put("execution_time_ms", result.executionTimeMs)
-                    put("is_valid", result.isValid)
-                    put("metrics_json", result.metricsJson)
+                    put("opsPerSecond", result.opsPerSecond)
+                    put("executionTimeMs", result.executionTimeMs)
+                    put("isValid", result.isValid)
+                    put("metricsJson", result.metricsJson)
                 })
             }
         }
@@ -318,8 +317,7 @@ class KotlinBenchmarkManager {
             put("final_score", calculatedFinalScore)
             put("normalized_score", calculatedNormalizedScore)
             put("rating", rating)
-            put("single_core_results", singleCoreResultsArray)
-            put("multi_core_results", multiCoreResultsArray)
+            put("detailed_results", detailedResultsArray)
         }.toString()
     }
     
