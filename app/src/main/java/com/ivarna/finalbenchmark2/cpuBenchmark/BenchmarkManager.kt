@@ -827,18 +827,18 @@ class BenchmarkManager {
                 nqueensSize = 13
             )
             "flagship" -> WorkloadParams(
-                // INCREASED: Allow multi-core tests to run longer
-                primeRange = 20_000_000,        // Increased from 12M (more work for 8 cores)
-                fibonacciNRange = Pair(35, 42), // Increased from (35, 40)
-                matrixSize = 1200,              // Increased from 900 (more parallel work)
-                hashDataSizeMb = 150,           // Increased from 100
-                stringCount = 2_000_000,        // Increased from 1M (better scaling test)
-                rayTracingResolution = Pair(600, 600), // Increased from (450, 450)
-                rayTracingDepth = 5,            // Increased from 4
-                compressionDataSizeMb = 80,     // Increased from 50
-                monteCarloSamples = 150_000_000, // Increased from 80M (embarrassingly parallel)
-                jsonDataSizeMb = 15,            // Increased from 10
-                nqueensSize = 14                // FIXED: Reduced from 16 (N=16 causes crashes due to exponential complexity)
+                // MOBILE-SAFE: Reduced aggressive parameters to prevent ANR
+                primeRange = 2_000_000,         // Reduced from 20M to 2M - substantial but mobile-safe
+                fibonacciNRange = Pair(35, 40), // Reduced upper bound from 42 to 40
+                matrixSize = 512,               // Reduced from 1200 - cubic complexity reduction (8x less work)
+                hashDataSizeMb = 10,            // Reduced from 150MB to 10MB - mobile-safe
+                stringCount = 100_000,          // Reduced from 2M to 100K - major memory reduction (20x less)
+                rayTracingResolution = Pair(600, 600), // Keep reasonable resolution
+                rayTracingDepth = 5,            // Keep depth for meaningful test
+                compressionDataSizeMb = 1,      // Reduced from 80MB to 1MB - mobile-safe (80x reduction)
+                monteCarloSamples = 10_000_000, // Reduced from 150M to 10M - still good for parallelism (15x reduction)
+                jsonDataSizeMb = 5,             // Reduced from 15MB to 5MB - reasonable
+                nqueensSize = 14                // Keep at 14 - exponential complexity limit
             )
             else -> WorkloadParams(
                 primeRange = 8_000,

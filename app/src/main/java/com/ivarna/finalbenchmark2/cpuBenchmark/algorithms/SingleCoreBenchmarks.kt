@@ -40,6 +40,10 @@ object SingleCoreBenchmarks {
                     }
                 }
                 p++
+                // Yield every 1000 iterations to prevent ANR during long computations
+                if (p % 1000 == 0) {
+                    kotlinx.coroutines.yield()
+                }
             }
             
             isPrime.count { it }
@@ -128,6 +132,10 @@ object SingleCoreBenchmarks {
                     for (k in 0 until size) {
                         c[i][j] += a[i][k] * b[k][j]
                     }
+                }
+                // Yield every 64 rows to prevent ANR during matrix operations
+                if (i % 64 == 0) {
+                    kotlinx.coroutines.yield()
                 }
             }
             

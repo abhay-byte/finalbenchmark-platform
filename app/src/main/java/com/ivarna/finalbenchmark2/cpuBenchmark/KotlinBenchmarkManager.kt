@@ -347,17 +347,17 @@ class KotlinBenchmarkManager {
                 nqueensSize = 13
             )
             "flagship" -> WorkloadParams(
-                primeRange = 20_000,
-                fibonacciNRange = Pair(35, 42),
-                matrixSize = 1200,
-                hashDataSizeMb = 150,
-                stringCount = 2_000_000,
-                rayTracingResolution = Pair(600, 600),
-                rayTracingDepth = 5,
-                compressionDataSizeMb = 80,
-                monteCarloSamples = 150_000_000,
-                jsonDataSizeMb = 15,
-                nqueensSize = 14
+                primeRange = 2_000_000,        // Reduced from 20M to 2M - still substantial but mobile-safe
+                fibonacciNRange = Pair(35, 40), // Reduced upper bound from 42 to 40
+                matrixSize = 512,              // Reduced from 1200 to 512 - cubic complexity reduction
+                hashDataSizeMb = 10,           // Reduced from 150MB to 10MB - mobile-safe
+                stringCount = 100_000,         // Reduced from 2M to 100K - major memory reduction
+                rayTracingResolution = Pair(600, 600), // Keep reasonable resolution
+                rayTracingDepth = 5,           // Keep depth for meaningful test
+                compressionDataSizeMb = 1,     // Reduced from 80MB to 1MB - mobile-safe
+                monteCarloSamples = 10_000_000, // Reduced from 150M to 10M - still good for parallelism
+                jsonDataSizeMb = 5,            // Reduced from 15MB to 5MB - reasonable
+                nqueensSize = 14               // Keep at 14 - exponential complexity limit
             )
             else -> WorkloadParams() // Default values
         }
