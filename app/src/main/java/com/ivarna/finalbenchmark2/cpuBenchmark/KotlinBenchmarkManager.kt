@@ -169,7 +169,7 @@ class KotlinBenchmarkManager {
             MultiCoreBenchmarks.fibonacciRecursive(params)
         }
         multiResults.add(multiFibResult)
-        emitBenchmarkComplete("Multi-Core Fibonacci Memoized", "MULTI",
+        emitBenchmarkComplete("Multi-Core Fibonacci Recursive", "MULTI",
             multiFibResult.executionTimeMs.toLong(), multiFibResult.opsPerSecond)
         
         // Matrix Multiplication
