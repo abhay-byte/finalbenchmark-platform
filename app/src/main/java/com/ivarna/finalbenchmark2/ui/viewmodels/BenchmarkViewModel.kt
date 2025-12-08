@@ -242,17 +242,14 @@ class BenchmarkViewModel(
                     }
                     
                     // Give UI time to render the "Spinner" - CRITICAL for UI updates
-                    delay(50) 
+                    delay(50)
 
-                    // B. RUN the heavy Kotlin Benchmark on Background Thread
-                    val result = withContext(Dispatchers.Default) {
-                        measureNanoTime { 
-                            runSingleBenchmark(testName) 
-                        } 
+                    // C. RUN the benchmark and get the result
+                    val benchmarkResult = withContext(Dispatchers.Default) {
+                        runSingleBenchmark(testName)
                     }
-                    val timeMs = result / 1_000_000.0 // Convert nano to ms
-
-                    // C. UPDATE UI: Mark as COMPLETED with TIME
+                    
+                    // D. UPDATE UI: Mark as COMPLETED with TIME and RESULT
                     completedTests++
                     val newProgress = completedTests.toFloat() / totalTests.toFloat()
                     
@@ -260,10 +257,12 @@ class BenchmarkViewModel(
                         state.copy(
                             progress = newProgress,
                             currentTestName = testName,
+                            completedTests = state.completedTests + benchmarkResult, // Store actual result
                             testStates = state.testStates.map { 
                                 if (it.name == testName) it.copy(
                                     status = TestStatus.COMPLETED, 
-                                    timeText = "${timeMs.toInt()}ms" // <--- SPECIFIC REQUIREMENT
+                                    timeText = "${benchmarkResult.executionTimeMs.toInt()}ms", // Use actual execution time from result
+                                    result = benchmarkResult // Store the actual BenchmarkResult
                                 ) else it 
                             }
                         )
@@ -438,9 +437,8 @@ class BenchmarkViewModel(
     
     // Calculate final results from completed tests
     private fun calculateFinalResults(): BenchmarkResults {
-        val completedResults = _uiState.value.testStates
-            .filter { it.status == TestStatus.COMPLETED && it.result != null }
-            .map { it.result!! }
+        // FIXED: Use the completedTests list that now contains actual BenchmarkResult objects
+        val completedResults = _uiState.value.completedTests
             
         // Calculate scores using the existing scoring logic
         val singleCoreResults = completedResults.filter { it.name.contains("Single-Core") }
@@ -449,7 +447,7 @@ class BenchmarkViewModel(
         val singleCoreScore = calculateWeightedScore(singleCoreResults, "SINGLE")
         val multiCoreScore = calculateWeightedScore(multiCoreResults, "MULTI")
         val finalWeightedScore = (singleCoreScore * 0.35) + (multiCoreScore * 0.65)
-        val normalizedScore = finalWeightedScore
+        val normalizedScore = finalWeightedScore / 2500.0 // Apply normalization factor as mentioned in the requirements
         val coreRatio = if (singleCoreScore > 0) multiCoreScore / singleCoreScore else 0.0
         
         return BenchmarkResults(
