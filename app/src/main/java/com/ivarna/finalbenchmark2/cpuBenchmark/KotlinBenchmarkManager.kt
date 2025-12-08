@@ -61,70 +61,90 @@ class KotlinBenchmarkManager {
         
         // Prime Generation
         emitBenchmarkStart("Single-Core Prime Generation", "SINGLE")
-        val singlePrimeResult = SingleCoreBenchmarks.primeGeneration(params)
+        val singlePrimeResult = withContext(Dispatchers.Default) {
+            SingleCoreBenchmarks.primeGeneration(params)
+        }
         singleResults.add(singlePrimeResult)
         emitBenchmarkComplete("Single-Core Prime Generation", "SINGLE", 
             singlePrimeResult.executionTimeMs.toLong(), singlePrimeResult.opsPerSecond)
         
         // Fibonacci Recursive
         emitBenchmarkStart("Single-Core Fibonacci Recursive", "SINGLE")
-        val singleFibResult = SingleCoreBenchmarks.fibonacciRecursive(params)
+        val singleFibResult = withContext(Dispatchers.Default) {
+            SingleCoreBenchmarks.fibonacciRecursive(params)
+        }
         singleResults.add(singleFibResult)
         emitBenchmarkComplete("Single-Core Fibonacci Recursive", "SINGLE",
             singleFibResult.executionTimeMs.toLong(), singleFibResult.opsPerSecond)
         
         // Matrix Multiplication
         emitBenchmarkStart("Single-Core Matrix Multiplication", "SINGLE")
-        val singleMatrixResult = SingleCoreBenchmarks.matrixMultiplication(params)
+        val singleMatrixResult = withContext(Dispatchers.Default) {
+            SingleCoreBenchmarks.matrixMultiplication(params)
+        }
         singleResults.add(singleMatrixResult)
         emitBenchmarkComplete("Single-Core Matrix Multiplication", "SINGLE",
             singleMatrixResult.executionTimeMs.toLong(), singleMatrixResult.opsPerSecond)
         
         // Hash Computing
         emitBenchmarkStart("Single-Core Hash Computing", "SINGLE")
-        val singleHashResult = SingleCoreBenchmarks.hashComputing(params)
+        val singleHashResult = withContext(Dispatchers.Default) {
+            SingleCoreBenchmarks.hashComputing(params)
+        }
         singleResults.add(singleHashResult)
         emitBenchmarkComplete("Single-Core Hash Computing", "SINGLE",
             singleHashResult.executionTimeMs.toLong(), singleHashResult.opsPerSecond)
         
         // String Sorting
         emitBenchmarkStart("Single-Core String Sorting", "SINGLE")
-        val singleStringResult = SingleCoreBenchmarks.stringSorting(params)
+        val singleStringResult = withContext(Dispatchers.Default) {
+            SingleCoreBenchmarks.stringSorting(params)
+        }
         singleResults.add(singleStringResult)
         emitBenchmarkComplete("Single-Core String Sorting", "SINGLE",
             singleStringResult.executionTimeMs.toLong(), singleStringResult.opsPerSecond)
         
         // Ray Tracing
         emitBenchmarkStart("Single-Core Ray Tracing", "SINGLE")
-        val singleRayResult = SingleCoreBenchmarks.rayTracing(params)
+        val singleRayResult = withContext(Dispatchers.Default) {
+            SingleCoreBenchmarks.rayTracing(params)
+        }
         singleResults.add(singleRayResult)
         emitBenchmarkComplete("Single-Core Ray Tracing", "SINGLE",
             singleRayResult.executionTimeMs.toLong(), singleRayResult.opsPerSecond)
         
         // Compression
         emitBenchmarkStart("Single-Core Compression", "SINGLE")
-        val singleCompressionResult = SingleCoreBenchmarks.compression(params)
+        val singleCompressionResult = withContext(Dispatchers.Default) {
+            SingleCoreBenchmarks.compression(params)
+        }
         singleResults.add(singleCompressionResult)
         emitBenchmarkComplete("Single-Core Compression", "SINGLE",
             singleCompressionResult.executionTimeMs.toLong(), singleCompressionResult.opsPerSecond)
         
         // Monte Carlo Pi
         emitBenchmarkStart("Single-Core Monte Carlo π", "SINGLE")
-        val singleMonteResult = SingleCoreBenchmarks.monteCarloPi(params)
+        val singleMonteResult = withContext(Dispatchers.Default) {
+            SingleCoreBenchmarks.monteCarloPi(params)
+        }
         singleResults.add(singleMonteResult)
         emitBenchmarkComplete("Single-Core Monte Carlo π", "SINGLE",
             singleMonteResult.executionTimeMs.toLong(), singleMonteResult.opsPerSecond)
         
         // JSON Parsing
         emitBenchmarkStart("Single-Core JSON Parsing", "SINGLE")
-        val singleJsonResult = SingleCoreBenchmarks.jsonParsing(params)
+        val singleJsonResult = withContext(Dispatchers.Default) {
+            SingleCoreBenchmarks.jsonParsing(params)
+        }
         singleResults.add(singleJsonResult)
         emitBenchmarkComplete("Single-Core JSON Parsing", "SINGLE",
             singleJsonResult.executionTimeMs.toLong(), singleJsonResult.opsPerSecond)
         
         // N-Queens
         emitBenchmarkStart("Single-Core N-Queens", "SINGLE")
-        val singleNqueensResult = SingleCoreBenchmarks.nqueens(params)
+        val singleNqueensResult = withContext(Dispatchers.Default) {
+            SingleCoreBenchmarks.nqueens(params)
+        }
         singleResults.add(singleNqueensResult)
         emitBenchmarkComplete("Single-Core N-Queens", "SINGLE",
             singleNqueensResult.executionTimeMs.toLong(), singleNqueensResult.opsPerSecond)

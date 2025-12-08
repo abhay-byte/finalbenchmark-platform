@@ -4,6 +4,8 @@ import android.util.Log
 import com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkResult
 import com.ivarna.finalbenchmark2.cpuBenchmark.WorkloadParams
 import com.ivarna.finalbenchmark2.cpuBenchmark.CpuAffinityManager
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.security.MessageDigest
 import kotlin.math.sqrt
@@ -18,7 +20,7 @@ object SingleCoreBenchmarks {
      * Complexity: O(n log log n)
      * Tests: Integer arithmetic, memory access patterns
      */
-    fun primeGeneration(params: WorkloadParams): BenchmarkResult {
+    suspend fun primeGeneration(params: WorkloadParams): BenchmarkResult = withContext(Dispatchers.Default) {
         Log.d(TAG, "Starting Prime Generation (range: ${params.primeRange})")
         CpuAffinityManager.setMaxPerformance()
         
@@ -49,7 +51,7 @@ object SingleCoreBenchmarks {
         
         CpuAffinityManager.resetPerformance()
         
-        return BenchmarkResult(
+        return@withContext BenchmarkResult(
             name = "Single-Core Prime Generation",
             executionTimeMs = timeMs.toDouble(),
             opsPerSecond = opsPerSecond,
@@ -66,7 +68,7 @@ object SingleCoreBenchmarks {
      * Complexity: O(2^n)
      * Tests: Function call overhead, stack performance
      */
-    fun fibonacciRecursive(params: WorkloadParams): BenchmarkResult {
+    suspend fun fibonacciRecursive(params: WorkloadParams): BenchmarkResult = withContext(Dispatchers.Default) {
         Log.d(TAG, "Starting Fibonacci Recursive (range: ${params.fibonacciNRange})")
         CpuAffinityManager.setMaxPerformance()
         
@@ -91,7 +93,7 @@ object SingleCoreBenchmarks {
         
         CpuAffinityManager.resetPerformance()
         
-        return BenchmarkResult(
+        return@withContext BenchmarkResult(
             name = "Single-Core Fibonacci Recursive",
             executionTimeMs = timeMs.toDouble(),
             opsPerSecond = opsPerSecond,
@@ -108,7 +110,7 @@ object SingleCoreBenchmarks {
      * Complexity: O(n³)
      * Tests: Floating-point operations, cache efficiency
      */
-    fun matrixMultiplication(params: WorkloadParams): BenchmarkResult {
+    suspend fun matrixMultiplication(params: WorkloadParams): BenchmarkResult = withContext(Dispatchers.Default) {
         Log.d(TAG, "Starting Matrix Multiplication (size: ${params.matrixSize})")
         CpuAffinityManager.setMaxPerformance()
         
@@ -137,7 +139,7 @@ object SingleCoreBenchmarks {
         
         CpuAffinityManager.resetPerformance()
         
-        return BenchmarkResult(
+        return@withContext BenchmarkResult(
             name = "Single-Core Matrix Multiplication",
             executionTimeMs = timeMs.toDouble(),
             opsPerSecond = opsPerSecond,
@@ -154,7 +156,7 @@ object SingleCoreBenchmarks {
      * Complexity: O(n)
      * Tests: Cryptographic operations, memory bandwidth
      */
-    fun hashComputing(params: WorkloadParams): BenchmarkResult {
+    suspend fun hashComputing(params: WorkloadParams): BenchmarkResult = withContext(Dispatchers.Default) {
         Log.d(TAG, "Starting Hash Computing (size: ${params.hashDataSizeMb}MB)")
         CpuAffinityManager.setMaxPerformance()
         
@@ -174,7 +176,7 @@ object SingleCoreBenchmarks {
         
         CpuAffinityManager.resetPerformance()
         
-        return BenchmarkResult(
+        return@withContext BenchmarkResult(
             name = "Single-Core Hash Computing",
             executionTimeMs = timeMs.toDouble(),
             opsPerSecond = throughput,
@@ -191,7 +193,7 @@ object SingleCoreBenchmarks {
      * Test 5: String Sorting
      * Implement IntroSort algorithm
      */
-    fun stringSorting(params: WorkloadParams): BenchmarkResult {
+    suspend fun stringSorting(params: WorkloadParams): BenchmarkResult = withContext(Dispatchers.Default) {
         Log.d(TAG, "Starting String Sorting (count: ${params.stringCount})")
         CpuAffinityManager.setMaxPerformance()
         
@@ -207,7 +209,7 @@ object SingleCoreBenchmarks {
         
         CpuAffinityManager.resetPerformance()
         
-        return BenchmarkResult(
+        return@withContext BenchmarkResult(
             name = "Single-Core String Sorting",
             executionTimeMs = timeMs.toDouble(),
             opsPerSecond = opsPerSecond,
@@ -223,7 +225,7 @@ object SingleCoreBenchmarks {
      * Test 6: Ray Tracing
      * Implement basic ray-sphere intersection with recursion
      */
-    fun rayTracing(params: WorkloadParams): BenchmarkResult {
+    suspend fun rayTracing(params: WorkloadParams): BenchmarkResult = withContext(Dispatchers.Default) {
         Log.d(TAG, "Starting Ray Tracing (resolution: ${params.rayTracingResolution}, depth: ${params.rayTracingDepth})")
         CpuAffinityManager.setMaxPerformance()
         
@@ -342,7 +344,7 @@ object SingleCoreBenchmarks {
         
         CpuAffinityManager.resetPerformance()
         
-        return BenchmarkResult(
+        return@withContext BenchmarkResult(
             name = "Single-Core Ray Tracing",
             executionTimeMs = timeMs.toDouble(),
             opsPerSecond = raysPerSecond,
@@ -360,7 +362,7 @@ object SingleCoreBenchmarks {
      * Test 7: Compression/Decompression
      * Implement RLE (Run-Length Encoding)
      */
-    fun compression(params: WorkloadParams): BenchmarkResult {
+    suspend fun compression(params: WorkloadParams): BenchmarkResult = withContext(Dispatchers.Default) {
         Log.d(TAG, "Starting Compression (size: ${params.compressionDataSizeMb}MB)")
         CpuAffinityManager.setMaxPerformance()
         
@@ -437,7 +439,7 @@ object SingleCoreBenchmarks {
         
         CpuAffinityManager.resetPerformance()
         
-        return BenchmarkResult(
+        return@withContext BenchmarkResult(
             name = "Single-Core Compression",
             executionTimeMs = timeMs.toDouble(),
             opsPerSecond = throughput,
@@ -454,7 +456,7 @@ object SingleCoreBenchmarks {
     /**
      * Test 8: Monte Carlo Simulation for π
      */
-    fun monteCarloPi(params: WorkloadParams): BenchmarkResult {
+    suspend fun monteCarloPi(params: WorkloadParams): BenchmarkResult = withContext(Dispatchers.Default) {
         Log.d(TAG, "Starting Monte Carlo π (samples: ${params.monteCarloSamples})")
         CpuAffinityManager.setMaxPerformance()
         
@@ -481,7 +483,7 @@ object SingleCoreBenchmarks {
         
         CpuAffinityManager.resetPerformance()
         
-        return BenchmarkResult(
+        return@withContext BenchmarkResult(
             name = "Single-Core Monte Carlo π",
             executionTimeMs = timeMs.toDouble(),
             opsPerSecond = opsPerSecond,
@@ -498,7 +500,7 @@ object SingleCoreBenchmarks {
     /**
      * Test 9: JSON Parsing
      */
-    fun jsonParsing(params: WorkloadParams): BenchmarkResult {
+    suspend fun jsonParsing(params: WorkloadParams): BenchmarkResult = withContext(Dispatchers.Default) {
         Log.d(TAG, "Starting JSON Parsing (size: ${params.jsonDataSizeMb}MB)")
         CpuAffinityManager.setMaxPerformance()
         
@@ -560,7 +562,7 @@ object SingleCoreBenchmarks {
         
         CpuAffinityManager.resetPerformance()
         
-        return BenchmarkResult(
+        return@withContext BenchmarkResult(
             name = "Single-Core JSON Parsing",
             executionTimeMs = timeMs.toDouble(),
             opsPerSecond = elementsPerSecond,
@@ -576,12 +578,12 @@ object SingleCoreBenchmarks {
     /**
      * Test 10: N-Queens Problem
      */
-    fun nqueens(params: WorkloadParams): BenchmarkResult {
+    suspend fun nqueens(params: WorkloadParams): BenchmarkResult = withContext(Dispatchers.Default) {
         Log.d(TAG, "Starting N-Queens (size: ${params.nqueensSize})")
         CpuAffinityManager.setMaxPerformance()
         
         val (result, timeMs) = BenchmarkHelpers.measureBenchmark {
-            val n = params.nqueensSize
+            val boardSize = params.nqueensSize
             
             // Solve N-Queens problem using backtracking
             fun solveNQueens(n: Int): Int {
@@ -621,7 +623,7 @@ object SingleCoreBenchmarks {
                 return backtrack(0)
             }
             
-            solveNQueens(n)
+            solveNQueens(boardSize)
         }
         
         val solutionCount = result
@@ -629,7 +631,7 @@ object SingleCoreBenchmarks {
         
         CpuAffinityManager.resetPerformance()
         
-        return BenchmarkResult(
+        return@withContext BenchmarkResult(
             name = "Single-Core N-Queens",
             executionTimeMs = timeMs.toDouble(),
             opsPerSecond = opsPerSecond,

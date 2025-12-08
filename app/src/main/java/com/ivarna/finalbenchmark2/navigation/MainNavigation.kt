@@ -8,6 +8,7 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.rounded.Leaderboard
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -59,6 +60,11 @@ fun MainNavigation(
             label = "Device"
         ),
         BottomNavigationItem(
+            route = "rankings",
+            icon = Icons.Rounded.Leaderboard,
+            label = "Rankings"
+        ),
+        BottomNavigationItem(
             route = "history",
             icon = Icons.Default.List,
             label = "History"
@@ -107,6 +113,9 @@ fun MainNavigation(
                 }
                 composable("device") {
                     DeviceScreen()
+                }
+                composable("rankings") {
+                    RankingsScreen()
                 }
                 composable("history") {
                     val historyViewModel = com.ivarna.finalbenchmark2.di.DatabaseInitializer.createHistoryViewModel(context)

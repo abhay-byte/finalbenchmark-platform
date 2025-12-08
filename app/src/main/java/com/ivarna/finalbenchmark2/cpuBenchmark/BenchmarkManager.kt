@@ -337,54 +337,74 @@ class BenchmarkManager {
         return try {
             when (functionName) {
                 "runSingleCorePrimeGeneration" -> {
-                    val result = SingleCoreBenchmarks.primeGeneration(workloadParams)
-                    Log.d("BenchmarkManager", "Result from primeGeneration: $result")
-                    result
+                    runBlocking {
+                        val result = SingleCoreBenchmarks.primeGeneration(workloadParams)
+                        Log.d("BenchmarkManager", "Result from primeGeneration: $result")
+                        result
+                    }
                 }
                 "runSingleCoreFibonacciRecursive" -> {
-                    val result = SingleCoreBenchmarks.fibonacciRecursive(workloadParams)
-                    Log.d("BenchmarkManager", "Result from fibonacciRecursive: $result")
-                    result
+                    runBlocking {
+                        val result = SingleCoreBenchmarks.fibonacciRecursive(workloadParams)
+                        Log.d("BenchmarkManager", "Result from fibonacciRecursive: $result")
+                        result
+                    }
                 }
                 "runSingleCoreMatrixMultiplication" -> {
-                    val result = SingleCoreBenchmarks.matrixMultiplication(workloadParams)
-                    Log.d("BenchmarkManager", "Result from matrixMultiplication: $result")
-                    result
+                    runBlocking {
+                        val result = SingleCoreBenchmarks.matrixMultiplication(workloadParams)
+                        Log.d("BenchmarkManager", "Result from matrixMultiplication: $result")
+                        result
+                    }
                 }
                 "runSingleCoreHashComputing" -> {
-                    val result = SingleCoreBenchmarks.hashComputing(workloadParams)
-                    Log.d("BenchmarkManager", "Result from hashComputing: $result")
-                    result
+                    runBlocking {
+                        val result = SingleCoreBenchmarks.hashComputing(workloadParams)
+                        Log.d("BenchmarkManager", "Result from hashComputing: $result")
+                        result
+                    }
                 }
                 "runSingleCoreStringSorting" -> {
-                    val result = SingleCoreBenchmarks.stringSorting(workloadParams)
-                    Log.d("BenchmarkManager", "Result from stringSorting: $result")
-                    result
+                    runBlocking {
+                        val result = SingleCoreBenchmarks.stringSorting(workloadParams)
+                        Log.d("BenchmarkManager", "Result from stringSorting: $result")
+                        result
+                    }
                 }
                 "runSingleCoreRayTracing" -> {
-                    val result = SingleCoreBenchmarks.rayTracing(workloadParams)
-                    Log.d("BenchmarkManager", "Result from rayTracing: $result")
-                    result
+                    runBlocking {
+                        val result = SingleCoreBenchmarks.rayTracing(workloadParams)
+                        Log.d("BenchmarkManager", "Result from rayTracing: $result")
+                        result
+                    }
                 }
                 "runSingleCoreCompression" -> {
-                    val result = SingleCoreBenchmarks.compression(workloadParams)
-                    Log.d("BenchmarkManager", "Result from compression: $result")
-                    result
+                    runBlocking {
+                        val result = SingleCoreBenchmarks.compression(workloadParams)
+                        Log.d("BenchmarkManager", "Result from compression: $result")
+                        result
+                    }
                 }
                 "runSingleCoreMonteCarloPi" -> {
-                    val result = SingleCoreBenchmarks.monteCarloPi(workloadParams)
-                    Log.d("BenchmarkManager", "Result from monteCarloPi: $result")
-                    result
+                    runBlocking {
+                        val result = SingleCoreBenchmarks.monteCarloPi(workloadParams)
+                        Log.d("BenchmarkManager", "Result from monteCarloPi: $result")
+                        result
+                    }
                 }
                 "runSingleCoreJsonParsing" -> {
-                    val result = SingleCoreBenchmarks.jsonParsing(workloadParams)
-                    Log.d("BenchmarkManager", "Result from jsonParsing: $result")
-                    result
+                    runBlocking {
+                        val result = SingleCoreBenchmarks.jsonParsing(workloadParams)
+                        Log.d("BenchmarkManager", "Result from jsonParsing: $result")
+                        result
+                    }
                 }
                 "runSingleCoreNqueens" -> {
-                    val result = SingleCoreBenchmarks.nqueens(workloadParams)
-                    Log.d("BenchmarkManager", "Result from nqueens: $result")
-                    result
+                    runBlocking {
+                        val result = SingleCoreBenchmarks.nqueens(workloadParams)
+                        Log.d("BenchmarkManager", "Result from nqueens: $result")
+                        result
+                    }
                 }
                 "runMultiCorePrimeGeneration" -> {
                     runBlocking {
