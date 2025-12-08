@@ -181,10 +181,10 @@ fun ThemeSelectionScreen(
                                 MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
                             )
                         } else {
-                            // Light theme gradient: surface to a very subtle surfaceVariant
+                            // FIX: Use pure white/light colors for Light Mode to avoid muddy appearance
                             listOf(
-                                MaterialTheme.colorScheme.surface,
-                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.1f) // Much lighter alpha for light theme
+                                Color(0xFFFFFFFF),
+                                Color(0xFFF5F5F5)
                             )
                         }
                     )
