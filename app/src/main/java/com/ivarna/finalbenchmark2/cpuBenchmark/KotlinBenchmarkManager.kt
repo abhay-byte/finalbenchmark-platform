@@ -356,23 +356,23 @@ class KotlinBenchmarkManager {
                 stringCount = 50_000,
                 rayTracingResolution = Pair(128, 128),
                 rayTracingDepth = 1,
-                compressionDataSizeMb = 5,
+                compressionDataSizeMb = 1,
                 monteCarloSamples = 5_000,
                 jsonDataSizeMb = 1,
-                nqueensSize = 8
+                nqueensSize = 2
             )
             "mid" -> WorkloadParams(
-                primeRange = 8_000_000,
-                fibonacciNRange = Pair(32, 38),
-                matrixSize = 700,
-                hashDataSizeMb = 50,
-                stringCount = 700_000,
-                rayTracingResolution = Pair(350, 350),
-                rayTracingDepth = 3,
-                compressionDataSizeMb = 30,
-                monteCarloSamples = 60_000_000,
-                jsonDataSizeMb = 5,
-                nqueensSize = 13
+                primeRange = 150_000,
+                fibonacciNRange = Pair(28, 32),
+                matrixSize = 300,
+                hashDataSizeMb = 15,
+                stringCount = 150_000,
+                rayTracingResolution = Pair(168, 168),
+                rayTracingDepth = 2,
+                compressionDataSizeMb = 2,
+                monteCarloSamples = 10_000,
+                jsonDataSizeMb = 1,
+                nqueensSize = 4
             )
             "flagship" -> WorkloadParams(
                 // MOBILE-SAFE: Ultra-conservative parameters for 2-5 second tests
@@ -383,7 +383,7 @@ class KotlinBenchmarkManager {
                 stringCount = 20_000,           // Increased from 12K for meaningful sort tests
                 rayTracingResolution = Pair(200, 200), // Reduced from 400x400 for speed
                 rayTracingDepth = 3,            // Kept at 3 for speed
-                compressionDataSizeMb = 1,      // Set to 1MB for meaningful compression tests
+                compressionDataSizeMb = 3,      // Set to 1MB for meaningful compression tests
                 monteCarloSamples = 500_000,    // Reduced from 2M for speed
                 jsonDataSizeMb = 1,             // Reduced from 2MB for speed
                 nqueensSize = 10                // Reduced from 12 for speed

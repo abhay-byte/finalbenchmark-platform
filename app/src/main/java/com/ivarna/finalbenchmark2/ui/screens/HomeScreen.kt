@@ -29,6 +29,7 @@ import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.DisabledByDefault
 import androidx.compose.material3.*
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -88,6 +89,11 @@ fun HomeScreen(
     var powerInfo by remember { mutableStateOf(powerUtils.getPowerConsumptionInfo()) }
 
     var isDataInitialized by remember { mutableStateOf(false) }
+
+    // Workload Selection State
+    val workloadOptions = listOf("Low", "Mid", "Flagship")
+    var selectedWorkload by remember { mutableStateOf("Flagship") }
+    var isDropdownExpanded by remember { mutableStateOf(false) }
 
     // Single LaunchedEffect to manage data polling loops
     LaunchedEffect(Unit) {
@@ -425,13 +431,68 @@ fun HomeScreen(
                     originalGovernor = originalGovernor
                 )
                 
+                // Workload Selection Dropdown
+                ExposedDropdownMenuBox(
+                    expanded = isDropdownExpanded,
+                    onExpandedChange = { isDropdownExpanded = !isDropdownExpanded }
+                ) {
+                    OutlinedTextField(
+                        value = selectedWorkload,
+                        onValueChange = { },
+                        readOnly = true,
+                        label = { Text("Workload Intensity") },
+                        trailingIcon = {
+                            ExposedDropdownMenuDefaults.TrailingIcon(
+                                expanded = isDropdownExpanded
+                            )
+                        },
+                        modifier = Modifier
+                            .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                            focusedLabelColor = MaterialTheme.colorScheme.primary,
+                            unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                            unfocusedTextColor = MaterialTheme.colorScheme.onSurface
+                        )
+                    )
+                    
+                    ExposedDropdownMenu(
+                        expanded = isDropdownExpanded,
+                        onDismissRequest = { isDropdownExpanded = false }
+                    ) {
+                        workloadOptions.forEach { option ->
+                            DropdownMenuItem(
+                                text = { Text(option) },
+                                onClick = {
+                                    selectedWorkload = option
+                                    isDropdownExpanded = false
+                                },
+                                contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
+                            )
+                        }
+                    }
+                }
+                
                 // Start CPU Benchmark Button
                 Button(
                     onClick = {
                         // Call optimizations before starting benchmark
                         val activity = context as? com.ivarna.finalbenchmark2.MainActivity
                         activity?.startAllOptimizations()
-                        onStartBenchmark("Flagship")
+                        
+                        // Map UI workload to backend device tier
+                        val deviceTier = when (selectedWorkload) {
+                            "Low" -> "slow"
+                            "Mid" -> "mid"
+                            "Flagship" -> "flagship"
+                            else -> "flagship" // fallback
+                        }
+                        
+                        onStartBenchmark(deviceTier)
                     },
                     modifier = Modifier
                         .fillMaxWidth()
