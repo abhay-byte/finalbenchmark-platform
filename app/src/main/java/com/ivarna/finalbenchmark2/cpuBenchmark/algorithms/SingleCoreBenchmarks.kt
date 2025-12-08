@@ -100,11 +100,9 @@ object SingleCoreBenchmarks {
             totalResult
         }
         
-        // Count total recursive calls as operations (approximation)
-        val targetN = 30
-        val iterations = 1000
-        val totalRecursiveCalls = iterations * (2.0.pow(targetN) / 1.618).toLong() // Approximation of recursive calls
-        val opsPerSecond = totalRecursiveCalls / (timeMs / 1000.0)
+        // FIXED: Use actual iterations as operations (not inflated recursive call counting)
+        val actualOps = 1000.0  // We completed 1000 fibonacci(30) calculations
+        val opsPerSecond = actualOps / (timeMs / 1000.0)
         
         CpuAffinityManager.resetPerformance()
         
@@ -736,19 +734,19 @@ object SingleCoreBenchmarks {
             val boardSize = params.nqueensSize
             
             // Solve N-Queens problem using backtracking
-            fun solveNQueens(n: Int): Int {
-                val board = Array(n) { IntArray(n) { 0 } }
-                val cols = BooleanArray(n) { false }
-                val diag1 = BooleanArray(2 * n - 1) { false }  // For diagonal \
-                val diag2 = BooleanArray(2 * n - 1) { false }  // For diagonal /
+            fun solveNQueens(size: Int): Int {
+                val board = Array(size) { IntArray(size) { 0 } }
+                val cols = BooleanArray(size) { false }
+                val diag1 = BooleanArray(2 * size - 1) { false }  // For diagonal \
+                val diag2 = BooleanArray(2 * size - 1) { false }  // For diagonal /
                 
                 fun backtrack(row: Int): Int {
-                    if (row == n) return 1  // Found a solution
+                    if (row == size) return 1  // Found a solution
                     
                     var solutions = 0
-                    for (col in 0 until n) {
+                    for (col in 0 until size) {
                         val d1Idx = row + col
-                        val d2Idx = n - 1 + col - row
+                        val d2Idx = size - 1 + col - row
                         
                         if (!cols[col] && !diag1[d1Idx] && !diag2[d2Idx]) {
                             // Place queen
