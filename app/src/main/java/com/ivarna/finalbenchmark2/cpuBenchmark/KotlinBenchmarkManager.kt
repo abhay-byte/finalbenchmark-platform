@@ -23,19 +23,17 @@ class KotlinBenchmarkManager {
     companion object {
         private const val TAG = "KotlinBenchmarkManager"
         
-        // UPDATED SCALING FACTORS - Optimized algorithms with new factors
-        // Target: ~10,000 total points for flagship devices with optimized algorithms
         private val SINGLE_CORE_FACTORS = mapOf(
-            "Prime Generation" to 4.3e-7,        // 81,967,213 * 4.3e-7 ≈ 35 points
-            "Fibonacci Recursive" to 4.6e-12,    // 75,609,306,369 * 4.6e-12 ≈ 35 points
-            "Matrix Multiplication" to 7.8e-11,  // 445,016,740 * 7.8e-11 ≈ 35 points
-            "Hash Computing" to 2.6e-4,          // 135,318 * 2.6e-4 ≈ 35 points
-            "String Sorting" to 4.8e-6,          // 7,223,628 * 4.8e-6 ≈ 35 points
-            "Ray Tracing" to 3.6e-5,             // 972,973 * 3.6e-5 ≈ 35 points
-            "Compression" to 4.2e-7,             // 84,087,891 * 4.2e-7 ≈ 35 points
-            "Monte Carlo" to 7.6e-5,             // 462,003 * 7.6e-5 ≈ 35 points
-            "JSON Parsing" to 5.1e-5,            // 692,159 * 5.1e-5 ≈ 35 points
-            "N-Queens" to 2.5e-3                 // 13,906 * 2.5e-3 ≈ 35 points
+            "Prime Generation" to 7.8e-7,        // 81,967,213 * 7.8e-7 ≈ 64 points
+            "Fibonacci Recursive" to 8.5e-12,    // 75,609,306,369 * 8.5e-12 ≈ 64 points
+            "Matrix Multiplication" to 1.4e-10,  // 445,016,740 * 1.4e-10 ≈ 64 points
+            "Hash Computing" to 4.7e-4,          // 135,318 * 4.7e-4 ≈ 64 points
+            "String Sorting" to 8.9e-6,          // 7,223,628 * 8.9e-6 ≈ 64 points
+            "Ray Tracing" to 6.6e-5,             // 972,973 * 6.6e-5 ≈ 64 points
+            "Compression" to 7.6e-7,             // 84,087,891 * 7.6e-7 ≈ 64 points
+            "Monte Carlo" to 1.4e-4,             // 462,003 * 1.4e-4 ≈ 64 points
+            "JSON Parsing" to 9.2e-5,            // 692,159 * 9.2e-5 ≈ 64 points
+            "N-Queens" to 4.6e-3                 // 13,906 * 4.6e-3 ≈ 64 points
         )
         private val MULTI_CORE_FACTORS = mapOf(
             "Prime Generation" to 1.25e-5,       // 9,420,631 * 1.25e-5 ≈ 118 points
