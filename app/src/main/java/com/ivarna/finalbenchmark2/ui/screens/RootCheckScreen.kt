@@ -35,16 +35,22 @@ fun RootCheckScreen(
     val context = LocalContext.current
     val onboardingPreferences = remember { OnboardingPreferences(context) }
     
-    // Perform automatic root check when screen loads
+    // Perform automatic root check when screen loads, but only once
+    // Using remember to cache the result so it doesn't re-run on recomposition
+    val hasRootChecked = remember { mutableStateOf(false) }
+    
     LaunchedEffect(Unit) {
-        scope.launch {
-            val hasRoot = withContext(Dispatchers.IO) {
-                RootUtils.canExecuteRootCommandFast()
-            }
-            rootUiState = if (hasRoot) {
-                RootUiState.Granted
-            } else {
-                RootUiState.NotAvailable
+        if (!hasRootChecked.value) {
+            scope.launch {
+                val hasRoot = withContext(Dispatchers.IO) {
+                    RootUtils.canExecuteRootCommandFast()
+                }
+                rootUiState = if (hasRoot) {
+                    RootUiState.Granted
+                } else {
+                    RootUiState.NotAvailable
+                }
+                hasRootChecked.value = true
             }
         }
     }

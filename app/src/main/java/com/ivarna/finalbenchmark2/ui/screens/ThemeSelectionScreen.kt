@@ -55,7 +55,7 @@ fun ThemeSelectionScreen(
     // Get the selected theme
     val selectedTheme = remember(selectedThemeId) { ThemeMode.valueOf(selectedThemeId) }
     
-    // Just save the theme to preferences when selection changes (no recreation during onboarding)
+    // Update the theme when selection changes to provide immediate visual feedback
     LaunchedEffect(selectedThemeId) {
         themePreferences.setThemeMode(selectedTheme)
     }
@@ -138,7 +138,37 @@ fun ThemeSelectionScreen(
         )
     }
     
-    MaterialTheme {
+    // Create a theme-aware MaterialTheme by using the current selected theme
+    val currentTheme = remember(selectedTheme) { selectedTheme }
+    val useDarkTheme = when (currentTheme) {
+        ThemeMode.LIGHT -> false
+        ThemeMode.DARK -> true
+        ThemeMode.SYSTEM -> androidx.compose.foundation.isSystemInDarkTheme()
+        ThemeMode.GRUVBOX -> true
+        ThemeMode.NORD -> true
+        ThemeMode.DRACULA -> true
+        ThemeMode.SOLARIZED -> false
+        ThemeMode.MONOKAI -> true
+        ThemeMode.SKY_BREEZE -> false
+        ThemeMode.LAVENDER_DREAM -> false
+        ThemeMode.MINT_FRESH -> false
+        ThemeMode.AMOLED_BLACK -> true
+    }
+    
+    val colorScheme = when (currentTheme) {
+        ThemeMode.GRUVBOX -> if (useDarkTheme) com.ivarna.finalbenchmark2.ui.theme.GruvboxDarkColorScheme else com.ivarna.finalbenchmark2.ui.theme.GruvboxLightColorScheme
+        ThemeMode.NORD -> if (useDarkTheme) com.ivarna.finalbenchmark2.ui.theme.NordDarkColorScheme else com.ivarna.finalbenchmark2.ui.theme.NordLightColorScheme
+        ThemeMode.DRACULA -> com.ivarna.finalbenchmark2.ui.theme.DraculaColorScheme
+        ThemeMode.SOLARIZED -> if (useDarkTheme) com.ivarna.finalbenchmark2.ui.theme.SolarizedDarkColorScheme else com.ivarna.finalbenchmark2.ui.theme.SolarizedLightColorScheme
+        ThemeMode.MONOKAI -> com.ivarna.finalbenchmark2.ui.theme.MonokaiColorScheme
+        ThemeMode.SKY_BREEZE -> com.ivarna.finalbenchmark2.ui.theme.SkyBreezeColorScheme
+        ThemeMode.LAVENDER_DREAM -> com.ivarna.finalbenchmark2.ui.theme.LavenderDreamColorScheme
+        ThemeMode.MINT_FRESH -> com.ivarna.finalbenchmark2.ui.theme.MintFreshColorScheme
+        ThemeMode.AMOLED_BLACK -> com.ivarna.finalbenchmark2.ui.theme.AmoledBlackColorScheme
+        else -> if (useDarkTheme) com.ivarna.finalbenchmark2.ui.theme.DarkColorScheme else com.ivarna.finalbenchmark2.ui.theme.LightColorScheme
+    }
+    
+    MaterialTheme(colorScheme = colorScheme) {
         Box(
             modifier = modifier
                 .fillMaxSize()
@@ -217,8 +247,11 @@ fun ThemeSelectionScreen(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                     modifier = Modifier
-                        .weight(1f, fill = false)
-                        .padding(16.dp) // Increased padding around the grid
+                        .weight(1f, fill = false),
+                    contentPadding = PaddingValues(
+                        top = 16.dp,
+                        bottom = 100.dp // Extra padding to account for the floating button
+                    )
                 ) {
                     items(themeOptions) { theme ->
                         EnhancedThemeCard(
