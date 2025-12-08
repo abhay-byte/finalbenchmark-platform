@@ -49,38 +49,63 @@ fun ResultScreen(
     onShowDetailedResults: (List<BenchmarkResult>) -> Unit = {}
 ) {
     val summary = try {
-        Log.d("ResultScreen", "Received summary JSON: $summaryJson")
+        Log.d("ResultScreen", "Raw JSON: $summaryJson")
+        
+        if (summaryJson.isBlank()) {
+            Log.e("ResultScreen", "Received empty JSON string!")
+            throw IllegalArgumentException("Empty JSON string")
+        }
+        
         val jsonObject = JSONObject(summaryJson)
         val detailedResults = mutableListOf<BenchmarkResult>()
+        
+        // Log the JSON structure for debugging
+        Log.d("ResultScreen", "JSON keys: ${jsonObject.keys().asSequence().toList()}")
         
         // Parse detailed results if available
         val detailedResultsArray = jsonObject.optJSONArray("detailed_results")
         if (detailedResultsArray != null) {
+            Log.d("ResultScreen", "Found detailed_results array with ${detailedResultsArray.length()} items")
             for (i in 0 until detailedResultsArray.length()) {
                 val resultObj = detailedResultsArray.getJSONObject(i)
-                detailedResults.add(
-                    BenchmarkResult(
-                        name = resultObj.optString("name", "Unknown"),
-                        executionTimeMs = resultObj.optDouble("executionTimeMs", 0.0),
-                        opsPerSecond = resultObj.optDouble("opsPerSecond", 0.0),
-                        isValid = resultObj.optBoolean("isValid", false),
-                        metricsJson = resultObj.optString("metricsJson", "{}")
-                    )
+                val result = BenchmarkResult(
+                    name = resultObj.optString("name", "Unknown"),
+                    executionTimeMs = resultObj.optDouble("executionTimeMs", 0.0),
+                    opsPerSecond = resultObj.optDouble("opsPerSecond", 0.0),
+                    isValid = resultObj.optBoolean("isValid", false),
+                    metricsJson = resultObj.optString("metricsJson", "{}")
                 )
+                detailedResults.add(result)
+                Log.d("ResultScreen", "Parsed result $i: ${result.name} - ${result.opsPerSecond} ops/sec (valid: ${result.isValid})")
             }
+        } else {
+            Log.w("ResultScreen", "No detailed_results array found in JSON")
+        }
+        
+        val singleCoreScore = jsonObject.optDouble("single_core_score", 0.0)
+        val multiCoreScore = jsonObject.optDouble("multi_core_score", 0.0)
+        val finalScore = jsonObject.optDouble("final_score", 0.0)
+        val normalizedScore = jsonObject.optDouble("normalized_score", 0.0)
+        
+        Log.d("ResultScreen", "Scores - Single: $singleCoreScore, Multi: $multiCoreScore, Final: $finalScore, Normalized: $normalizedScore")
+        
+        // Validate that we have reasonable scores
+        if (singleCoreScore == 0.0 && multiCoreScore == 0.0 && finalScore == 0.0) {
+            Log.w("ResultScreen", "All scores are 0.0 - this might indicate a benchmark failure")
         }
         
         val summary = BenchmarkSummary(
-            singleCoreScore = jsonObject.optDouble("single_core_score", 0.0),
-            multiCoreScore = jsonObject.optDouble("multi_core_score", 0.0),
-            finalScore = jsonObject.optDouble("final_score", 0.0),
-            normalizedScore = jsonObject.optDouble("normalized_score", 0.0),
+            singleCoreScore = singleCoreScore,
+            multiCoreScore = multiCoreScore,
+            finalScore = finalScore,
+            normalizedScore = normalizedScore,
             detailedResults = detailedResults
         )
-        Log.d("ResultScreen", "Parsed summary: $summary")
+        Log.d("ResultScreen", "Successfully parsed summary: $summary")
         summary
     } catch (e: Exception) {
         Log.e("ResultScreen", "Error parsing summary JSON: ${e.message}", e)
+        Log.e("ResultScreen", "Failed JSON content: $summaryJson")
         // Fallback values in case of JSON parsing error
         BenchmarkSummary(
             singleCoreScore = 0.0,

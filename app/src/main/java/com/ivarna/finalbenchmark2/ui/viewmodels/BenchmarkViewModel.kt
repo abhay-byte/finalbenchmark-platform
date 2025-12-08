@@ -246,9 +246,11 @@ class BenchmarkViewModel(
                     // Give UI time to render the "Spinner" - CRITICAL for UI updates
                     delay(50)
 
-                    // C. RUN the benchmark and get the result
-                    val benchmarkResult = withContext(Dispatchers.Default) {
-                        runSingleBenchmark(testName)
+                    // C. RUN the benchmark and get the result (with crash protection)
+                    val benchmarkResult = safeBenchmarkRun(testName) {
+                        withContext(Dispatchers.Default) {
+                            runSingleBenchmark(testName)
+                        }
                     }
                     
                     // D. UPDATE UI: Mark as COMPLETED with TIME and RESULT
@@ -316,6 +318,24 @@ class BenchmarkViewModel(
             } finally {
                 isBenchmarkRunning = false
             }
+        }
+    }
+    
+    private suspend fun safeBenchmarkRun(testName: String, block: suspend () -> com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkResult): com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkResult {
+        return try {
+            val result = block()
+            Log.d("BenchmarkViewModel", "✓ $testName completed successfully: ${result.opsPerSecond} ops/sec")
+            result
+        } catch (e: Exception) {
+            Log.e("BenchmarkViewModel", "✗ $testName failed with exception: ${e.message}", e)
+            // Return a dummy result so the benchmark suite can continue
+            com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkResult(
+                name = testName,
+                executionTimeMs = 0.0,
+                opsPerSecond = 0.0,
+                isValid = false,
+                metricsJson = "{\"error\": \"${e.message}\"}"
+            )
         }
     }
     

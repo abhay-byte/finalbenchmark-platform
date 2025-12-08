@@ -63,7 +63,7 @@ class KotlinBenchmarkManager {
         
         // Prime Generation
         emitBenchmarkStart("Single-Core Prime Generation", "SINGLE")
-        val singlePrimeResult = withContext(Dispatchers.Default) {
+        val singlePrimeResult = safeBenchmarkRun("Single-Core Prime Generation") {
             SingleCoreBenchmarks.primeGeneration(params)
         }
         singleResults.add(singlePrimeResult)
@@ -72,7 +72,7 @@ class KotlinBenchmarkManager {
         
         // Fibonacci Recursive
         emitBenchmarkStart("Single-Core Fibonacci Recursive", "SINGLE")
-        val singleFibResult = withContext(Dispatchers.Default) {
+        val singleFibResult = safeBenchmarkRun("Single-Core Fibonacci Recursive") {
             SingleCoreBenchmarks.fibonacciRecursive(params)
         }
         singleResults.add(singleFibResult)
@@ -81,7 +81,7 @@ class KotlinBenchmarkManager {
         
         // Matrix Multiplication
         emitBenchmarkStart("Single-Core Matrix Multiplication", "SINGLE")
-        val singleMatrixResult = withContext(Dispatchers.Default) {
+        val singleMatrixResult = safeBenchmarkRun("Single-Core Matrix Multiplication") {
             SingleCoreBenchmarks.matrixMultiplication(params)
         }
         singleResults.add(singleMatrixResult)
@@ -90,7 +90,7 @@ class KotlinBenchmarkManager {
         
         // Hash Computing
         emitBenchmarkStart("Single-Core Hash Computing", "SINGLE")
-        val singleHashResult = withContext(Dispatchers.Default) {
+        val singleHashResult = safeBenchmarkRun("Single-Core Hash Computing") {
             SingleCoreBenchmarks.hashComputing(params)
         }
         singleResults.add(singleHashResult)
@@ -99,7 +99,7 @@ class KotlinBenchmarkManager {
         
         // String Sorting
         emitBenchmarkStart("Single-Core String Sorting", "SINGLE")
-        val singleStringResult = withContext(Dispatchers.Default) {
+        val singleStringResult = safeBenchmarkRun("Single-Core String Sorting") {
             SingleCoreBenchmarks.stringSorting(params)
         }
         singleResults.add(singleStringResult)
@@ -108,7 +108,7 @@ class KotlinBenchmarkManager {
         
         // Ray Tracing
         emitBenchmarkStart("Single-Core Ray Tracing", "SINGLE")
-        val singleRayResult = withContext(Dispatchers.Default) {
+        val singleRayResult = safeBenchmarkRun("Single-Core Ray Tracing") {
             SingleCoreBenchmarks.rayTracing(params)
         }
         singleResults.add(singleRayResult)
@@ -117,7 +117,7 @@ class KotlinBenchmarkManager {
         
         // Compression
         emitBenchmarkStart("Single-Core Compression", "SINGLE")
-        val singleCompressionResult = withContext(Dispatchers.Default) {
+        val singleCompressionResult = safeBenchmarkRun("Single-Core Compression") {
             SingleCoreBenchmarks.compression(params)
         }
         singleResults.add(singleCompressionResult)
@@ -126,7 +126,7 @@ class KotlinBenchmarkManager {
         
         // Monte Carlo Pi
         emitBenchmarkStart("Single-Core Monte Carlo π", "SINGLE")
-        val singleMonteResult = withContext(Dispatchers.Default) {
+        val singleMonteResult = safeBenchmarkRun("Single-Core Monte Carlo π") {
             SingleCoreBenchmarks.monteCarloPi(params)
         }
         singleResults.add(singleMonteResult)
@@ -135,7 +135,7 @@ class KotlinBenchmarkManager {
         
         // JSON Parsing
         emitBenchmarkStart("Single-Core JSON Parsing", "SINGLE")
-        val singleJsonResult = withContext(Dispatchers.Default) {
+        val singleJsonResult = safeBenchmarkRun("Single-Core JSON Parsing") {
             SingleCoreBenchmarks.jsonParsing(params)
         }
         singleResults.add(singleJsonResult)
@@ -144,7 +144,7 @@ class KotlinBenchmarkManager {
         
         // N-Queens
         emitBenchmarkStart("Single-Core N-Queens", "SINGLE")
-        val singleNqueensResult = withContext(Dispatchers.Default) {
+        val singleNqueensResult = safeBenchmarkRun("Single-Core N-Queens") {
             SingleCoreBenchmarks.nqueens(params)
         }
         singleResults.add(singleNqueensResult)
@@ -156,7 +156,7 @@ class KotlinBenchmarkManager {
         
         // Prime Generation
         emitBenchmarkStart("Multi-Core Prime Generation", "MULTI")
-        val multiPrimeResult = withContext(Dispatchers.Default) {
+        val multiPrimeResult = safeBenchmarkRun("Multi-Core Prime Generation") {
             MultiCoreBenchmarks.primeGeneration(params)
         }
         multiResults.add(multiPrimeResult)
@@ -165,7 +165,7 @@ class KotlinBenchmarkManager {
         
         // Fibonacci Recursive
         emitBenchmarkStart("Multi-Core Fibonacci Recursive", "MULTI")
-        val multiFibResult = withContext(Dispatchers.Default) {
+        val multiFibResult = safeBenchmarkRun("Multi-Core Fibonacci Recursive") {
             MultiCoreBenchmarks.fibonacciRecursive(params)
         }
         multiResults.add(multiFibResult)
@@ -174,7 +174,7 @@ class KotlinBenchmarkManager {
         
         // Matrix Multiplication
         emitBenchmarkStart("Multi-Core Matrix Multiplication", "MULTI")
-        val multiMatrixResult = withContext(Dispatchers.Default) {
+        val multiMatrixResult = safeBenchmarkRun("Multi-Core Matrix Multiplication") {
             MultiCoreBenchmarks.matrixMultiplication(params)
         }
         multiResults.add(multiMatrixResult)
@@ -183,7 +183,7 @@ class KotlinBenchmarkManager {
         
         // Hash Computing
         emitBenchmarkStart("Multi-Core Hash Computing", "MULTI")
-        val multiHashResult = withContext(Dispatchers.Default) {
+        val multiHashResult = safeBenchmarkRun("Multi-Core Hash Computing") {
             MultiCoreBenchmarks.hashComputing(params)
         }
         multiResults.add(multiHashResult)
@@ -192,7 +192,7 @@ class KotlinBenchmarkManager {
         
         // String Sorting
         emitBenchmarkStart("Multi-Core String Sorting", "MULTI")
-        val multiStringResult = withContext(Dispatchers.Default) {
+        val multiStringResult = safeBenchmarkRun("Multi-Core String Sorting") {
             MultiCoreBenchmarks.stringSorting(params)
         }
         multiResults.add(multiStringResult)
@@ -201,7 +201,7 @@ class KotlinBenchmarkManager {
         
         // Ray Tracing
         emitBenchmarkStart("Multi-Core Ray Tracing", "MULTI")
-        val multiRayResult = withContext(Dispatchers.Default) {
+        val multiRayResult = safeBenchmarkRun("Multi-Core Ray Tracing") {
             MultiCoreBenchmarks.rayTracing(params)
         }
         multiResults.add(multiRayResult)
@@ -210,7 +210,7 @@ class KotlinBenchmarkManager {
         
         // Compression
         emitBenchmarkStart("Multi-Core Compression", "MULTI")
-        val multiCompressionResult = withContext(Dispatchers.Default) {
+        val multiCompressionResult = safeBenchmarkRun("Multi-Core Compression") {
             MultiCoreBenchmarks.compression(params)
         }
         multiResults.add(multiCompressionResult)
@@ -219,7 +219,7 @@ class KotlinBenchmarkManager {
         
         // Monte Carlo Pi
         emitBenchmarkStart("Multi-Core Monte Carlo π", "MULTI")
-        val multiMonteResult = withContext(Dispatchers.Default) {
+        val multiMonteResult = safeBenchmarkRun("Multi-Core Monte Carlo π") {
             MultiCoreBenchmarks.monteCarloPi(params)
         }
         multiResults.add(multiMonteResult)
@@ -228,7 +228,7 @@ class KotlinBenchmarkManager {
         
         // JSON Parsing
         emitBenchmarkStart("Multi-Core JSON Parsing", "MULTI")
-        val multiJsonResult = withContext(Dispatchers.Default) {
+        val multiJsonResult = safeBenchmarkRun("Multi-Core JSON Parsing") {
             MultiCoreBenchmarks.jsonParsing(params)
         }
         multiResults.add(multiJsonResult)
@@ -237,7 +237,7 @@ class KotlinBenchmarkManager {
         
         // N-Queens
         emitBenchmarkStart("Multi-Core N-Queens", "MULTI")
-        val multiNqueensResult = withContext(Dispatchers.Default) {
+        val multiNqueensResult = safeBenchmarkRun("Multi-Core N-Queens") {
             MultiCoreBenchmarks.nqueens(params)
         }
         multiResults.add(multiNqueensResult)
@@ -246,7 +246,28 @@ class KotlinBenchmarkManager {
         
         // Calculate and emit final results
         val summaryJson = calculateSummary(singleResults, multiResults)
+        Log.d(TAG, "Generated summary JSON: $summaryJson")
         _benchmarkComplete.emit(summaryJson)
+    }
+    
+    private suspend fun safeBenchmarkRun(testName: String, block: suspend () -> BenchmarkResult): BenchmarkResult {
+        return try {
+            withContext(Dispatchers.Default) {
+                val result = block()
+                Log.d(TAG, "✓ $testName completed successfully: ${result.opsPerSecond} ops/sec")
+                result
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "✗ $testName failed with exception: ${e.message}", e)
+            // Return a dummy result so the benchmark suite can continue
+            BenchmarkResult(
+                name = testName,
+                executionTimeMs = 0.0,
+                opsPerSecond = 0.0,
+                isValid = false,
+                metricsJson = "{\"error\": \"${e.message}\"}"
+            )
+        }
     }
     
     private fun calculateSummary(
