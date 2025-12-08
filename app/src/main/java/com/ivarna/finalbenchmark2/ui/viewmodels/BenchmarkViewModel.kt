@@ -472,59 +472,51 @@ class BenchmarkViewModel(
             return
         }
         
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             try {
-                // Serialize detailed results to JSON string
-                val gson = Gson()
-                val detailedResultsJson = gson.toJson(results.detailedResults)
-                
-                // Create the main benchmark result entity
-                val benchmarkResultEntity = com.ivarna.finalbenchmark2.data.database.entities.BenchmarkResultEntity(
-                    type = "CPU",  // Set the type as CPU
-                    totalScore = results.finalWeightedScore,
+                // 1. Prepare the JSON for the "Individual Test Results" list
+                val detailedJson = Gson().toJson(results.individualScores)
+
+                // 2. Create the Parent Entity
+                val masterEntity = com.ivarna.finalbenchmark2.data.database.entities.BenchmarkResultEntity(
                     timestamp = System.currentTimeMillis(),
+                    type = "CPU",
                     deviceModel = android.os.Build.MODEL,
+                    totalScore = results.finalWeightedScore, // Ensure this is not 0
                     singleCoreScore = results.singleCoreScore,
                     multiCoreScore = results.multiCoreScore,
-                    normalizedScore = results.normalizedScore, // Add normalized score
-                    detailedResultsJson = detailedResultsJson // Add detailed results as JSON string
+                    normalizedScore = results.normalizedScore,
+                    detailedResultsJson = detailedJson
                 )
-                
-                // Extract detailed scores for each benchmark type
-                val singleCoreResults = results.detailedResults.filter { !it.name.contains("Multi") }
-                val multiCoreResults = results.detailedResults.filter { it.name.contains("Multi") }
-                
-                // Calculate weighted scores for each benchmark type using BenchmarkManager logic
-                val primeNumberScore = calculateWeightedScore(results.detailedResults, "Prime Generation")
-                val fibonacciScore = calculateWeightedScore(results.detailedResults, "Fibonacci")
-                val matrixMultiplicationScore = calculateWeightedScore(results.detailedResults, "Matrix Multiplication")
-                val hashComputingScore = calculateWeightedScore(results.detailedResults, "Hash Computing")
-                val stringSortingScore = calculateWeightedScore(results.detailedResults, "String Sorting")
-                val rayTracingScore = calculateWeightedScore(results.detailedResults, "Ray Tracing")
-                val compressionScore = calculateWeightedScore(results.detailedResults, "Compression")
-                val monteCarloScore = calculateWeightedScore(results.detailedResults, "Monte Carlo")
-                val jsonParsingScore = calculateWeightedScore(results.detailedResults, "JSON Parsing")
-                val nQueensScore = calculateWeightedScore(results.detailedResults, "N-Queens")
-                
-                // Create the CPU test detail entity with actual scores
-                val cpuTestDetailEntity = com.ivarna.finalbenchmark2.data.database.entities.CpuTestDetailEntity(
-                    resultId = 0, // Will be set by the repository function
-                    primeNumberScore = primeNumberScore,
-                    fibonacciScore = fibonacciScore,
-                    matrixMultiplicationScore = matrixMultiplicationScore,
-                    hashComputingScore = hashComputingScore,
-                    stringSortingScore = stringSortingScore,
-                    rayTracingScore = rayTracingScore,
-                    compressionScore = compressionScore,
-                    monteCarloScore = monteCarloScore,
-                    jsonParsingScore = jsonParsingScore,
-                    nQueensScore = nQueensScore
+
+                // 3. Helper to extract scores safely from the new List<BenchmarkResult>
+                fun extractScore(testName: String): Double {
+                    // Sum Single + Multi ops for the specific test category
+                    return results.individualScores
+                        .filter { it.name.contains(testName, ignoreCase = true) }
+                        .sumOf { it.opsPerSecond }
+                }
+
+                // 4. Create the Detail Entity (Mapping specific tests to DB columns)
+                val detailEntity = com.ivarna.finalbenchmark2.data.database.entities.CpuTestDetailEntity(
+                    resultId = 0, // Room handles this
+                    primeNumberScore = extractScore("Prime"),
+                    fibonacciScore = extractScore("Fibonacci"),
+                    matrixMultiplicationScore = extractScore("Matrix"),
+                    hashComputingScore = extractScore("Hash"),
+                    stringSortingScore = extractScore("String"),
+                    rayTracingScore = extractScore("Ray"),
+                    compressionScore = extractScore("Compression"),
+                    monteCarloScore = extractScore("Monte Carlo"),
+                    jsonParsingScore = extractScore("JSON"),
+                    nQueensScore = extractScore("Queens")
                 )
-                
-                // Save the benchmark result and details to the database
-                historyRepository.saveCpuBenchmark(benchmarkResultEntity, cpuTestDetailEntity)
+
+                // 5. Commit to Repository
+                historyRepository.saveCpuBenchmark(masterEntity, detailEntity)
                 
                 Log.d("BenchmarkViewModel", "Successfully saved CPU benchmark result to database")
+                Log.d("BenchmarkViewModel", "Saved scores - Prime: ${detailEntity.primeNumberScore}, Fibonacci: ${detailEntity.fibonacciScore}, Matrix: ${detailEntity.matrixMultiplicationScore}")
             } catch (e: Exception) {
                 Log.e("BenchmarkViewModel", "Error saving benchmark result to database: ${e.message}", e)
             }
