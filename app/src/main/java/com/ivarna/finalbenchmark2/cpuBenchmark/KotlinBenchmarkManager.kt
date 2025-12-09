@@ -597,7 +597,7 @@ class KotlinBenchmarkManager {
                                         // flagship devices
                                         hashDataSizeMb = 8,
                                         hashIterations =
-                                                1_000_000, // FIXED WORK PER CORE: Target ~1.5-2.0
+                                                5_000_000, // FIXED WORK PER CORE: Target ~1.5-2.0
                                         // seconds
                                         stringCount = 300_000,
                                         rayTracingResolution = Pair(192, 192),
