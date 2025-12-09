@@ -609,8 +609,8 @@ object SingleCoreBenchmarks {
                                 totalCompressedSize += compressedSize
                                 totalOperations++
 
-                                // FIXED: Only yield every 20 iterations
-                                if (iteration % 20 == 0) {
+                                // FIXED: Only yield every 100,000 iterations to prevent yield storm
+                                if (iteration % 100_000 == 0) {
                                     kotlinx.coroutines.yield()
                                 }
                             }

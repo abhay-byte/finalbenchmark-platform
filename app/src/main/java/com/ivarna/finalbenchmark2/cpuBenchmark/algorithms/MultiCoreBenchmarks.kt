@@ -1062,8 +1062,9 @@ object MultiCoreBenchmarks {
                                                 threadCompressedSize += compressedSize
                                                 threadOperations++
 
-                                                // FIXED: Only yield every 20 iterations per thread
-                                                if (iteration % 20 == 0) {
+                                                // FIXED: Only yield every 100,000 iterations per
+                                                // thread to prevent yield storm
+                                                if (iteration % 100_000 == 0) {
                                                     kotlinx.coroutines.yield()
                                                 }
                                             }
