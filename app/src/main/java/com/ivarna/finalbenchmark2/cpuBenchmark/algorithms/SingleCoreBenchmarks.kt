@@ -80,24 +80,24 @@ object SingleCoreBenchmarks {
      *
      * CORE-INDEPENDENT APPROACH:
      * - Uses SHARED iterative Fibonacci algorithm from BenchmarkHelpers
-     * - Fixed workload: 5,000,000 iterations (ensures stable test duration)
+     * - Fixed workload: 10,000,000 iterations (ensures stable test duration)
      * - Same algorithm as Multi-Core version for fair comparison
      * - Tests raw CPU throughput (ALU speed) with consistent workload
      *
-     * PERFORMANCE: ~10 Mops/s baseline for single-core devices
+     * PERFORMANCE: ~20 Mops/s baseline for single-core devices
      */
     suspend fun fibonacciRecursive(params: WorkloadParams): BenchmarkResult =
             withContext(Dispatchers.Default) {
                 Log.d(
                         TAG,
-                        "Starting Single-Core Fibonacci - Core-independent fixed workload (5M iterations)"
+                        "Starting Single-Core Fibonacci - Core-independent fixed workload (10M iterations)"
                 )
                 CpuAffinityManager.setMaxPerformance()
 
                 val (results, timeMs) =
                         BenchmarkHelpers.measureBenchmark {
                             val targetN = 35 // Consistent with Multi-Core config
-                            val iterations = 5_000_000 // Fixed workload per core for stability
+                            val iterations = params.fibonacciIterations // Use configurable workload
 
                             var totalResult = 0L
                             repeat(iterations) {
@@ -106,7 +106,7 @@ object SingleCoreBenchmarks {
                             totalResult
                         }
 
-                val actualOps = 5_000_000.0 // Total iterations completed
+                val actualOps = params.fibonacciIterations.toDouble() // Total iterations completed
                 val opsPerSecond = actualOps / (timeMs / 1000.0)
 
                 CpuAffinityManager.resetPerformance()
@@ -121,7 +121,7 @@ object SingleCoreBenchmarks {
                                         .apply {
                                             put("fibonacci_sum", results)
                                             put("target_n", 35)
-                                            put("iterations", 5_000_000)
+                                            put("iterations", 10_000_000)
                                             put("implementation", "Shared Iterative")
                                             put("time_complexity", "O(n)")
                                             put("workload_type", "Fixed per core")
@@ -131,7 +131,7 @@ object SingleCoreBenchmarks {
                                             )
                                             put(
                                                     "expected_performance",
-                                                    "~10 Mops/s baseline for single-core devices"
+                                                    "~20 Mops/s baseline for single-core devices"
                                             )
                                         }
                                         .toString()

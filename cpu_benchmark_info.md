@@ -54,7 +54,7 @@ This document provides comprehensive technical details for the optimized CPU ben
 #### Prime Generation (Sieve of Eratosthenes)
 - **Algorithm:** Optimized Sieve with reduced yield frequency
 - **Complexity:** O(n log log n)
-- **Workload:** Range of 250,000 numbers
+- **Workload:** Range of 50_000_000 numbers
 - **Single-Core Scaling Factor:** `2.5e-5`
 - **Multi-Core Scaling Factor:** `6.0e-6`
 - **Expected Flagship Score:** ~1,250 points (400M operations/second)

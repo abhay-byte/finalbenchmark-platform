@@ -543,6 +543,7 @@ class KotlinBenchmarkManager {
                                 WorkloadParams(
                                         primeRange = 100_000,
                                         fibonacciNRange = Pair(25, 27),
+                                        fibonacciIterations = 2_000_000,
                                         matrixSize = 250,
                                         hashDataSizeMb = 1,
                                         stringCount = 8_000,
@@ -557,6 +558,7 @@ class KotlinBenchmarkManager {
                                 WorkloadParams(
                                         primeRange = 200_000,
                                         fibonacciNRange = Pair(28, 30),
+                                        fibonacciIterations = 10_000_000,
                                         matrixSize = 300,
                                         hashDataSizeMb = 2,
                                         stringCount = 12_000,
@@ -573,7 +575,8 @@ class KotlinBenchmarkManager {
                                         // execution
                                         primeRange = 10_000_000, // HEAVY: Increased from 250,000 to
                                         // 2,000,000 (8x)
-                                        fibonacciNRange = Pair(48, 52),
+                                        fibonacciNRange = Pair(92, 92), // Use fixed max safe value
+                                        fibonacciIterations = 25_000_000, // HEAVY LOAD
                                         matrixSize = 600, // HEAVY: Increased from 350 to 600 (O(N³)
                                         // complexity)
                                         hashDataSizeMb = 8, // HEAVY: Increased from 2MB to 8MB (4x)

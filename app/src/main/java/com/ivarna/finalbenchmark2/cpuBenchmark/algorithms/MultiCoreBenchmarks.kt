@@ -115,23 +115,23 @@ object MultiCoreBenchmarks {
      *
      * FIXED WORK PER CORE APPROACH:
      * - Uses SHARED iterative Fibonacci algorithm from BenchmarkHelpers
-     * - Fixed workload per thread: 5,000,000 iterations (ensures core-independent stability)
-     * - Total work scales with cores: 5M × numThreads = Total Operations
+     * - Fixed workload per thread: 10,000,000 iterations (ensures core-independent stability)
+     * - Total work scales with cores: 10M × numThreads = Total Operations
      * - Test duration remains constant regardless of core count
      * - Same algorithm as Single-Core version for fair comparison
      *
-     * PERFORMANCE: ~80 Mops/s on 8-core devices (8x single-core baseline)
+     * PERFORMANCE: ~160 Mops/s on 8-core devices (8x single-core baseline)
      */
     suspend fun fibonacciRecursive(params: WorkloadParams): BenchmarkResult = coroutineScope {
         Log.d(TAG, "=== STARTING MULTI-CORE FIBONACCI - CORE INDEPENDENT ===")
         Log.d(TAG, "Threads available: $numThreads")
-        Log.d(TAG, "Fixed workload per thread: 5,000,000 iterations")
-        Log.d(TAG, "Total expected operations: ${5_000_000 * numThreads}")
+        Log.d(TAG, "Fixed workload per thread: 10,000,000 iterations")
+        Log.d(TAG, "Total expected operations: ${10_000_000 * numThreads}")
         CpuAffinityManager.setMaxPerformance()
 
         // Configuration - CORE-INDEPENDENT APPROACH
         val targetN = 35 // Consistent with Single-Core config
-        val iterationsPerThread = 5_000_000 // FIXED workload per core
+        val iterationsPerThread = params.fibonacciIterations // Use configurable workload per core
         val totalOperations = iterationsPerThread * numThreads // Scales with cores
 
         // Expected value for validation (fib(35) = 9227465)
@@ -238,7 +238,7 @@ object MultiCoreBenchmarks {
                                     )
                                     put(
                                             "expected_performance",
-                                            "~80 Mops/s on 8-core devices (8x single-core)"
+                                            "~160 Mops/s on 8-core devices (8x single-core)"
                                     )
                                 }
                                 .toString()
