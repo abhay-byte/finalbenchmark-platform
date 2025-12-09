@@ -508,7 +508,6 @@ object MultiCoreBenchmarks {
     /**
      * Test 5: Multi-Core String Sorting - FIXED WORK PER CORE
      *
-<<<<<<< HEAD
      * FIXED WORK PER CORE APPROACH:
      * - Generate List<List<String>> (one list per thread) OUTSIDE timing
      * - Each thread sorts its own list using Collections.sort()
@@ -517,17 +516,10 @@ object MultiCoreBenchmarks {
      * - Same algorithm as Single-Core version for fair comparison
      *
      * PERFORMANCE: ~24.0 Mops/s on 8-core devices (8x single-core baseline)
-=======
-     * NEW APPROACH:
-     * - "Fixed Work Per Core": Each core sorts 1 Independent List
-     * - Algorithms are identical to Single-Core (Collections.sort)
-     * - Scales perfectly linearly (8 cores = 8x throughput)
->>>>>>> 2e1ad187e4ff8dce0c04fbf20804143684370d46
      */
     suspend fun stringSorting(params: WorkloadParams): BenchmarkResult = coroutineScope {
         Log.d(TAG, "=== STARTING MULTI-CORE STRING SORTING - FIXED WORK PER CORE ===")
         Log.d(TAG, "Threads available: $numThreads")
-<<<<<<< HEAD
         Log.d(TAG, "Fixed workload per thread: ${params.stringSortCount} strings")
         Log.d(TAG, "Total expected operations: ${params.stringSortCount * numThreads}")
         CpuAffinityManager.setMaxPerformance()
@@ -539,31 +531,9 @@ object MultiCoreBenchmarks {
         // EXPLICIT timing with try-catch for debugging
         val startTime = System.currentTimeMillis()
         var totalSortedStrings = 0
-=======
-        Log.d(TAG, "Strings per thread: ${params.stringCount}")
-        CpuAffinityManager.setMaxPerformance()
-
-        val countPerThread = params.stringCount
-        val stringLength = 20
-
-        Log.d(TAG, "Generating data lists...")
-
-        // STEP 1: Generate INDEPENDENT lists for each thread BEFORE timing
-        val threadData =
-                (0 until numThreads).map {
-                    BenchmarkHelpers.generateStringList(countPerThread, stringLength)
-                }
-
-        Log.d(TAG, "Data generation complete. Starting sort timing...")
-
-        // STEP 2: TIME ONLY THE SORTING (measured)
-        val startTime = System.currentTimeMillis()
->>>>>>> 2e1ad187e4ff8dce0c04fbf20804143684370d46
         var executionSuccess = true
-        var totalSorted = 0
 
         try {
-<<<<<<< HEAD
             Log.d(TAG, "Generating $totalStrings strings for parallel sorting...")
 
             // STEP 1: Generate List<List<String>> (one list per thread) OUTSIDE timing
@@ -618,21 +588,6 @@ object MultiCoreBenchmarks {
             if (allSorted) {
                 Log.d(TAG, "All ${sortedLists.size} lists verified as sorted")
             }
-=======
-            // Launch parallel sorting
-            val jobs =
-                    (0 until numThreads).map { threadId ->
-                        async(highPriorityDispatcher) {
-                            // Sort OWN list (no contention, native sort)
-                            threadData[threadId].sort()
-                            threadData[threadId].size
-                        }
-                    }
-
-            // Wait for all
-            val results = jobs.awaitAll()
-            totalSorted = results.sum()
->>>>>>> 2e1ad187e4ff8dce0c04fbf20804143684370d46
         } catch (e: Exception) {
             Log.e(TAG, "Multi-Core String Sorting EXCEPTION: ${e.message}", e)
             executionSuccess = false
@@ -641,22 +596,15 @@ object MultiCoreBenchmarks {
         val endTime = System.currentTimeMillis()
         val timeMs = (endTime - startTime).toDouble()
 
-<<<<<<< HEAD
         // Calculate operations (comparisons in sorting)
         // Total comparisons across all threads: numThreads * (stringsPerThread *
         // log(stringsPerThread))
         val comparisonsPerThread =
                 stringsPerThread * kotlin.math.log(stringsPerThread.toDouble(), 2.0)
-=======
-        // Calculate operations (comparisons)
-        // N * log(N) * NumThreads
-        val comparisonsPerThread = countPerThread * kotlin.math.log(countPerThread.toDouble(), 2.0)
->>>>>>> 2e1ad187e4ff8dce0c04fbf20804143684370d46
         val totalComparisons = comparisonsPerThread * numThreads
         val opsPerSecond = if (timeMs > 0) totalComparisons / (timeMs / 1000.0) else 0.0
 
         // Validation
-<<<<<<< HEAD
         val isValid =
                 executionSuccess &&
                         totalSortedStrings == totalStrings &&
@@ -670,12 +618,6 @@ object MultiCoreBenchmarks {
                 "Time: ${timeMs}ms, Total Comparisons: $totalComparisons, Ops/sec: $opsPerSecond"
         )
         Log.d(TAG, "Valid: $isValid, Execution success: $executionSuccess")
-=======
-        val isValid = executionSuccess && totalSorted == (countPerThread * numThreads) && timeMs > 0
-
-        Log.d(TAG, "=== MULTI-CORE STRING SORTING COMPLETE ===")
-        Log.d(TAG, "Time: ${timeMs}ms, Comparisons: $totalComparisons, Ops/sec: $opsPerSecond")
->>>>>>> 2e1ad187e4ff8dce0c04fbf20804143684370d46
 
         CpuAffinityManager.resetPerformance()
 
@@ -687,7 +629,6 @@ object MultiCoreBenchmarks {
                 metricsJson =
                         JSONObject()
                                 .apply {
-<<<<<<< HEAD
                                     put("strings_per_thread", stringsPerThread)
                                     put("threads", numThreads)
                                     put("total_strings", totalStrings)
@@ -710,16 +651,7 @@ object MultiCoreBenchmarks {
                                     put(
                                             "expected_performance",
                                             "~24.0 Mops/s on 8-core devices (8x single-core)"
-=======
-                                    put("strings_per_thread", countPerThread)
-                                    put("total_strings", totalSorted)
-                                    put("threads", numThreads)
-                                    put(
-                                            "algorithm",
-                                            "Fixed Work Per Core (Independent Collections.sort)"
->>>>>>> 2e1ad187e4ff8dce0c04fbf20804143684370d46
                                     )
-                                    put("consistency", "Identical layout to Single-Core")
                                 }
                                 .toString()
         )

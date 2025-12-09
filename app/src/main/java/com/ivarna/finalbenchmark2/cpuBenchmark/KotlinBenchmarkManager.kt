@@ -554,7 +554,13 @@ class KotlinBenchmarkManager {
                                         hashIterations =
                                                 200_000, // FIXED WORK PER CORE: Target ~1.5-2.0
                                         // seconds
-                                        stringCount = 50_000
+                                        stringCount = 8_000,
+                                        rayTracingResolution = Pair(128, 128),
+                                        rayTracingDepth = 2,
+                                        compressionDataSizeMb = 1,
+                                        monteCarloSamples = 200_000,
+                                        jsonDataSizeMb = 1,
+                                        nqueensSize = 8
                                 )
                         "mid" ->
                                 WorkloadParams(
@@ -571,7 +577,13 @@ class KotlinBenchmarkManager {
                                         hashIterations =
                                                 500_000, // FIXED WORK PER CORE: Target ~1.5-2.0
                                         // seconds
-                                        stringCount = 100_000
+                                        stringCount = 12_000,
+                                        rayTracingResolution = Pair(160, 160),
+                                        rayTracingDepth = 3,
+                                        compressionDataSizeMb = 2,
+                                        monteCarloSamples = 500_000,
+                                        jsonDataSizeMb = 1,
+                                        nqueensSize = 9
                                 )
                         "flagship" ->
                                 WorkloadParams(
@@ -590,9 +602,16 @@ class KotlinBenchmarkManager {
                                                 500, // CACHE-RESIDENT: High iterations for
                                         // flagship devices
                                         hashDataSizeMb = 8,
-                                        hashIterations = 1_000_000,
+                                        hashIterations =
+                                                5_000_000, // FIXED WORK PER CORE: Target ~1.5-2.0
                                         // seconds
-                                        stringCount = 200_000
+                                        stringCount = 300_000,
+                                        rayTracingResolution = Pair(192, 192),
+                                        rayTracingDepth = 5,
+                                        compressionDataSizeMb = 2,
+                                        monteCarloSamples = 15_000_000,
+                                        jsonDataSizeMb = 1,
+                                        nqueensSize = 10
                                 )
                         else -> WorkloadParams() // Default values
                 }
