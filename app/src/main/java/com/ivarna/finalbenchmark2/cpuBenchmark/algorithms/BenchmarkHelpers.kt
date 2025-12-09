@@ -44,6 +44,19 @@ object BenchmarkHelpers {
         return String(charArray)
     }
 
+    /** Generate list of random strings - Efficiently pre-allocates list */
+    fun generateStringList(count: Int, length: Int = 20): MutableList<String> {
+        val chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+        val random = java.util.concurrent.ThreadLocalRandom.current()
+        val list = ArrayList<String>(count)
+        repeat(count) {
+            val charArray = CharArray(length)
+            repeat(length) { i -> charArray[i] = chars[random.nextInt(chars.length)] }
+            list.add(String(charArray))
+        }
+        return list
+    }
+
     /** Check if a number is prime */
     fun isPrime(n: Long): Boolean {
         if (n <= 1L) return false

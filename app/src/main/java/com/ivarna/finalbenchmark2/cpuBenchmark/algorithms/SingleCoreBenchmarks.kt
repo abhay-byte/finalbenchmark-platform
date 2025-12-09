@@ -278,6 +278,7 @@ object SingleCoreBenchmarks {
                 )
                 CpuAffinityManager.setMaxPerformance()
 
+<<<<<<< HEAD
                 // FIXED WORK PER CORE: Generate strings OUTSIDE timing (not measured)
                 val stringCount = params.stringSortCount
                 val allStrings = BenchmarkHelpers.generateStringList(stringCount, 16)
@@ -289,6 +290,20 @@ object SingleCoreBenchmarks {
                             // CRITICAL: Only sort inside the timing block (generation is done)
                             allStrings.sort()
                             allStrings
+=======
+                // OPTIMIZED: Use stringSortCount parameter
+                val stringCount = params.stringCount
+                val stringLength = 20
+
+                // Generate strings BEFORE measurement
+                val data = BenchmarkHelpers.generateStringList(stringCount, stringLength)
+
+                val (sorted, timeMs) =
+                        BenchmarkHelpers.measureBenchmark {
+                            // Standard Collection.sort() (TimSort)
+                            data.sort()
+                            data
+>>>>>>> 2e1ad187e4ff8dce0c04fbf20804143684370d46
                         }
 
                 val comparisons = stringCount * kotlin.math.log(stringCount.toDouble(), 2.0)
