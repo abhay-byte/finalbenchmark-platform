@@ -616,9 +616,9 @@ class KotlinBenchmarkManager {
                                                 1_000, // CACHE-RESIDENT: Explicit control - target
                                         // ~1.0-2.0s
                                         rayTracingIterations =
-                                                400, // FIXED: Increased from 200 to 400 to reach 5s
-                                        // duration
-                                        // (target ~5s with new primitives kernel)
+                                                2000, // FIXED: Increased to 2000 to reach ~5s
+                                        // target
+                                        // duration for better thermal testing
                                         rayTracingResolution = Pair(100, 100),
                                         rayTracingDepth = 5,
                                         compressionDataSizeMb = 2,
