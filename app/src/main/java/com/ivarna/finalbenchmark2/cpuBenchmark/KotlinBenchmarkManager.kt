@@ -605,7 +605,7 @@ class KotlinBenchmarkManager {
                                                 128, // CACHE-RESIDENT: Fixed small size for cache
                                         // efficiency
                                         matrixIterations =
-                                                500, // CACHE-RESIDENT: High iterations for
+                                                1500, // CACHE-RESIDENT: High iterations for
                                         // flagship devices
                                         hashDataSizeMb = 8,
                                         hashIterations =
@@ -616,10 +616,10 @@ class KotlinBenchmarkManager {
                                                 1_000, // CACHE-RESIDENT: Explicit control - target
                                         // ~1.0-2.0s
                                         rayTracingIterations =
-                                                300, // INCREASED: Double the workload for better
-                                        // core saturation
-                                        // (target ~3-4s)
-                                        rayTracingResolution = Pair(192, 192),
+                                                400, // FIXED: Increased from 200 to 400 to reach 5s
+                                        // duration
+                                        // (target ~5s with new primitives kernel)
+                                        rayTracingResolution = Pair(100, 100),
                                         rayTracingDepth = 5,
                                         compressionDataSizeMb = 2,
                                         monteCarloSamples = 15_000_000,

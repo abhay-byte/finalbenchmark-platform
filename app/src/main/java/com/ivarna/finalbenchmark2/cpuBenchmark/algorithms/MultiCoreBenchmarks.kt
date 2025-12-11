@@ -812,7 +812,7 @@ object MultiCoreBenchmarks {
         // This ensures both tests finish in similar time if scaling is perfect
         val totalFramesToRender = params.rayTracingIterations * numThreads
         val sharedWorkQueue = AtomicInteger(totalFramesToRender)
-        val batchSize = 25
+        val batchSize = 500
 
         val (totalEnergy, timeMs) =
                 BenchmarkHelpers.measureBenchmark {

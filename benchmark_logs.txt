@@ -818,3 +818,229 @@
 12-10 16:34:14.231 13738 16381 D MultiCoreBenchmarks: Starting Multi-Core Monte Carlo π (samples: 15000000) - OPTIMIZED: Ultra-efficient parallel
 12-10 16:34:15.980 13738 16381 D MultiCoreBenchmarks: Starting Multi-Core JSON Parsing (size: 1MB)
 12-10 16:34:16.139 13738 16343 D MultiCoreBenchmarks: Starting Multi-Core N-Queens (size: 10)
+12-10 16:42:12.491 14204 16798 D MultiCoreBenchmarks: Starting Multi-Core Prime Generation - FIXED: Strided loop for load balancing
+12-10 16:42:12.843 14204 16759 D MultiCoreBenchmarks: === STARTING MULTI-CORE FIBONACCI - CORE INDEPENDENT ===
+12-10 16:42:12.843 14204 16759 D MultiCoreBenchmarks: Threads available: 8
+12-10 16:42:12.843 14204 16759 D MultiCoreBenchmarks: Fixed workload per thread: 10,000,000 iterations
+12-10 16:42:12.843 14204 16759 D MultiCoreBenchmarks: Total expected operations: 80000000
+12-10 16:42:12.843 14204 16759 D MultiCoreBenchmarks: Starting parallel execution with 8 threads
+12-10 16:42:12.843 14204 16759 D MultiCoreBenchmarks: Each thread will perform 5000000 iterations
+12-10 16:42:13.365 14204 16807 D MultiCoreBenchmarks: Thread 7 completed 5000000 iterations, sum: 46137325000000
+12-10 16:42:13.371 14204 16803 D MultiCoreBenchmarks: Thread 5 completed 5000000 iterations, sum: 46137325000000
+12-10 16:42:13.373 14204 16800 D MultiCoreBenchmarks: Thread 2 completed 5000000 iterations, sum: 46137325000000
+12-10 16:42:13.389 14204 16806 D MultiCoreBenchmarks: Thread 1 completed 5000000 iterations, sum: 46137325000000
+12-10 16:42:13.390 14204 16801 D MultiCoreBenchmarks: Thread 4 completed 5000000 iterations, sum: 46137325000000
+12-10 16:42:13.392 14204 16802 D MultiCoreBenchmarks: Thread 3 completed 5000000 iterations, sum: 46137325000000
+12-10 16:42:13.398 14204 16804 D MultiCoreBenchmarks: Thread 0 completed 5000000 iterations, sum: 46137325000000
+12-10 16:42:13.426 14204 16805 D MultiCoreBenchmarks: Thread 6 completed 5000000 iterations, sum: 46137325000000
+12-10 16:42:13.426 14204 16759 D MultiCoreBenchmarks: Async operations completed: 8 results
+12-10 16:42:13.426 14204 16759 D MultiCoreBenchmarks: === MULTI-CORE FIBONACCI COMPLETE ===
+12-10 16:42:13.426 14204 16759 D MultiCoreBenchmarks: Time: 583.0ms, Total Ops: 4.0E7, Ops/sec: 6.86106346483705E7
+12-10 16:42:13.426 14204 16759 D MultiCoreBenchmarks: Valid: true, Execution success: true
+12-10 16:42:13.429 14204 16798 D MultiCoreBenchmarks: === STARTING MULTI-CORE MATRIX MULTIPLICATION - CACHE-RESIDENT STRATEGY ===
+12-10 16:42:13.429 14204 16798 D MultiCoreBenchmarks: Threads available: 8
+12-10 16:42:13.429 14204 16798 D MultiCoreBenchmarks: Matrix size: 128, Iterations per thread: 500
+12-10 16:42:13.429 14204 16798 D MultiCoreBenchmarks: Total expected operations: 8 × 500 × (2 × 128³)
+12-10 16:42:13.429 14204 16798 D MultiCoreBenchmarks: Starting parallel execution with 8 threads
+12-10 16:42:13.429 14204 16798 D MultiCoreBenchmarks: Each thread will perform 500 matrix multiplications
+12-10 16:42:13.432 14204 16807 D MultiCoreBenchmarks: Thread 0 starting 500 matrix multiplications
+12-10 16:42:13.433 14204 16803 D MultiCoreBenchmarks: Thread 1 starting 500 matrix multiplications
+12-10 16:42:13.433 14204 16800 D MultiCoreBenchmarks: Thread 2 starting 500 matrix multiplications
+12-10 16:42:13.435 14204 16806 D MultiCoreBenchmarks: Thread 3 starting 500 matrix multiplications
+12-10 16:42:13.436 14204 16801 D MultiCoreBenchmarks: Thread 4 starting 500 matrix multiplications
+12-10 16:42:13.436 14204 16802 D MultiCoreBenchmarks: Thread 5 starting 500 matrix multiplications
+12-10 16:42:13.436 14204 16804 D MultiCoreBenchmarks: Thread 6 starting 500 matrix multiplications
+12-10 16:42:13.437 14204 16805 D MultiCoreBenchmarks: Thread 7 starting 500 matrix multiplications
+12-10 16:42:18.038 14204 16805 D MultiCoreBenchmarks: Thread 7 completed 500 matrix multiplications, checksum: 32461830816202052
+12-10 16:42:18.055 14204 16807 D MultiCoreBenchmarks: Thread 0 completed 500 matrix multiplications, checksum: 1844698077969318
+12-10 16:42:18.094 14204 16803 D MultiCoreBenchmarks: Thread 1 completed 500 matrix multiplications, checksum: 4137835732683544
+12-10 16:42:18.127 14204 16800 D MultiCoreBenchmarks: Thread 2 completed 500 matrix multiplications, checksum: 32302436618872615
+12-10 16:42:18.128 14204 16801 D MultiCoreBenchmarks: Thread 4 completed 500 matrix multiplications, checksum: 3528795858661985
+12-10 16:42:18.157 14204 16804 D MultiCoreBenchmarks: Thread 6 completed 500 matrix multiplications, checksum: 35865692161433829
+12-10 16:42:18.186 14204 16806 D MultiCoreBenchmarks: Thread 3 completed 500 matrix multiplications, checksum: 4302218287265707
+12-10 16:42:18.240 14204 16802 D MultiCoreBenchmarks: Thread 5 completed 500 matrix multiplications, checksum: 34351586007178723
+12-10 16:42:18.240 14204 16798 D MultiCoreBenchmarks: All threads completed: 8 results
+12-10 16:42:18.240 14204 16798 D MultiCoreBenchmarks: === MULTI-CORE MATRIX MULTIPLICATION COMPLETE ===
+12-10 16:42:18.240 14204 16798 D MultiCoreBenchmarks: Time: 4811.0ms, Total Checksum: 148795093560267773, Ops/sec: 3.4872616919559345E9
+12-10 16:42:18.240 14204 16798 D MultiCoreBenchmarks: Valid: true, Execution success: true
+12-10 16:42:18.246 14204 16761 D MultiCoreBenchmarks: === STARTING MULTI-CORE HASH COMPUTING - FIXED WORK PER CORE ===
+12-10 16:42:18.246 14204 16761 D MultiCoreBenchmarks: Threads available: 8
+12-10 16:42:18.246 14204 16761 D MultiCoreBenchmarks: Fixed workload per thread: 500000 iterations
+12-10 16:42:18.246 14204 16761 D MultiCoreBenchmarks: Total expected operations: 4000000
+12-10 16:42:18.248 14204 16761 D MultiCoreBenchmarks: Starting parallel execution with 8 threads
+12-10 16:42:18.248 14204 16761 D MultiCoreBenchmarks: Each thread will perform 500000 hash iterations
+12-10 16:42:18.249 14204 16805 D MultiCoreBenchmarks: Thread 0 starting 500000 hash iterations
+12-10 16:42:18.249 14204 16807 D MultiCoreBenchmarks: Thread 1 starting 500000 hash iterations
+12-10 16:42:18.249 14204 16803 D MultiCoreBenchmarks: Thread 2 starting 500000 hash iterations
+12-10 16:42:18.250 14204 16800 D MultiCoreBenchmarks: Thread 3 starting 500000 hash iterations
+12-10 16:42:18.251 14204 16801 D MultiCoreBenchmarks: Thread 4 starting 500000 hash iterations
+12-10 16:42:18.251 14204 16804 D MultiCoreBenchmarks: Thread 5 starting 500000 hash iterations
+12-10 16:42:18.254 14204 16806 D MultiCoreBenchmarks: Thread 6 starting 500000 hash iterations
+12-10 16:42:18.262 14204 16802 D MultiCoreBenchmarks: Thread 7 starting 500000 hash iterations
+12-10 16:42:20.806 14204 16804 D MultiCoreBenchmarks: Thread 5 completed 500000 iterations, processed 500000 hashes
+12-10 16:42:20.844 14204 16806 D MultiCoreBenchmarks: Thread 6 completed 500000 iterations, processed 500000 hashes
+12-10 16:42:20.856 14204 16801 D MultiCoreBenchmarks: Thread 4 completed 500000 iterations, processed 500000 hashes
+12-10 16:42:20.862 14204 16803 D MultiCoreBenchmarks: Thread 2 completed 500000 iterations, processed 500000 hashes
+12-10 16:42:20.913 14204 16802 D MultiCoreBenchmarks: Thread 7 completed 500000 iterations, processed 500000 hashes
+12-10 16:42:20.928 14204 16807 D MultiCoreBenchmarks: Thread 1 completed 500000 iterations, processed 500000 hashes
+12-10 16:42:20.957 14204 16805 D MultiCoreBenchmarks: Thread 0 completed 500000 iterations, processed 500000 hashes
+12-10 16:42:20.975 14204 16800 D MultiCoreBenchmarks: Thread 3 completed 500000 iterations, processed 500000 hashes
+12-10 16:42:20.976 14204 16761 D MultiCoreBenchmarks: All threads completed: 8 results
+12-10 16:42:20.976 14204 16761 D MultiCoreBenchmarks: === MULTI-CORE HASH COMPUTING COMPLETE ===
+12-10 16:42:20.976 14204 16761 D MultiCoreBenchmarks: Time: 2728.0ms, Total Hashes: 4000000, Ops/sec: 1466275.6598240468
+12-10 16:42:20.976 14204 16761 D MultiCoreBenchmarks: Valid: true, Execution success: true
+12-10 16:42:20.982 14204 16761 D MultiCoreBenchmarks: === STARTING MULTI-CORE STRING SORTING - CACHE-RESIDENT STRATEGY ===
+12-10 16:42:20.982 14204 16761 D MultiCoreBenchmarks: Threads available: 8
+12-10 16:42:20.982 14204 16761 D MultiCoreBenchmarks: Using explicit iterations from params: 1000
+12-10 16:42:20.982 14204 16761 D MultiCoreBenchmarks: Cache-resident size: 4096, iterations per thread: 1000
+12-10 16:42:20.982 14204 16761 D MultiCoreBenchmarks: Generating cache-resident source list...
+12-10 16:42:21.019 14204 16761 D MultiCoreBenchmarks: Source list generated. Cleaning memory...
+12-10 16:42:21.245 14204 16761 D MultiCoreBenchmarks: Memory cleaned. Starting parallel cache-resident sorting...
+12-10 16:42:21.246 14204 16761 D MultiCoreBenchmarks: Starting parallel cache-resident sort timing...
+12-10 16:42:21.246 14204 16804 D MultiCoreBenchmarks: Thread 0 starting 1000 iterations
+12-10 16:42:21.247 14204 16801 D MultiCoreBenchmarks: Thread 2 starting 1000 iterations
+12-10 16:42:21.247 14204 16803 D MultiCoreBenchmarks: Thread 3 starting 1000 iterations
+12-10 16:42:21.248 14204 16802 D MultiCoreBenchmarks: Thread 4 starting 1000 iterations
+12-10 16:42:21.248 14204 16807 D MultiCoreBenchmarks: Thread 5 starting 1000 iterations
+12-10 16:42:21.248 14204 16806 D MultiCoreBenchmarks: Thread 1 starting 1000 iterations
+12-10 16:42:21.250 14204 16805 D MultiCoreBenchmarks: Thread 6 starting 1000 iterations
+12-10 16:42:21.250 14204 16800 D MultiCoreBenchmarks: Thread 7 starting 1000 iterations
+12-10 16:42:24.137 14204 16806 D MultiCoreBenchmarks: Thread 1 completed, checksum: 1048371912
+12-10 16:42:24.156 14204 16805 D MultiCoreBenchmarks: Thread 6 completed, checksum: 1048371912
+12-10 16:42:24.186 14204 16801 D MultiCoreBenchmarks: Thread 2 completed, checksum: 1048371912
+12-10 16:42:24.306 14204 16804 D MultiCoreBenchmarks: Thread 0 completed, checksum: 1048371912
+12-10 16:42:24.311 14204 16803 D MultiCoreBenchmarks: Thread 3 completed, checksum: 1048371912
+12-10 16:42:24.311 14204 16807 D MultiCoreBenchmarks: Thread 5 completed, checksum: 1048371912
+12-10 16:42:24.323 14204 16802 D MultiCoreBenchmarks: Thread 4 completed, checksum: 1048371912
+12-10 16:42:24.402 14204 16800 D MultiCoreBenchmarks: Thread 7 completed, checksum: 1048371912
+12-10 16:42:24.403 14204 16761 D MultiCoreBenchmarks: All threads completed sorting in 3157.0ms
+12-10 16:42:24.403 14204 16761 D MultiCoreBenchmarks: All 8 threads completed successfully
+12-10 16:42:24.403 14204 16761 D MultiCoreBenchmarks: === MULTI-CORE STRING SORTING COMPLETE ===
+12-10 16:42:24.403 14204 16761 D MultiCoreBenchmarks: Time: 3421.0ms, Total Comparisons: 3.93216E8, Ops/sec: 1.1494182987430577E8
+12-10 16:42:24.403 14204 16761 D MultiCoreBenchmarks: Valid: true, Execution success: true
+12-10 16:42:24.420 14204 16761 D MultiCoreBenchmarks: Starting Multi-Core Ray Tracing (Priority + Work Stealing)
+12-10 16:42:26.420 14204 16805 D MultiCoreBenchmarks: Thread 1 (100 batch) processed total: 200 frames
+12-10 16:42:26.468 14204 16806 D MultiCoreBenchmarks: Thread 0 (100 batch) processed total: 200 frames
+12-10 16:42:26.474 14204 16802 D MultiCoreBenchmarks: Thread 6 (100 batch) processed total: 200 frames
+12-10 16:42:26.477 14204 16804 D MultiCoreBenchmarks: Thread 3 (100 batch) processed total: 200 frames
+12-10 16:42:26.528 14204 16801 D MultiCoreBenchmarks: Thread 2 (100 batch) processed total: 200 frames
+12-10 16:42:26.528 14204 16803 D MultiCoreBenchmarks: Thread 4 (100 batch) processed total: 200 frames
+12-10 16:42:26.531 14204 16800 D MultiCoreBenchmarks: Thread 7 (100 batch) processed total: 200 frames
+12-10 16:42:26.534 14204 16807 D MultiCoreBenchmarks: Thread 5 (100 batch) processed total: 200 frames
+12-10 16:42:26.536 14204 16785 D MultiCoreBenchmarks: Starting Multi-Core Compression (FIXED: 2MB static buffer)
+12-10 16:42:28.788 14204 16785 D MultiCoreBenchmarks: Starting Multi-Core Monte Carlo π (samples: 15000000) - OPTIMIZED: Ultra-efficient parallel
+12-10 16:42:30.355 14204 16760 D MultiCoreBenchmarks: Starting Multi-Core JSON Parsing (size: 1MB)
+12-10 16:42:30.535 14204 16798 D MultiCoreBenchmarks: Starting Multi-Core N-Queens (size: 10)
+12-10 16:52:28.865 16382 17456 D MultiCoreBenchmarks: Starting Multi-Core Prime Generation - FIXED: Strided loop for load balancing
+12-10 16:52:29.215 16382 17457 D MultiCoreBenchmarks: === STARTING MULTI-CORE FIBONACCI - CORE INDEPENDENT ===
+12-10 16:52:29.215 16382 17457 D MultiCoreBenchmarks: Threads available: 8
+12-10 16:52:29.215 16382 17457 D MultiCoreBenchmarks: Fixed workload per thread: 10,000,000 iterations
+12-10 16:52:29.215 16382 17457 D MultiCoreBenchmarks: Total expected operations: 80000000
+12-10 16:52:29.215 16382 17457 D MultiCoreBenchmarks: Starting parallel execution with 8 threads
+12-10 16:52:29.215 16382 17457 D MultiCoreBenchmarks: Each thread will perform 5000000 iterations
+12-10 16:52:29.734 16382 17523 D MultiCoreBenchmarks: Thread 5 completed 5000000 iterations, sum: 46137325000000
+12-10 16:52:29.739 16382 17526 D MultiCoreBenchmarks: Thread 1 completed 5000000 iterations, sum: 46137325000000
+12-10 16:52:29.740 16382 17524 D MultiCoreBenchmarks: Thread 2 completed 5000000 iterations, sum: 46137325000000
+12-10 16:52:29.748 16382 17521 D MultiCoreBenchmarks: Thread 7 completed 5000000 iterations, sum: 46137325000000
+12-10 16:52:29.764 16382 17525 D MultiCoreBenchmarks: Thread 4 completed 5000000 iterations, sum: 46137325000000
+12-10 16:52:29.776 16382 17520 D MultiCoreBenchmarks: Thread 3 completed 5000000 iterations, sum: 46137325000000
+12-10 16:52:29.797 16382 17522 D MultiCoreBenchmarks: Thread 0 completed 5000000 iterations, sum: 46137325000000
+12-10 16:52:29.819 16382 17527 D MultiCoreBenchmarks: Thread 6 completed 5000000 iterations, sum: 46137325000000
+12-10 16:52:29.820 16382 17457 D MultiCoreBenchmarks: Async operations completed: 8 results
+12-10 16:52:29.820 16382 17457 D MultiCoreBenchmarks: === MULTI-CORE FIBONACCI COMPLETE ===
+12-10 16:52:29.820 16382 17457 D MultiCoreBenchmarks: Time: 605.0ms, Total Ops: 4.0E7, Ops/sec: 6.611570247933885E7
+12-10 16:52:29.820 16382 17457 D MultiCoreBenchmarks: Valid: true, Execution success: true
+12-10 16:52:29.829 16382 17457 D MultiCoreBenchmarks: === STARTING MULTI-CORE MATRIX MULTIPLICATION - CACHE-RESIDENT STRATEGY ===
+12-10 16:52:29.829 16382 17457 D MultiCoreBenchmarks: Threads available: 8
+12-10 16:52:29.829 16382 17457 D MultiCoreBenchmarks: Matrix size: 128, Iterations per thread: 1500
+12-10 16:52:29.829 16382 17457 D MultiCoreBenchmarks: Total expected operations: 8 × 1500 × (2 × 128³)
+12-10 16:52:29.829 16382 17457 D MultiCoreBenchmarks: Starting parallel execution with 8 threads
+12-10 16:52:29.829 16382 17457 D MultiCoreBenchmarks: Each thread will perform 1500 matrix multiplications
+12-10 16:52:29.829 16382 17523 D MultiCoreBenchmarks: Thread 0 starting 1500 matrix multiplications
+12-10 16:52:29.829 16382 17526 D MultiCoreBenchmarks: Thread 1 starting 1500 matrix multiplications
+12-10 16:52:29.830 16382 17521 D MultiCoreBenchmarks: Thread 3 starting 1500 matrix multiplications
+12-10 16:52:29.831 16382 17524 D MultiCoreBenchmarks: Thread 2 starting 1500 matrix multiplications
+12-10 16:52:29.832 16382 17525 D MultiCoreBenchmarks: Thread 4 starting 1500 matrix multiplications
+12-10 16:52:29.833 16382 17522 D MultiCoreBenchmarks: Thread 6 starting 1500 matrix multiplications
+12-10 16:52:29.833 16382 17520 D MultiCoreBenchmarks: Thread 5 starting 1500 matrix multiplications
+12-10 16:52:29.834 16382 17527 D MultiCoreBenchmarks: Thread 7 starting 1500 matrix multiplications
+12-10 16:52:42.294 16382 17524 D MultiCoreBenchmarks: Thread 2 completed 1500 matrix multiplications, checksum: 31728113047616150
+12-10 16:52:42.297 16382 17526 D MultiCoreBenchmarks: Thread 1 completed 1500 matrix multiplications, checksum: 3571098360667791
+12-10 16:52:42.311 16382 17521 D MultiCoreBenchmarks: Thread 3 completed 1500 matrix multiplications, checksum: 4421609420192334
+12-10 16:52:42.344 16382 17523 D MultiCoreBenchmarks: Thread 0 completed 1500 matrix multiplications, checksum: 1665661346646052
+12-10 16:52:42.371 16382 17525 D MultiCoreBenchmarks: Thread 4 completed 1500 matrix multiplications, checksum: 33443537802038371
+12-10 16:52:42.562 16382 17527 D MultiCoreBenchmarks: Thread 7 completed 1500 matrix multiplications, checksum: 32427727594268617
+12-10 16:52:42.568 16382 17522 D MultiCoreBenchmarks: Thread 6 completed 1500 matrix multiplications, checksum: 3652171225612678
+12-10 16:52:42.623 16382 17520 D MultiCoreBenchmarks: Thread 5 completed 1500 matrix multiplications, checksum: 3831100732459160
+12-10 16:52:42.623 16382 17457 D MultiCoreBenchmarks: All threads completed: 8 results
+12-10 16:52:42.623 16382 17457 D MultiCoreBenchmarks: === MULTI-CORE MATRIX MULTIPLICATION COMPLETE ===
+12-10 16:52:42.623 16382 17457 D MultiCoreBenchmarks: Time: 12794.0ms, Total Checksum: 114741019529501153, Ops/sec: 3.93400406440519E9
+12-10 16:52:42.623 16382 17457 D MultiCoreBenchmarks: Valid: true, Execution success: true
+12-10 16:52:42.660 16382 17455 D MultiCoreBenchmarks: === STARTING MULTI-CORE HASH COMPUTING - FIXED WORK PER CORE ===
+12-10 16:52:42.660 16382 17455 D MultiCoreBenchmarks: Threads available: 8
+12-10 16:52:42.660 16382 17455 D MultiCoreBenchmarks: Fixed workload per thread: 500000 iterations
+12-10 16:52:42.660 16382 17455 D MultiCoreBenchmarks: Total expected operations: 4000000
+12-10 16:52:42.661 16382 17455 D MultiCoreBenchmarks: Starting parallel execution with 8 threads
+12-10 16:52:42.661 16382 17455 D MultiCoreBenchmarks: Each thread will perform 500000 hash iterations
+12-10 16:52:42.662 16382 17524 D MultiCoreBenchmarks: Thread 0 starting 500000 hash iterations
+12-10 16:52:42.662 16382 17526 D MultiCoreBenchmarks: Thread 1 starting 500000 hash iterations
+12-10 16:52:42.662 16382 17521 D MultiCoreBenchmarks: Thread 2 starting 500000 hash iterations
+12-10 16:52:42.663 16382 17523 D MultiCoreBenchmarks: Thread 3 starting 500000 hash iterations
+12-10 16:52:42.663 16382 17525 D MultiCoreBenchmarks: Thread 4 starting 500000 hash iterations
+12-10 16:52:42.666 16382 17527 D MultiCoreBenchmarks: Thread 5 starting 500000 hash iterations
+12-10 16:52:42.669 16382 17522 D MultiCoreBenchmarks: Thread 6 starting 500000 hash iterations
+12-10 16:52:42.669 16382 17520 D MultiCoreBenchmarks: Thread 7 starting 500000 hash iterations
+12-10 16:52:44.860 16382 17520 D MultiCoreBenchmarks: Thread 7 completed 500000 iterations, processed 500000 hashes
+12-10 16:52:44.902 16382 17523 D MultiCoreBenchmarks: Thread 3 completed 500000 iterations, processed 500000 hashes
+12-10 16:52:44.927 16382 17525 D MultiCoreBenchmarks: Thread 4 completed 500000 iterations, processed 500000 hashes
+12-10 16:52:44.947 16382 17521 D MultiCoreBenchmarks: Thread 2 completed 500000 iterations, processed 500000 hashes
+12-10 16:52:44.964 16382 17524 D MultiCoreBenchmarks: Thread 0 completed 500000 iterations, processed 500000 hashes
+12-10 16:52:44.973 16382 17526 D MultiCoreBenchmarks: Thread 1 completed 500000 iterations, processed 500000 hashes
+12-10 16:52:44.992 16382 17527 D MultiCoreBenchmarks: Thread 5 completed 500000 iterations, processed 500000 hashes
+12-10 16:52:45.006 16382 17522 D MultiCoreBenchmarks: Thread 6 completed 500000 iterations, processed 500000 hashes
+12-10 16:52:45.007 16382 17455 D MultiCoreBenchmarks: All threads completed: 8 results
+12-10 16:52:45.007 16382 17455 D MultiCoreBenchmarks: === MULTI-CORE HASH COMPUTING COMPLETE ===
+12-10 16:52:45.007 16382 17455 D MultiCoreBenchmarks: Time: 2346.0ms, Total Hashes: 4000000, Ops/sec: 1705029.8380221652
+12-10 16:52:45.007 16382 17455 D MultiCoreBenchmarks: Valid: true, Execution success: true
+12-10 16:52:45.013 16382 17455 D MultiCoreBenchmarks: === STARTING MULTI-CORE STRING SORTING - CACHE-RESIDENT STRATEGY ===
+12-10 16:52:45.013 16382 17455 D MultiCoreBenchmarks: Threads available: 8
+12-10 16:52:45.013 16382 17455 D MultiCoreBenchmarks: Using explicit iterations from params: 1000
+12-10 16:52:45.013 16382 17455 D MultiCoreBenchmarks: Cache-resident size: 4096, iterations per thread: 1000
+12-10 16:52:45.013 16382 17455 D MultiCoreBenchmarks: Generating cache-resident source list...
+12-10 16:52:45.052 16382 17455 D MultiCoreBenchmarks: Source list generated. Cleaning memory...
+12-10 16:52:45.280 16382 17455 D MultiCoreBenchmarks: Memory cleaned. Starting parallel cache-resident sorting...
+12-10 16:52:45.280 16382 17455 D MultiCoreBenchmarks: Starting parallel cache-resident sort timing...
+12-10 16:52:45.282 16382 17523 D MultiCoreBenchmarks: Thread 1 starting 1000 iterations
+12-10 16:52:45.282 16382 17525 D MultiCoreBenchmarks: Thread 2 starting 1000 iterations
+12-10 16:52:45.283 16382 17521 D MultiCoreBenchmarks: Thread 3 starting 1000 iterations
+12-10 16:52:45.283 16382 17520 D MultiCoreBenchmarks: Thread 0 starting 1000 iterations
+12-10 16:52:45.284 16382 17524 D MultiCoreBenchmarks: Thread 4 starting 1000 iterations
+12-10 16:52:45.284 16382 17526 D MultiCoreBenchmarks: Thread 5 starting 1000 iterations
+12-10 16:52:45.286 16382 17527 D MultiCoreBenchmarks: Thread 6 starting 1000 iterations
+12-10 16:52:45.287 16382 17522 D MultiCoreBenchmarks: Thread 7 starting 1000 iterations
+12-10 16:52:47.952 16382 17526 D MultiCoreBenchmarks: Thread 5 completed, checksum: 1243303648
+12-10 16:52:48.036 16382 17524 D MultiCoreBenchmarks: Thread 4 completed, checksum: 1243303648
+12-10 16:52:48.050 16382 17520 D MultiCoreBenchmarks: Thread 0 completed, checksum: 1243303648
+12-10 16:52:48.069 16382 17525 D MultiCoreBenchmarks: Thread 2 completed, checksum: 1243303648
+12-10 16:52:48.081 16382 17527 D MultiCoreBenchmarks: Thread 6 completed, checksum: 1243303648
+12-10 16:52:48.084 16382 17523 D MultiCoreBenchmarks: Thread 1 completed, checksum: 1243303648
+12-10 16:52:48.093 16382 17521 D MultiCoreBenchmarks: Thread 3 completed, checksum: 1243303648
+12-10 16:52:48.143 16382 17522 D MultiCoreBenchmarks: Thread 7 completed, checksum: 1243303648
+12-10 16:52:48.144 16382 17455 D MultiCoreBenchmarks: All threads completed sorting in 2864.0ms
+12-10 16:52:48.144 16382 17455 D MultiCoreBenchmarks: All 8 threads completed successfully
+12-10 16:52:48.144 16382 17455 D MultiCoreBenchmarks: === MULTI-CORE STRING SORTING COMPLETE ===
+12-10 16:52:48.144 16382 17455 D MultiCoreBenchmarks: Time: 3131.0ms, Total Comparisons: 3.93216E8, Ops/sec: 1.2558799105717024E8
+12-10 16:52:48.144 16382 17455 D MultiCoreBenchmarks: Valid: true, Execution success: true
+12-10 16:52:48.151 16382 17535 D MultiCoreBenchmarks: Starting Multi-Core Ray Tracing (Priority + Work Stealing)
+12-10 16:52:50.093 16382 17525 D MultiCoreBenchmarks: Thread 3 (100 batch) processed total: 200 frames
+12-10 16:52:50.156 16382 17526 D MultiCoreBenchmarks: Thread 0 (100 batch) processed total: 200 frames
+12-10 16:52:50.180 16382 17520 D MultiCoreBenchmarks: Thread 2 (100 batch) processed total: 200 frames
+12-10 16:52:50.181 16382 17524 D MultiCoreBenchmarks: Thread 1 (100 batch) processed total: 200 frames
+12-10 16:52:50.202 16382 17521 D MultiCoreBenchmarks: Thread 6 (100 batch) processed total: 200 frames
+12-10 16:52:50.226 16382 17527 D MultiCoreBenchmarks: Thread 4 (100 batch) processed total: 200 frames
+12-10 16:52:50.230 16382 17523 D MultiCoreBenchmarks: Thread 5 (100 batch) processed total: 200 frames
+12-10 16:52:50.247 16382 17522 D MultiCoreBenchmarks: Thread 7 (100 batch) processed total: 200 frames
+12-10 16:52:50.253 16382 17535 D MultiCoreBenchmarks: Starting Multi-Core Compression (FIXED: 2MB static buffer)
+12-10 16:52:52.476 16382 17535 D MultiCoreBenchmarks: Starting Multi-Core Monte Carlo π (samples: 15000000) - OPTIMIZED: Ultra-efficient parallel
+12-10 16:52:54.102 16382 17534 D MultiCoreBenchmarks: Starting Multi-Core JSON Parsing (size: 1MB)
+12-10 16:52:54.241 16382 17534 D MultiCoreBenchmarks: Starting Multi-Core N-Queens (size: 10)
