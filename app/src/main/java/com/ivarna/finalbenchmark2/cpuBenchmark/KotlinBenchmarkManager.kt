@@ -598,18 +598,18 @@ class KotlinBenchmarkManager {
                                         // CACHE-RESIDENT STRATEGY: Small matrices with high
                                         // iterations
 
-                                        primeRange = 5_000_000,
+                                        primeRange = 1_000_000,
                                         fibonacciNRange = Pair(92, 92), // Use fixed max safe value
-                                        fibonacciIterations = 5_000_000,
+                                        fibonacciIterations = 1_000_000,
                                         matrixSize =
                                                 128, // CACHE-RESIDENT: Fixed small size for cache
                                         // efficiency
                                         matrixIterations =
-                                                1500, // CACHE-RESIDENT: High iterations for
+                                                500, // CACHE-RESIDENT: High iterations for
                                         // flagship devices
                                         hashDataSizeMb = 8,
                                         hashIterations =
-                                                500_000, // FIXED WORK PER CORE: Target ~1.5-2.0
+                                                100_000, // FIXED WORK PER CORE: Target ~1.5-2.0
                                         // seconds
 
                                         stringSortIterations =

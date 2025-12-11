@@ -29,9 +29,12 @@ Type `/fix` in the chat to invoke this workflow.
 - Add comments explaining the fix if necessary
 
 ### Step 5: Verify & Test
+- How to build :- gradlew.bat assembleDebug
 - Suggest test cases to verify the fix works
 - Check for potential side effects or edge cases
 - Recommend additional tests if needed BUILD AND RUN APK
+- Verify
+- Install APK:- adb install app\build\outputs\apk\debug\app-debug.apk
 
 ### Step 6: Commit all changes and push to github
 

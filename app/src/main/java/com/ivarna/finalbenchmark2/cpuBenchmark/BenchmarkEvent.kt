@@ -51,7 +51,7 @@ data class WorkloadParams(
         val stringSortIterations: Int =
                 2_500, // CACHE-RESIDENT: Explicit iterations for string sorting
         val rayTracingIterations: Int =
-                40, // FIXED: Iteration-based workload for proper FPU throughput testing
+                400, // FIXED: Increased from 40 to 400 for proper test duration with fast kernel
         val rayTracingResolution: Pair<Int, Int> = Pair(192, 192),
         val rayTracingDepth: Int = 3,
         val compressionDataSizeMb: Int = 2,
