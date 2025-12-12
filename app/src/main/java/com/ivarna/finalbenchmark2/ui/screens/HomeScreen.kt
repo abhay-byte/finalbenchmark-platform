@@ -106,17 +106,45 @@ fun HomeScreen(onStartBenchmark: (String) -> Unit, onNavigateToSettings: () -> U
         }
 
         FinalBenchmark2Theme {
-                Box(modifier = Modifier.fillMaxSize().statusBarsPadding()) {
+                Scaffold(
+                        topBar = {
+                                CenterAlignedTopAppBar(
+                                        title = {
+                                                Text(
+                                                        "FinalBenchmark2",
+                                                        style =
+                                                                MaterialTheme.typography
+                                                                        .headlineSmall,
+                                                        color = MaterialTheme.colorScheme.onSurface
+                                                )
+                                        },
+                                        actions = {
+                                                IconButton(onClick = onNavigateToSettings) {
+                                                        Icon(
+                                                                imageVector =
+                                                                        Icons.Rounded.Settings,
+                                                                contentDescription = "Settings",
+                                                                tint =
+                                                                        MaterialTheme.colorScheme
+                                                                                .onSurfaceVariant
+                                                        )
+                                                }
+                                        },
+                                        colors =
+                                                TopAppBarDefaults.centerAlignedTopAppBarColors(
+                                                        containerColor =
+                                                                MaterialTheme.colorScheme.surface
+                                                )
+                                )
+                        }
+                ) { innerPadding ->
                         // Main scrollable content
                         Column(
                                 modifier =
                                         Modifier.fillMaxSize()
                                                 .verticalScroll(rememberScrollState())
-                                                .padding(24.dp)
-                                                .padding(
-                                                        top = 60.dp
-                                                ), // Add top padding to account for the floating
-                                // icon
+                                                .padding(innerPadding)
+                                                .padding(24.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally,
                                 verticalArrangement = Arrangement.Center
                         ) {
@@ -731,27 +759,6 @@ fun HomeScreen(onStartBenchmark: (String) -> Unit, onNavigateToSettings: () -> U
                                         modifier = Modifier.padding(top = 8.dp)
                                 )
                         }
-
-                        // Floating Settings Icon in Top Right Corner (on top of everything)
-                        IconButton(
-                                onClick = onNavigateToSettings,
-                                modifier =
-                                        Modifier.align(Alignment.TopEnd)
-                                                .padding(16.dp)
-                                                .background(
-                                                        color =
-                                                                MaterialTheme.colorScheme
-                                                                        .surfaceVariant,
-                                                        shape = CircleShape
-                                                )
-                                                .padding(4.dp)
-                        ) {
-                                Icon(
-                                        imageVector = Icons.Rounded.Settings,
-                                        contentDescription = "Settings",
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                        }
                 }
         }
 }
@@ -1105,132 +1112,137 @@ fun DetailIconPair(icon: ImageVector, value: String, label: String) {
                 )
         }
 }
+
 @Composable
 fun BenchmarkTipsCard() {
-    var isExpanded by remember { mutableStateOf(false) }
+        var isExpanded by remember { mutableStateOf(false) }
 
-    Card(
-            modifier =
-                    Modifier.fillMaxWidth().padding(vertical = 8.dp).clickable {
-                        isExpanded = !isExpanded
-                    },
-            shape = RoundedCornerShape(24.dp),
-            colors =
-                    CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainer
-                    ),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-            // Header Row
-            Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                        text = "Benchmark Tips",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                )
+        Card(
+                modifier =
+                        Modifier.fillMaxWidth().padding(vertical = 8.dp).clickable {
+                                isExpanded = !isExpanded
+                        },
+                shape = RoundedCornerShape(24.dp),
+                colors =
+                        CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceContainer
+                        ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        ) {
+                Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+                        // Header Row
+                        Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                        ) {
+                                Text(
+                                        text = "Benchmark Tips",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.primary
+                                )
 
-                Icon(
-                        imageVector = Icons.Rounded.ArrowDropDown,
-                        contentDescription = "Expand",
-                        modifier = Modifier.size(28.dp).rotate(if (isExpanded) 180f else 0f),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
+                                Icon(
+                                        imageVector = Icons.Rounded.ArrowDropDown,
+                                        contentDescription = "Expand",
+                                        modifier =
+                                                Modifier.size(28.dp)
+                                                        .rotate(if (isExpanded) 180f else 0f),
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                        }
 
-            // Expanded Details
-            AnimatedVisibility(
-                    visible = isExpanded,
-                    enter = expandVertically(animationSpec = tween(300)) + fadeIn(),
-                    exit = shrinkVertically(animationSpec = tween(300)) + fadeOut()
-            ) {
-                Column(modifier = Modifier.padding(top = 16.dp)) {
-                    HorizontalDivider(
-                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
-                            modifier = Modifier.padding(bottom = 16.dp)
-                    )
+                        // Expanded Details
+                        AnimatedVisibility(
+                                visible = isExpanded,
+                                enter = expandVertically(animationSpec = tween(300)) + fadeIn(),
+                                exit = shrinkVertically(animationSpec = tween(300)) + fadeOut()
+                        ) {
+                                Column(modifier = Modifier.padding(top = 16.dp)) {
+                                        HorizontalDivider(
+                                                color =
+                                                        MaterialTheme.colorScheme.outlineVariant
+                                                                .copy(alpha = 0.5f),
+                                                modifier = Modifier.padding(bottom = 16.dp)
+                                        )
 
-                    // Tip 1: Disable Thermal Modules
-                    TipRow(
-                            number = "1",
-                            title = "Disable Thermal Modules",
-                            description =
-                                    "Turn off thermal throttling to achieve maximum performance during benchmarks"
-                    )
+                                        // Tip 1: Disable Thermal Modules
+                                        TipRow(
+                                                number = "1",
+                                                title = "Disable Thermal Modules",
+                                                description =
+                                                        "Turn off thermal throttling to achieve maximum performance during benchmarks"
+                                        )
 
-                    // Tip 2: Keep Device Cool
-                    TipRow(
-                            number = "2",
-                            title = "Keep Device Below 25°C",
-                            description =
-                                    "Maintain optimal temperature for best performance and consistent results"
-                    )
+                                        // Tip 2: Keep Device Cool
+                                        TipRow(
+                                                number = "2",
+                                                title = "Keep Device Below 25°C",
+                                                description =
+                                                        "Maintain optimal temperature for best performance and consistent results"
+                                        )
 
-                    // Tip 3: Update Drivers
-                    TipRow(
-                            number = "3",
-                            title = "Update Drivers to Latest Version",
-                            description =
-                                    "Ensure all system drivers are up-to-date for optimal compatibility and performance"
-                    )
+                                        // Tip 3: Update Drivers
+                                        TipRow(
+                                                number = "3",
+                                                title = "Update Drivers to Latest Version",
+                                                description =
+                                                        "Ensure all system drivers are up-to-date for optimal compatibility and performance"
+                                        )
 
-                    // Tip 4: Close Background Apps
-                    TipRow(
-                            number = "4",
-                            title = "Close All Background Apps",
-                            description =
-                                    "Eliminate background processes and avoid interruptions during benchmark execution"
-                    )
+                                        // Tip 4: Close Background Apps
+                                        TipRow(
+                                                number = "4",
+                                                title = "Close All Background Apps",
+                                                description =
+                                                        "Eliminate background processes and avoid interruptions during benchmark execution"
+                                        )
+                                }
+                        }
                 }
-            }
         }
-    }
 }
 
 @Composable
 fun TipRow(number: String, title: String, description: String) {
-    Row(
-            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-            horizontalArrangement = Arrangement.Start,
-            verticalAlignment = Alignment.Top
-    ) {
-        // Tip Number Badge
-        Box(
-                modifier =
-                        Modifier.size(32.dp)
-                                .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.primaryContainer),
-                contentAlignment = Alignment.Center
+        Row(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                horizontalArrangement = Arrangement.Start,
+                verticalAlignment = Alignment.Top
         ) {
-            Text(
-                    text = number,
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
-            )
-        }
+                // Tip Number Badge
+                Box(
+                        modifier =
+                                Modifier.size(32.dp)
+                                        .clip(CircleShape)
+                                        .background(MaterialTheme.colorScheme.primaryContainer),
+                        contentAlignment = Alignment.Center
+                ) {
+                        Text(
+                                text = number,
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                }
 
-        Spacer(modifier = Modifier.width(12.dp))
+                Spacer(modifier = Modifier.width(12.dp))
 
-        // Tip Content
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.onSurface
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                    text = description,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+                // Tip Content
+                Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                                text = title,
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                                text = description,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                }
         }
-    }
 }
