@@ -22,41 +22,35 @@ class KotlinBenchmarkManager {
                 private const val TAG = "KotlinBenchmarkManager"
 
                 // CONSOLIDATED: Single source of truth for scaling factors
-                // Target: ~10,000 total points for flagship devices
-                // HEAVY WORKLOAD: Updated for 1.5-2.0s execution times with increased workload
-                // parameters
+                // Target: Single-core ~200, Multi-core ~800 (each benchmark contributes ~20/~80)
+                // Raw opsPerSecond is in ops/s, UI displays as Mops/s (divide by 1e6)
                 private val SINGLE_CORE_FACTORS =
                         mapOf(
-                                "Prime Generation" to
-                                        2.0e-3, // HEAVY: Increased from 4.0e-4 to 2.0e-3 (5x) for
-                                // Trial
-                                // Division with 2M range
-                                "Fibonacci Recursive" to 1.2e-5, // Fib: 1.2e-5
-                                "Matrix Multiplication" to 4.0e-6, // Matrix: 4.0e-6
-                                "Hash Computing" to 6.0e-3, // Hash: 6.0e-3
-                                "String Sorting" to 5.0e-3, // String: 5.0e-3
-                                "Ray Tracing" to 1.5e-3, // Ray: 1.5e-3
-                                "Compression" to 5.0e-4, // Compression: 5.0e-4
-                                "Monte Carlo" to 2.0e-4, // Monte Carlo: 2.0e-4
-                                "JSON Parsing" to 1.8e-3, // JSON: 1.8e-3
-                                "N-Queens" to 8.0e-2 // N-Queens: 8.0e-2
+                                "Prime Generation" to 9.22e-6, // 20 / 2.17e6 ops/s
+                                "Fibonacci Recursive" to 1.16e-6, // 20 / 17.23e6 ops/s
+                                "Matrix Multiplication" to 3.93e-8, // 20 / 508.85e6 ops/s
+                                "Hash Computing" to 7.14e-5, // 20 / 0.28e6 ops/s
+                                "String Sorting" to 5.04e-7, // 20 / 39.65e6 ops/s
+                                "Ray Tracing" to 7.78e-6, // 20 / 2.57e6 ops/s
+                                "Compression" to 4.27e-8, // 20 / 468.69e6 ops/s
+                                "Monte Carlo" to 1.58e-6, // 20 / 12.68e6 ops/s
+                                "JSON Parsing" to 4.47e-6, // 20 / 4.47e6 ops/s
+                                "N-Queens" to 4.31e-7 // 20 / 46.36e6 ops/s
                         )
 
-                // Multi-core factors updated for strided loop implementation with HEAVY workload
+                // Multi-core factors: Target ~80 per benchmark for total ~800
                 private val MULTI_CORE_FACTORS =
                         mapOf(
-                                "Prime Generation" to
-                                        4.0e-4, // HEAVY: Increased from 8.0e-5 to 4.0e-4 (5x) for
-                                // strided loop
-                                "Fibonacci Recursive" to 1.0e-5, // Fib: 1.0e-5
-                                "Matrix Multiplication" to 3.5e-6, // Matrix: 3.5e-6
-                                "Hash Computing" to 3.0e-3, // Hash: 3.0e-3
-                                "String Sorting" to 3.0e-3, // String: 3.0e-3
-                                "Ray Tracing" to 1.0e-3, // Ray: 1.0e-3
-                                "Compression" to 6.0e-4, // Compression: 6.0e-4
-                                "Monte Carlo" to 3.5e-4, // Monte Carlo: 3.5e-4
-                                "JSON Parsing" to 3.5e-3, // JSON: 3.5e-3
-                                "N-Queens" to 3.0e-3 // N-Queens: 3.0e-3
+                                "Prime Generation" to 9.76e-6, // 80 / 8.20e6 ops/s
+                                "Fibonacci Recursive" to 9.02e-7, // 80 / 88.64e6 ops/s
+                                "Matrix Multiplication" to 2.09e-8, // 80 / 3826.63e6 ops/s
+                                "Hash Computing" to 3.92e-5, // 80 / 2.04e6 ops/s
+                                "String Sorting" to 5.74e-7, // 80 / 139.33e6 ops/s
+                                "Ray Tracing" to 9.09e-5, // 80 / 0.88e6 ops/s
+                                "Compression" to 4.56e-8, // 80 / 1755.67e6 ops/s
+                                "Monte Carlo" to 1.88e-6, // 80 / 42.49e6 ops/s
+                                "JSON Parsing" to 4.81e-6, // 80 / 16.62e6 ops/s
+                                "N-Queens" to 4.96e-7 // 80 / 161.21e6 ops/s
                         )
         }
 
@@ -610,25 +604,25 @@ class KotlinBenchmarkManager {
                                         // CACHE-RESIDENT STRATEGY: Small matrices with high
                                         // iterations
 
-                                        primeRange = 1_000_000,
+                                        primeRange = 50_000_000,
                                         fibonacciNRange = Pair(92, 92), // Use fixed max safe value
-                                        fibonacciIterations = 1_000_000,
+                                        fibonacciIterations = 125_000_000,
                                         matrixSize =
                                                 128, // CACHE-RESIDENT: Fixed small size for cache
                                         // efficiency
                                         matrixIterations =
-                                                500, // CACHE-RESIDENT: High iterations for
+                                                1500, // CACHE-RESIDENT: High iterations for
                                         // flagship devices
                                         hashDataSizeMb = 8,
                                         hashIterations =
-                                                100_000, // FIXED WORK PER CORE: Target ~1.5-2.0
+                                                2_500_000, // FIXED WORK PER CORE: Target ~1.5-2.0
                                         // seconds
 
                                         stringSortIterations =
-                                                1_000, // CACHE-RESIDENT: Explicit control - target
+                                                5_000, // CACHE-RESIDENT: Explicit control - target
                                         // ~1.0-2.0s
                                         rayTracingIterations =
-                                                400, // FIXED: Increased to 2000 to reach ~5s
+                                                100, // FIXED: Increased to 2000 to reach ~5s
                                         // target
                                         // duration for better thermal testing
                                         rayTracingResolution =
@@ -639,19 +633,20 @@ class KotlinBenchmarkManager {
                                                 ), // OPTIMIZED: Increased from 100×100 to 256×256
                                         // for better multi-core scaling
                                         rayTracingDepth = 5,
-                                        compressionDataSizeMb = 1,
+                                        compressionDataSizeMb = 2,
                                         compressionIterations =
-                                                100, // INCREASED: Target ~15s execution (was
+                                                2_000, // INCREASED: Target ~15s execution (was
                                         // 100)
                                         monteCarloSamples =
-                                                1_000_000, // FIXED WORK PER CORE: Target ~1.5s (was
+                                                100_000_000, // FIXED WORK PER CORE: Target ~1.5s
+                                        // (was
                                         // 15M)
                                         jsonDataSizeMb = 1,
                                         jsonParsingIterations =
-                                                200, // CACHE-RESIDENT: High iterations for flagship
+                                                800, // CACHE-RESIDENT: High iterations for flagship
                                         // devices (~1-2s)
                                         nqueensSize =
-                                                12 // INCREASED: 14,200 solutions, ~20s (was 10)
+                                                15 // INCREASED: 14,200 solutions, ~20s (was 10)
                                 )
                         else -> WorkloadParams() // Default values
                 }
