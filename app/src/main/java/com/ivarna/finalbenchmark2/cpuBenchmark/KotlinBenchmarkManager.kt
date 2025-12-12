@@ -590,9 +590,9 @@ class KotlinBenchmarkManager {
                                                 40, // FIXED: Medium iterations for mid devices
                                         rayTracingResolution = Pair(160, 160),
                                         rayTracingDepth = 3,
-                                        compressionDataSizeMb = 2,
+                                        compressionDataSizeMb = 4,
                                         compressionIterations =
-                                                1500, // INCREASED: Target ~15s execution (was 50)
+                                                500, // INCREASED: Target ~15s execution (was 50)
                                         monteCarloSamples = 500_000,
                                         jsonDataSizeMb = 1,
                                         nqueensSize = 9

@@ -908,7 +908,7 @@ object MultiCoreBenchmarks {
         CpuAffinityManager.setMaxPerformance()
 
         // Configuration - FIXED WORK PER CORE APPROACH
-        val bufferSize = 2 * 1024 * 1024 // 2MB (cache-friendly)
+        val bufferSize = params.compressionDataSizeMb * 1024 * 1024 // Use configurable buffer size
         val iterationsPerThread = params.compressionIterations // Use configurable workload per core
         val totalIterations = iterationsPerThread * numThreads // Scales with cores
 

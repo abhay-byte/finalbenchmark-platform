@@ -550,7 +550,10 @@ object SingleCoreBenchmarks {
                         CpuAffinityManager.setMaxPerformance()
 
                         // FIXED WORK PER CORE: Use params.compressionIterations with 2MB buffer
-                        val bufferSize = 2 * 1024 * 1024 // 2MB (cache-friendly)
+                        val bufferSize =
+                                params.compressionDataSizeMb *
+                                        1024 *
+                                        1024 // Use configurable buffer size
                         val iterations =
                                 params.compressionIterations // Use configurable workload per core
 
