@@ -535,69 +535,65 @@ class KotlinBenchmarkManager {
                 return when (deviceTier.lowercase()) {
                         "slow" ->
                                 WorkloadParams(
-                                        primeRange = 100_000,
-                                        stringSortCount =
-                                                2_000_000, // LEGACY: Kept for compatibility
-                                        stringSortIterations =
-                                                500, // CACHE-RESIDENT: Explicit control - target
+                                        primeRange = 10_000_000,
+
                                         // ~1.0-2.0s
-                                        fibonacciNRange = Pair(25, 27),
-                                        fibonacciIterations = 2_000_000,
+                                        fibonacciNRange = Pair(92, 92),
+                                        fibonacciIterations = 75_000_000,
                                         matrixSize = 128, // CACHE-RESIDENT: Fixed small size
                                         matrixIterations =
-                                                50, // CACHE-RESIDENT: Low iterations for slow
+                                                400, // CACHE-RESIDENT: Low iterations for slow
                                         // devices
-                                        hashDataSizeMb = 1,
+                                        hashDataSizeMb = 8,
                                         hashIterations =
-                                                200_000, // FIXED WORK PER CORE: Target ~1.5-2.0
+                                                800_000, // FIXED WORK PER CORE: Target ~1.5-2.0
                                         // seconds
-                                        rayTracingIterations =
-                                                10, // FIXED: Low iterations for slow devices
-                                        rayTracingResolution = Pair(128, 128),
+                                        stringSortIterations =
+                                                800, // CACHE-RESIDENT: Explicit control - target
+                                        rayTracingIterations = 50,
+                                        rayTracingResolution = Pair(100, 100),
                                         rayTracingDepth = 2,
                                         compressionDataSizeMb = 1,
                                         compressionIterations =
                                                 600, // INCREASED: Target ~15s execution (was 20)
                                         monteCarloSamples =
-                                                200_000, // FIXED WORK PER CORE: Target ~1.5s
+                                                15_000_000, // FIXED WORK PER CORE: Target ~1.5s
                                         jsonDataSizeMb = 1,
                                         jsonParsingIterations =
-                                                50, // CACHE-RESIDENT: Low iterations for slow
+                                                500, // CACHE-RESIDENT: Low iterations for slow
                                         // devices (~1-2s)
-                                        nqueensSize = 10 // INCREASED: 92 solutions, ~1.5s (was 8)
+                                        nqueensSize = 11 // INCREASED: 92 solutions, ~1.5s (was 8)
                                 )
                         "mid" ->
                                 WorkloadParams(
-                                        primeRange = 200_000,
-                                        stringSortCount =
-                                                10_000_000, // LEGACY: Kept for compatibility
-                                        stringSortIterations =
-                                                2_500, // CACHE-RESIDENT: Explicit control - target
+                                        primeRange = 25_000_000,
                                         // ~1.0-2.0s
-                                        fibonacciNRange = Pair(28, 30),
-                                        fibonacciIterations = 10_000_000,
+                                        fibonacciNRange = Pair(96, 96),
+                                        fibonacciIterations = 75_000_000,
                                         matrixSize = 128, // CACHE-RESIDENT: Fixed small size
                                         matrixIterations =
-                                                200, // CACHE-RESIDENT: Medium iterations for mid
+                                                800, // CACHE-RESIDENT: Medium iterations for mid
                                         // devices
                                         hashDataSizeMb = 2,
                                         hashIterations =
-                                                500_000, // FIXED WORK PER CORE: Target ~1.5-2.0
+                                                1_500_000, // FIXED WORK PER CORE: Target ~1.5-2.0
                                         // seconds
+                                        stringSortIterations =
+                                                2_500, // CACHE-RESIDENT: Explicit control - target
                                         rayTracingIterations =
-                                                40, // FIXED: Medium iterations for mid devices
-                                        rayTracingResolution = Pair(160, 160),
+                                                200, // FIXED: Medium iterations for mid devices
+                                        rayTracingResolution = Pair(100, 100),
                                         rayTracingDepth = 3,
                                         compressionDataSizeMb = 1,
                                         compressionIterations =
                                                 1_000, // INCREASED: Target ~15s execution (was 50)
                                         monteCarloSamples =
-                                                500_000, // FIXED WORK PER CORE: Target ~1.5s
+                                                50_000_000, // FIXED WORK PER CORE: Target ~1.5s
                                         jsonDataSizeMb = 1,
                                         jsonParsingIterations =
-                                                100, // CACHE-RESIDENT: Medium iterations for mid
+                                                4_000, // CACHE-RESIDENT: Medium iterations for mid
                                         // devices (~1-2s)
-                                        nqueensSize = 11 // INCREASED: 341 solutions, ~5s (was 9)
+                                        nqueensSize = 13 // INCREASED: 341 solutions, ~5s (was 9)
                                 )
                         "flagship" ->
                                 WorkloadParams(

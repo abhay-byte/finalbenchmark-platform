@@ -17,43 +17,44 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.google.gson.Gson
 import com.ivarna.finalbenchmark2.ui.theme.FinalBenchmark2Theme
-import com.ivarna.finalbenchmark2.ui.viewmodels.HistoryUiModel
 import com.ivarna.finalbenchmark2.ui.viewmodels.HistoryScreenState
-import com.ivarna.finalbenchmark2.ui.viewmodels.HistoryViewModel
 import com.ivarna.finalbenchmark2.ui.viewmodels.HistorySort
+import com.ivarna.finalbenchmark2.ui.viewmodels.HistoryUiModel
+import com.ivarna.finalbenchmark2.ui.viewmodels.HistoryViewModel
 import java.text.SimpleDateFormat
 import java.util.*
 
 @Composable
 fun HistoryFilterBar(
-    selectedCategory: String,
-    onCategorySelect: (String) -> Unit,
-    currentSort: HistorySort,
-    onSortSelect: (HistorySort) -> Unit
+        selectedCategory: String,
+        onCategorySelect: (String) -> Unit,
+        currentSort: HistorySort,
+        onSortSelect: (HistorySort) -> Unit
 ) {
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
         // Sort Dropdown
         Box {
             var expanded by remember { mutableStateOf(false) }
             AssistChip(
-                onClick = { expanded = true },
-                label = { Text("Sort: ${formatSortName(currentSort)}") },
-                leadingIcon = { Icon(Icons.Rounded.Sort, null) }
+                    onClick = { expanded = true },
+                    label = { Text("Sort: ${formatSortName(currentSort)}") },
+                    leadingIcon = { Icon(Icons.Rounded.Sort, null) }
             )
             DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
                 HistorySort.values().forEach { option ->
                     DropdownMenuItem(
-                        text = { Text(formatSortName(option)) },
-                        onClick = { 
-                            onSortSelect(option)
-                            expanded = false 
-                        }
+                            text = { Text(formatSortName(option)) },
+                            onClick = {
+                                onSortSelect(option)
+                                expanded = false
+                            }
                     )
                 }
             }
         }
-        
+
         Spacer(modifier = Modifier.height(8.dp))
 
         // Category Chips
@@ -61,12 +62,13 @@ fun HistoryFilterBar(
         LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             items(categories) { category ->
                 FilterChip(
-                    selected = selectedCategory == category,
-                    onClick = { onCategorySelect(category) },
-                    label = { Text(category) },
-                    leadingIcon = if (selectedCategory == category) {
-                        { Icon(Icons.Rounded.Check, null, Modifier.size(16.dp)) }
-                    } else null
+                        selected = selectedCategory == category,
+                        onClick = { onCategorySelect(category) },
+                        label = { Text(category) },
+                        leadingIcon =
+                                if (selectedCategory == category) {
+                                    { Icon(Icons.Rounded.Check, null, Modifier.size(16.dp)) }
+                                } else null
                 )
             }
         }
@@ -84,89 +86,75 @@ fun formatSortName(sort: HistorySort): String {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HistoryScreen(
-    viewModel: HistoryViewModel,
-    navController: NavController
-) {
+fun HistoryScreen(viewModel: HistoryViewModel, navController: NavController) {
     val screenState by viewModel.screenState.collectAsState()
     val selectedCategory by viewModel.selectedCategory.collectAsState()
     val sortOption by viewModel.sortOption.collectAsState()
     val formatter = SimpleDateFormat("MMM dd, yyyy HH:mm", Locale.getDefault())
-    
+
     FinalBenchmark2Theme {
-        Surface(
-            modifier = Modifier.fillMaxSize(),
-            color = MaterialTheme.colorScheme.background
-        ) {
+        Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
             Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(
-                        top = 56.dp,
-                        start = 16.dp,
-                        end = 16.dp,
-                        bottom = 16.dp
-                    )
+                    modifier =
+                            Modifier.fillMaxSize()
+                                    .padding(
+                                            top = 56.dp,
+                                            start = 16.dp,
+                                            end = 16.dp,
+                                            bottom = 16.dp
+                                    )
             ) {
                 // Header
                 Text(
-                    text = "Benchmark History",
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary,
-                    textAlign = TextAlign.Start,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 16.dp)
+                        text = "Benchmark History",
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary,
+                        textAlign = TextAlign.Start,
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
                 )
-                
+
                 // Filter bar
                 HistoryFilterBar(
-                    selectedCategory = selectedCategory,
-                    onCategorySelect = { viewModel.updateCategory(it) },
-                    currentSort = sortOption,
-                    onSortSelect = { viewModel.updateSortOption(it) }
+                        selectedCategory = selectedCategory,
+                        onCategorySelect = { viewModel.updateCategory(it) },
+                        currentSort = sortOption,
+                        onSortSelect = { viewModel.updateSortOption(it) }
                 )
-                
+
                 Spacer(modifier = Modifier.height(16.dp))
-                
+
                 when (val state = screenState) {
                     is HistoryScreenState.Loading -> {
                         // Show loading indicator
                         Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            CircularProgressIndicator()
-                        }
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
+                        ) { CircularProgressIndicator() }
                     }
                     is HistoryScreenState.Empty -> {
                         // Empty state
                         Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(16.dp),
-                            contentAlignment = Alignment.Center
+                                modifier = Modifier.fillMaxSize().padding(16.dp),
+                                contentAlignment = Alignment.Center
                         ) {
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Icon(
-                                    imageVector = Icons.Default.List,
-                                    contentDescription = "No history",
-                                    modifier = Modifier.size(64.dp),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                        imageVector = Icons.Default.List,
+                                        contentDescription = "No history",
+                                        modifier = Modifier.size(64.dp),
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                                 Text(
-                                    text = "No benchmark history found",
-                                    fontSize = 16.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.padding(top = 16.dp)
+                                        text = "No benchmark history found",
+                                        fontSize = 16.sp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.padding(top = 16.dp)
                                 )
                                 Text(
-                                    text = "Run your first benchmark to see results here",
-                                    fontSize = 14.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        text = "Run your first benchmark to see results here",
+                                        fontSize = 14.sp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                         }
@@ -174,21 +162,37 @@ fun HistoryScreen(
                     is HistoryScreenState.Success -> {
                         // Benchmark history list
                         LazyColumn(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(horizontal = 16.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                                modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             items(state.results) { result ->
                                 BenchmarkHistoryItem(
-                                    result = result,
-                                    timestampFormatter = formatter,
-                                    onItemClick = {
-                                        // Pass the initial data as URL-encoded JSON to avoid issues with special characters
-                                        val initialDataJson = """{"id":${result.id},"timestamp":${result.timestamp},"finalScore":${result.finalScore},"singleCoreScore":${result.singleCoreScore},"multiCoreScore":${result.multiCoreScore},"testName":"${result.testName.replace("\"", "\\\"")}","normalizedScore":${result.normalizedScore}}"""
-                                        val encodedData = java.net.URLEncoder.encode(initialDataJson, "UTF-8")
-                                        navController.navigate("history-detail/${result.id}?initialData=$encodedData")
-                                    }
+                                        result = result,
+                                        timestampFormatter = formatter,
+                                        onItemClick = {
+                                            // Convert detailed results to JSON using Gson
+                                            val gson = Gson()
+                                            val detailedResultsJson =
+                                                    gson.toJson(result.detailedResults)
+
+                                            // Construct summary JSON for ResultScreen
+                                            val summaryJson =
+                                                    """
+                                            {
+                                                "single_core_score": ${result.singleCoreScore},
+                                                "multi_core_score": ${result.multiCoreScore},
+                                                "final_score": ${result.finalScore},
+                                                "normalized_score": ${result.normalizedScore},
+                                                "detailed_results": $detailedResultsJson
+                                            }
+                                        """.trimIndent()
+
+                                            // URL-encode the JSON to handle special characters
+                                            // properly
+                                            val encodedJson =
+                                                    java.net.URLEncoder.encode(summaryJson, "UTF-8")
+                                            navController.navigate("result/$encodedJson")
+                                        }
                                 )
                             }
                         }
@@ -201,56 +205,49 @@ fun HistoryScreen(
 
 @Composable
 fun BenchmarkHistoryItem(
-    result: HistoryUiModel,
-    timestampFormatter: SimpleDateFormat,
-    onItemClick: () -> Unit = {}
+        result: HistoryUiModel,
+        timestampFormatter: SimpleDateFormat,
+        onItemClick: () -> Unit = {}
 ) {
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onItemClick() },
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+            modifier = Modifier.fillMaxWidth().clickable { onItemClick() },
+            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
+                Text(text = result.testName, fontWeight = FontWeight.Medium, fontSize = 16.sp)
+
                 Text(
-                    text = result.testName,
-                    fontWeight = FontWeight.Medium,
-                    fontSize = 16.sp
+                        text = timestampFormatter.format(Date(result.timestamp)),
+                        fontSize = 14.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                
+
                 Text(
-                    text = timestampFormatter.format(Date(result.timestamp)),
-                    fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                
-                Text(
-                    text = "Single: ${String.format("%.1f", result.singleCoreScore)} | Multi: ${String.format("%.1f", result.multiCoreScore)}",
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 4.dp)
+                        text =
+                                "Single: ${String.format("%.1f", result.singleCoreScore)} | Multi: ${String.format("%.1f", result.multiCoreScore)}",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 4.dp)
                 )
             }
-            
+
             // Final score
             Column(horizontalAlignment = Alignment.End) {
                 Text(
-                    text = String.format("%.1f", result.finalScore),
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 20.sp,
-                    color = MaterialTheme.colorScheme.primary
+                        text = String.format("%.1f", result.finalScore),
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 20.sp,
+                        color = MaterialTheme.colorScheme.primary
                 )
                 Text(
-                    text = "Score",
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                        text = "Score",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
