@@ -702,91 +702,79 @@ object SingleCoreBenchmarks {
                         )
                 }
 
-        /** Test 9: JSON Parsing */
+        /**
+         * Test 9: JSON Parsing - CACHE-RESIDENT STRATEGY
+         *
+         * CACHE-RESIDENT APPROACH:
+         * - Generate JSON data ONCE outside the timing block
+         * - Perform multiple parsing iterations on the same JSON data
+         * - JSON data stays in CPU cache for fast access
+         * - Measures pure CPU parsing throughput, not memory bandwidth
+         * - Same algorithm as Multi-Core version for fair comparison
+         *
+         * PERFORMANCE: ~2.0 Mops/s baseline for single-core devices
+         */
         suspend fun jsonParsing(params: WorkloadParams): BenchmarkResult =
                 withContext(Dispatchers.Default) {
-                        Log.d(TAG, "Starting JSON Parsing (size: ${params.jsonDataSizeMb}MB)")
+                        Log.d(
+                                TAG,
+                                "Starting Single-Core JSON Parsing - CACHE-RESIDENT: ${params.jsonDataSizeMb}MB, ${params.jsonParsingIterations} iterations"
+                        )
                         CpuAffinityManager.setMaxPerformance()
 
                         val dataSize = params.jsonDataSizeMb * 1024 * 1024
+                        val iterations = params.jsonParsingIterations
 
-                        val (result, timeMs) =
+                        // CACHE-RESIDENT: Generate JSON OUTSIDE timing block
+                        Log.d(TAG, "Generating JSON data ($dataSize bytes)...")
+                        val jsonData = BenchmarkHelpers.generateComplexJson(dataSize)
+                        Log.d(TAG, "JSON generated. Starting cache-resident parsing...")
+
+                        val (totalElementCount, timeMs) =
                                 BenchmarkHelpers.measureBenchmark {
-                                        // Generate complex nested JSON data
-                                        fun generateComplexJson(sizeTarget: Int): String {
-                                                val result = StringBuilder()
-                                                result.append("{\"data\":[")
-                                                var currentSize = result.length
-                                                var counter = 0
-
-                                                while (currentSize < sizeTarget) {
-                                                        val jsonObj =
-                                                                "{\"id\":$counter,\"name\":\"obj$counter\",\"nested\":{\"value\":${counter % 1000},\"array\":[1,2,3,4,5]}},"
-
-                                                        if (currentSize + jsonObj.length >
-                                                                        sizeTarget
-                                                        ) {
-                                                                break
-                                                        }
-
-                                                        result.append(jsonObj)
-                                                        currentSize += jsonObj.length
-                                                        counter++
-                                                }
-
-                                                // Remove the trailing comma and close the array and
-                                                // object
-                                                if (result.endsWith(',')) {
-                                                        result.deleteCharAt(result.length - 1)
-                                                }
-                                                result.append("]}")
-
-                                                return result.toString()
-                                        }
-
-                                        val jsonData = generateComplexJson(dataSize)
-
-                                        // Count elements in the JSON string as a simple way to
-                                        // "parse" it
-                                        // In a real implementation, we'd use a JSON library like
-                                        // org.json or
-                                        // Moshi
-                                        var elementCount = 0
-                                        var inString = false
-
-                                        for (char in jsonData) {
-                                                if (char == '"') {
-                                                        inString = !inString
-                                                } else if (!inString) {
-                                                        when (char) {
-                                                                '{', '[' -> elementCount++
-                                                                '}',
-                                                                ']' -> {} // Do nothing for closing
-                                                                // brackets
-                                                                else -> {}
-                                                        }
-                                                }
-                                        }
-
-                                        elementCount
+                                        // CACHE-RESIDENT: Parse the same JSON multiple times
+                                        BenchmarkHelpers.performJsonParsingWorkload(
+                                                jsonData,
+                                                iterations
+                                        )
                                 }
 
-                        val elementsParsed = result
-                        val elementsPerSecond = elementsParsed.toDouble() / (timeMs / 1000.0)
+                        // Calculate operations per second based on total elements parsed
+                        // This represents the actual parsing work done (elements × iterations)
+                        val opsPerSecond = totalElementCount.toDouble() / (timeMs / 1000.0)
 
                         CpuAffinityManager.resetPerformance()
 
                         return@withContext BenchmarkResult(
                                 name = "Single-Core JSON Parsing",
                                 executionTimeMs = timeMs.toDouble(),
-                                opsPerSecond = elementsPerSecond,
-                                isValid = elementsParsed > 0,
+                                opsPerSecond = opsPerSecond,
+                                isValid = totalElementCount > 0 && timeMs > 0,
                                 metricsJson =
                                         JSONObject()
                                                 .apply {
-                                                        put("json_size", dataSize)
-                                                        put("elements_parsed", elementsParsed)
-                                                        put("root_type", "object")
+                                                        put("json_size_bytes", dataSize)
+                                                        put("iterations", iterations)
+                                                        put(
+                                                                "total_element_count",
+                                                                totalElementCount
+                                                        )
+                                                        put(
+                                                                "implementation",
+                                                                "Cache-Resident with Centralized Helper"
+                                                        )
+                                                        put(
+                                                                "workload_type",
+                                                                "Fixed per core - multiple iterations"
+                                                        )
+                                                        put(
+                                                                "description",
+                                                                "Core-independent CPU parsing test with shared algorithm"
+                                                        )
+                                                        put(
+                                                                "expected_performance",
+                                                                "~2.0 Mops/s baseline for single-core devices"
+                                                        )
                                                 }
                                                 .toString()
                         )

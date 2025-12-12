@@ -567,6 +567,9 @@ class KotlinBenchmarkManager {
                                         monteCarloSamples =
                                                 200_000, // FIXED WORK PER CORE: Target ~1.5s
                                         jsonDataSizeMb = 1,
+                                        jsonParsingIterations =
+                                                50, // CACHE-RESIDENT: Low iterations for slow
+                                        // devices (~1-2s)
                                         nqueensSize = 8
                                 )
                         "mid" ->
@@ -597,6 +600,9 @@ class KotlinBenchmarkManager {
                                         monteCarloSamples =
                                                 500_000, // FIXED WORK PER CORE: Target ~1.5s
                                         jsonDataSizeMb = 1,
+                                        jsonParsingIterations =
+                                                100, // CACHE-RESIDENT: Medium iterations for mid
+                                        // devices (~1-2s)
                                         nqueensSize = 9
                                 )
                         "flagship" ->
@@ -638,11 +644,12 @@ class KotlinBenchmarkManager {
                                                 100, // INCREASED: Target ~15s execution (was
                                         // 100)
                                         monteCarloSamples =
-                                                100_000_000, // FIXED WORK PER CORE: Target
-                                        // ~1.5-2.0s
-                                        // for 4-6x scaling
+                                                1_000_000, // FIXED WORK PER CORE: Target ~1.5s (was
                                         // 15M)
                                         jsonDataSizeMb = 1,
+                                        jsonParsingIterations =
+                                                200, // CACHE-RESIDENT: High iterations for flagship
+                                        // devices (~1-2s)
                                         nqueensSize = 10
                                 )
                         else -> WorkloadParams() // Default values

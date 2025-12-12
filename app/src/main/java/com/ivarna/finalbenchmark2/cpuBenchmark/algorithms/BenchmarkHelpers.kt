@@ -483,4 +483,83 @@ object BenchmarkHelpers {
         }
         return totalEnergy
     }
+
+    /**
+     * Centralized JSON Generation for Cache-Resident Benchmarking
+     *
+     * CACHE-RESIDENT STRATEGY:
+     * - Generates complex nested JSON data once
+     * - Data is reused across multiple parsing iterations
+     * - Prevents generation overhead from affecting benchmark timing
+     *
+     * @param sizeTarget Target size of JSON string in bytes
+     * @return Generated JSON string with nested objects and arrays
+     */
+    fun generateComplexJson(sizeTarget: Int): String {
+        val result = StringBuilder()
+        result.append("{\"data\":[")
+        var currentSize = result.length
+        var counter = 0
+
+        while (currentSize < sizeTarget) {
+            val jsonObj =
+                    "{\"id\":$counter,\"name\":\"obj$counter\",\"nested\":{\"value\":${counter % 1000},\"array\":[1,2,3,4,5]}},"
+
+            if (currentSize + jsonObj.length > sizeTarget) {
+                break
+            }
+
+            result.append(jsonObj)
+            currentSize += jsonObj.length
+            counter++
+        }
+
+        // Remove the trailing comma and close the array and object
+        if (result.endsWith(',')) {
+            result.deleteCharAt(result.length - 1)
+        }
+        result.append("]}")
+
+        return result.toString()
+    }
+
+    /**
+     * Cache-Resident JSON Parsing Workload
+     *
+     * CACHE-RESIDENT STRATEGY:
+     * - Parses the same JSON data multiple times (iterations)
+     * - JSON data stays in CPU cache for fast access
+     * - Measures pure CPU parsing throughput, not memory bandwidth
+     * - Same algorithm for both Single-Core and Multi-Core tests
+     *
+     * @param jsonData Pre-generated JSON string to parse
+     * @param iterations Number of times to parse the JSON data
+     * @return Total element count across all iterations (for validation)
+     */
+    fun performJsonParsingWorkload(jsonData: String, iterations: Int): Int {
+        var totalElementCount = 0
+
+        repeat(iterations) {
+            // Count elements in the JSON string as a simple way to "parse" it
+            // In a real implementation, we'd use a JSON library like org.json or Moshi
+            var elementCount = 0
+            var inString = false
+
+            for (char in jsonData) {
+                if (char == '"') {
+                    inString = !inString
+                } else if (!inString) {
+                    when (char) {
+                        '{', '[' -> elementCount++
+                        '}', ']' -> {} // Do nothing for closing brackets
+                        else -> {}
+                    }
+                }
+            }
+
+            totalElementCount += elementCount
+        }
+
+        return totalElementCount
+    }
 }
