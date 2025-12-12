@@ -563,7 +563,7 @@ class KotlinBenchmarkManager {
                                         rayTracingDepth = 2,
                                         compressionDataSizeMb = 1,
                                         compressionIterations =
-                                                20, // FIXED WORK PER CORE: Target ~1.5-2.0s
+                                                600, // INCREASED: Target ~15s execution (was 20)
                                         monteCarloSamples = 200_000,
                                         jsonDataSizeMb = 1,
                                         nqueensSize = 8
@@ -592,7 +592,7 @@ class KotlinBenchmarkManager {
                                         rayTracingDepth = 3,
                                         compressionDataSizeMb = 2,
                                         compressionIterations =
-                                                50, // FIXED WORK PER CORE: Target ~1.5-2.0s
+                                                1500, // INCREASED: Target ~15s execution (was 50)
                                         monteCarloSamples = 500_000,
                                         jsonDataSizeMb = 1,
                                         nqueensSize = 9
@@ -633,7 +633,7 @@ class KotlinBenchmarkManager {
                                         rayTracingDepth = 5,
                                         compressionDataSizeMb = 2,
                                         compressionIterations =
-                                                100, // FIXED WORK PER CORE: Target ~1.5-2.0s
+                                                3000, // INCREASED: Target ~15s execution (was 100)
                                         monteCarloSamples = 15_000_000,
                                         jsonDataSizeMb = 1,
                                         nqueensSize = 10
