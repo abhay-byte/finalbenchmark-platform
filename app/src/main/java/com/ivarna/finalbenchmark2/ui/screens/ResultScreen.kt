@@ -27,8 +27,8 @@ import com.ivarna.finalbenchmark2.ui.theme.FinalBenchmark2Theme
 import com.ivarna.finalbenchmark2.ui.theme.GruvboxDarkAccent
 import com.ivarna.finalbenchmark2.ui.viewmodels.RankingItem
 import com.ivarna.finalbenchmark2.utils.DeviceInfoCollector
-import com.ivarna.finalbenchmark2.utils.GpuInfoUtils
 import com.ivarna.finalbenchmark2.utils.GpuInfoState
+import com.ivarna.finalbenchmark2.utils.GpuInfoUtils
 import com.ivarna.finalbenchmark2.utils.formatBytes
 import java.text.SimpleDateFormat
 import java.util.*
@@ -106,24 +106,26 @@ fun ResultScreen(
                     // Get GPU info using GpuInfoUtils
                     val gpuInfoUtils = GpuInfoUtils(context)
                     val gpuInfoState = runBlocking { gpuInfoUtils.getGpuInfo() }
-                    
+
                     var gpuName = "Unknown"
                     var gpuVendor = "Unknown"
                     var gpuDriver = "Unknown"
                     var vulkanSupported = false
                     var vulkanVersion: String? = null
-                    
+
                     if (gpuInfoState is GpuInfoState.Success) {
                         val gpuInfo = gpuInfoState.gpuInfo
                         gpuName = gpuInfo.basicInfo.name
                         gpuVendor = gpuInfo.basicInfo.vendor
                         gpuDriver = gpuInfo.basicInfo.openGLVersion
                         vulkanSupported = gpuInfo.vulkanInfo?.supported ?: false
-                        vulkanVersion = if (vulkanSupported) {
-                            gpuInfo.vulkanInfo?.apiVersion ?: gpuInfo.basicInfo.vulkanVersion
-                        } else {
-                            null
-                        }
+                        vulkanVersion =
+                                if (vulkanSupported) {
+                                    gpuInfo.vulkanInfo?.apiVersion
+                                            ?: gpuInfo.basicInfo.vulkanVersion
+                                } else {
+                                    null
+                                }
                     }
 
                     val deviceSummary =
@@ -398,8 +400,12 @@ fun SummaryTab(summary: BenchmarkSummary) {
                         )
                         SummaryInfoRow("Name", device.gpuName)
                         SummaryInfoRow("Vendor", device.gpuVendor)
-                        SummaryInfoRow("Driver", device.gpuDriver)
-
+                        LongSummaryInfoRow("OpenGL ES", device.gpuDriver)
+                        if (device.vulkanSupported) {
+                            LongSummaryInfoRow("Vulkan", device.vulkanVersion ?: "Supported")
+                        } else {
+                            SummaryInfoRow("Vulkan", "Not Supported")
+                        }
                         Divider(modifier = Modifier.padding(vertical = 12.dp))
 
                         // Battery Info
@@ -448,6 +454,24 @@ fun SummaryInfoRow(label: String, value: String) {
             horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Text(text = label, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(
+                text = value,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurface
+        )
+    }
+}
+
+@Composable
+fun LongSummaryInfoRow(label: String, value: String) {
+    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+        Text(
+                text = label,
+                fontSize = 13.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = 2.dp)
+        )
         Text(
                 text = value,
                 fontSize = 13.sp,
