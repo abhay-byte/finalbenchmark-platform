@@ -50,6 +50,36 @@ data class BenchmarkSummary(
         val performanceMetricsJson: String = ""
 )
 
+// Scaling factors for converting performance (ops/s) to score
+// These must match the factors in KotlinBenchmarkManager.kt
+private val SINGLE_CORE_FACTORS =
+        mapOf(
+                "Prime Generation" to 4.61e-6,
+                "Fibonacci Recursive" to 0.58e-6,
+                "Matrix Multiplication" to 1.965e-8,
+                "Hash Computing" to 3.57e-5,
+                "String Sorting" to 2.52e-7,
+                "Ray Tracing" to 3.89e-6,
+                "Compression" to 2.135e-8,
+                "Monte Carlo π" to 0.79e-6,
+                "JSON Parsing" to 2.235e-6,
+                "N-Queens" to 2.16e-7
+        )
+
+private val MULTI_CORE_FACTORS =
+        mapOf(
+                "Prime Generation" to 4.88e-6,
+                "Fibonacci Recursive" to 4.5e-7,
+                "Matrix Multiplication" to 1.045e-8,
+                "Hash Computing" to 1.99e-5,
+                "String Sorting" to 2.87e-7,
+                "Ray Tracing" to 4.545e-5,
+                "Compression" to 2.28e-8,
+                "Monte Carlo π" to 0.94e-6,
+                "JSON Parsing" to 2.405e-6,
+                "N-Queens" to 2.48e-7
+        )
+
 @OptIn(
         ExperimentalMaterial3Api::class,
         androidx.compose.foundation.ExperimentalFoundationApi::class
@@ -189,15 +219,24 @@ fun ResultScreen(
                                         deviceSummary = deviceSummary,
                                         timestamp = System.currentTimeMillis(),
                                         // Handle performance_metrics - could be string or object
-                                        performanceMetricsJson = run {
-                                                val metricsValue = jsonObject.opt("performance_metrics")
-                                                when {
-                                                        metricsValue == null -> "{}"
-                                                        metricsValue is String -> metricsValue.ifBlank { "{}" }
-                                                        metricsValue is org.json.JSONObject -> metricsValue.toString()
-                                                        else -> metricsValue.toString()
+                                        performanceMetricsJson =
+                                                run {
+                                                        val metricsValue =
+                                                                jsonObject.opt(
+                                                                        "performance_metrics"
+                                                                )
+                                                        when {
+                                                                metricsValue == null -> "{}"
+                                                                metricsValue is String ->
+                                                                        metricsValue.ifBlank {
+                                                                                "{}"
+                                                                        }
+                                                                metricsValue is
+                                                                        org.json.JSONObject ->
+                                                                        metricsValue.toString()
+                                                                else -> metricsValue.toString()
+                                                        }
                                                 }
-                                        }
                                 )
                         } catch (e: Exception) {
                                 Log.e("ResultScreen", "Error parsing summary JSON: ${e.message}", e)
@@ -697,6 +736,14 @@ fun BenchmarkResultItem(result: BenchmarkResult) {
         val mopsPerSecond = result.opsPerSecond / 1_000_000.0
         val timeInSeconds = result.executionTimeMs / 1000.0
 
+        // Determine if this is a single-core or multi-core benchmark
+        val isSingleCore = result.name.startsWith("Single-Core")
+        val scalingFactors = if (isSingleCore) SINGLE_CORE_FACTORS else MULTI_CORE_FACTORS
+
+        // Calculate individual score: opsPerSecond * scalingFactor
+        val individualScore =
+                scalingFactors[cleanName]?.let { factor -> result.opsPerSecond * factor } ?: 0.0
+
         Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors =
@@ -728,6 +775,19 @@ fun BenchmarkResultItem(result: BenchmarkResult) {
                                                 fontSize = 13.sp,
                                                 fontWeight = FontWeight.Medium,
                                                 color = MaterialTheme.colorScheme.primary
+                                        )
+                                }
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Text(
+                                                text = "Score",
+                                                fontSize = 11.sp,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                        Text(
+                                                text = String.format("%.2f", individualScore),
+                                                fontSize = 13.sp,
+                                                fontWeight = FontWeight.Medium,
+                                                color = MaterialTheme.colorScheme.secondary
                                         )
                                 }
                                 Column(horizontalAlignment = Alignment.End) {

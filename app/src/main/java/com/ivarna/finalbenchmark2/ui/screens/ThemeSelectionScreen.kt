@@ -301,7 +301,7 @@ fun ThemeSelectionScreen(
                                 onNextClicked()
 
                                 // Wait for navigation state to save/animation to start
-                                delay(175)
+                                delay(200)
 
                                 // Apply the selected theme by recreating activity
                                 if (activity is com.ivarna.finalbenchmark2.MainActivity) {

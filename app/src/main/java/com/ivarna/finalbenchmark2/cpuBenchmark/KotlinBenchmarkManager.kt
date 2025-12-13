@@ -26,31 +26,31 @@ class KotlinBenchmarkManager {
                 // Raw opsPerSecond is in ops/s, UI displays as Mops/s (divide by 1e6)
                 private val SINGLE_CORE_FACTORS =
                         mapOf(
-                                "Prime Generation" to 9.22e-6, // 20 / 2.17e6 ops/s
-                                "Fibonacci Recursive" to 1.16e-6, // 20 / 17.23e6 ops/s
-                                "Matrix Multiplication" to 3.93e-8, // 20 / 508.85e6 ops/s
-                                "Hash Computing" to 7.14e-5, // 20 / 0.28e6 ops/s
-                                "String Sorting" to 5.04e-7, // 20 / 39.65e6 ops/s
-                                "Ray Tracing" to 7.78e-6, // 20 / 2.57e6 ops/s
-                                "Compression" to 4.27e-8, // 20 / 468.69e6 ops/s
-                                "Monte Carlo" to 1.58e-6, // 20 / 12.68e6 ops/s
-                                "JSON Parsing" to 4.47e-6, // 20 / 4.47e6 ops/s
-                                "N-Queens" to 4.31e-7 // 20 / 46.36e6 ops/s
+                                "Prime Generation" to 4.61e-6, // 20 / 2.17e6 ops/s
+                                "Fibonacci Recursive" to 0.58e-6, // 20 / 17.23e6 ops/s
+                                "Matrix Multiplication" to 1.965e-8, // 20 / 508.85e6 ops/s
+                                "Hash Computing" to 3.57e-5, // 20 / 0.28e6 ops/s
+                                "String Sorting" to 2.52e-7, // 20 / 39.65e6 ops/s
+                                "Ray Tracing" to 3.89e-6, // 20 / 2.57e6 ops/s
+                                "Compression" to 2.135e-8, // 20 / 468.69e6 ops/s
+                                "Monte Carlo" to 0.79e-6, // 20 / 12.68e6 ops/s
+                                "JSON Parsing" to 2.235e-6, // 20 / 4.47e6 ops/s
+                                "N-Queens" to 2.16e-7 // 20 / 46.36e6 ops/s
                         )
 
                 // Multi-core factors: Target ~80 per benchmark for total ~800
                 private val MULTI_CORE_FACTORS =
                         mapOf(
-                                "Prime Generation" to 9.76e-6, // 80 / 8.20e6 ops/s
-                                "Fibonacci Recursive" to 9.02e-7, // 80 / 88.64e6 ops/s
-                                "Matrix Multiplication" to 2.09e-8, // 80 / 3826.63e6 ops/s
-                                "Hash Computing" to 3.92e-5, // 80 / 2.04e6 ops/s
-                                "String Sorting" to 5.74e-7, // 80 / 139.33e6 ops/s
-                                "Ray Tracing" to 9.09e-5, // 80 / 0.88e6 ops/s
-                                "Compression" to 4.56e-8, // 80 / 1755.67e6 ops/s
-                                "Monte Carlo" to 1.88e-6, // 80 / 42.49e6 ops/s
-                                "JSON Parsing" to 4.81e-6, // 80 / 16.62e6 ops/s
-                                "N-Queens" to 4.96e-7 // 80 / 161.21e6 ops/s
+                                "Prime Generation" to 4.88e-6, // 80 / 8.20e6 ops/s
+                                "Fibonacci Recursive" to 4.5e-7, // 80 / 88.64e6 ops/s
+                                "Matrix Multiplication" to 1.045e-8, // 80 / 3826.63e6 ops/s
+                                "Hash Computing" to 1.99e-5, // 80 / 2.04e6 ops/s
+                                "String Sorting" to 2.87e-7, // 80 / 139.33e6 ops/s
+                                "Ray Tracing" to 4.545e-5, // 80 / 0.88e6 ops/s
+                                "Compression" to 2.28e-8, // 80 / 1755.67e6 ops/s
+                                "Monte Carlo" to 0.94e-6, // 80 / 42.49e6 ops/s
+                                "JSON Parsing" to 2.405e-6, // 80 / 16.62e6 ops/s
+                                "N-Queens" to 2.48e-7 // 80 / 161.21e6 ops/s
                         )
         }
 
