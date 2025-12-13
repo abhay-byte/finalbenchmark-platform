@@ -55,30 +55,30 @@ data class BenchmarkSummary(
 // These must match the factors in KotlinBenchmarkManager.kt
 private val SINGLE_CORE_FACTORS =
         mapOf(
-                BenchmarkName.PRIME_GENERATION to 4.61e-6,
-                BenchmarkName.FIBONACCI_ITERATIVE to 0.58e-6,
-                BenchmarkName.MATRIX_MULTIPLICATION to 1.965e-8,
-                BenchmarkName.HASH_COMPUTING to 3.57e-5,
-                BenchmarkName.STRING_SORTING to 2.52e-7,
-                BenchmarkName.RAY_TRACING to 3.89e-6,
-                BenchmarkName.COMPRESSION to 2.135e-8,
-                BenchmarkName.MONTE_CARLO to 0.79e-6,
-                BenchmarkName.JSON_PARSING to 2.235e-6,
-                BenchmarkName.N_QUEENS to 2.16e-7
+                BenchmarkName.PRIME_GENERATION to 6.78e-6,
+                BenchmarkName.FIBONACCI_ITERATIVE to 0.836e-6, // 20 / 23.94e6
+                BenchmarkName.MATRIX_MULTIPLICATION to 3.640e-8,   // 20 / 549.52e6 ops/s        BenchmarkName.HASH_COMPUTING to 2.70e-5,          // 20 / 0.74e6
+                BenchmarkName.HASH_COMPUTING to 5.714e-5, 
+                BenchmarkName.STRING_SORTING to 3.09e-7, // 20 / 64.71e6
+                BenchmarkName.RAY_TRACING to 7.63e-6, // 20 / 2.62e6
+                BenchmarkName.COMPRESSION to 2.82e-8, // 20 / 709.46e6
+                BenchmarkName.MONTE_CARLO to 1.11e-6, // 20 / 18.05e6
+                BenchmarkName.JSON_PARSING to 2.79e-6, // 20 / 7.16e6
+                BenchmarkName.N_QUEENS to 2.83e-7 // 20 / 70.83e6
         )
 
 private val MULTI_CORE_FACTORS =
         mapOf(
-                BenchmarkName.PRIME_GENERATION to 4.88e-6,
-                BenchmarkName.FIBONACCI_ITERATIVE to 4.5e-7,
-                BenchmarkName.MATRIX_MULTIPLICATION to 1.045e-8,
-                BenchmarkName.HASH_COMPUTING to 1.99e-5,
-                BenchmarkName.STRING_SORTING to 2.87e-7,
-                BenchmarkName.RAY_TRACING to 4.545e-5,
-                BenchmarkName.COMPRESSION to 2.28e-8,
-                BenchmarkName.MONTE_CARLO to 0.94e-6,
-                BenchmarkName.JSON_PARSING to 2.405e-6,
-                BenchmarkName.N_QUEENS to 2.48e-7
+                BenchmarkName.PRIME_GENERATION to 8.77e-6, // 100 / 11.40e6
+                BenchmarkName.FIBONACCI_ITERATIVE to 8.57e-7, // 100 / 116.71e6
+                BenchmarkName.MATRIX_MULTIPLICATION to 1.80e-8, // 100 / 5563.97e6
+                BenchmarkName.HASH_COMPUTING to 3.40e-5, // 100 / 2.94e6
+                BenchmarkName.STRING_SORTING to 5.70e-7, // 100 / 175.43e6
+                BenchmarkName.RAY_TRACING to 1.91e-5, // 100 / 5.24e6
+                BenchmarkName.COMPRESSION to 4.27e-8, // 100 / 2342.86e6
+                BenchmarkName.MONTE_CARLO to 1.49e-6, // 100 / 67.21e6
+                BenchmarkName.JSON_PARSING to 4.26e-6, // 100 / 23.45e6
+                BenchmarkName.N_QUEENS to 4.01e-7 // 100 / 249.28e6
         )
 
 @OptIn(
@@ -226,17 +226,37 @@ fun ResultScreen(
                                                                 jsonObject.opt(
                                                                         "performance_metrics"
                                                                 )
-                                                        when {
-                                                                metricsValue == null -> "{}"
-                                                                metricsValue is String ->
-                                                                        metricsValue.ifBlank {
-                                                                                "{}"
-                                                                        }
-                                                                metricsValue is
-                                                                        org.json.JSONObject ->
-                                                                        metricsValue.toString()
-                                                                else -> metricsValue.toString()
-                                                        }
+                                                        Log.d(
+                                                                "ResultScreen",
+                                                                "performance_metrics type: ${metricsValue?.javaClass?.simpleName}"
+                                                        )
+                                                        Log.d(
+                                                                "ResultScreen",
+                                                                "performance_metrics value: $metricsValue"
+                                                        )
+
+                                                        val result =
+                                                                when {
+                                                                        metricsValue == null -> "{}"
+                                                                        metricsValue is String ->
+                                                                                metricsValue
+                                                                                        .ifBlank {
+                                                                                                "{}"
+                                                                                        }
+                                                                        metricsValue is
+                                                                                org.json.JSONObject ->
+                                                                                metricsValue
+                                                                                        .toString()
+                                                                        else ->
+                                                                                metricsValue
+                                                                                        .toString()
+                                                                }
+
+                                                        Log.d(
+                                                                "ResultScreen",
+                                                                "Final performanceMetricsJson: ${result.take(200)}"
+                                                        )
+                                                        result
                                                 }
                                 )
                         } catch (e: Exception) {

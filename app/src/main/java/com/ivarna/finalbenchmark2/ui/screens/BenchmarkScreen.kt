@@ -215,68 +215,6 @@ fun BenchmarkScreen(
                 }
         }
 
-        // ADDITIONAL COMPLETION DETECTION: Watch for 100% progress
-        LaunchedEffect(uiState.progress) {
-                if (uiState.progress >= 1.0f && !uiState.isRunning) {
-                        Log.d("BenchmarkScreen", "Detected 100% completion via progress monitoring")
-                        // Double-check that we have results
-                        uiState.benchmarkResults?.let { results ->
-                                Log.d(
-                                        "BenchmarkScreen",
-                                        "Found benchmark results, creating navigation JSON..."
-                                )
-                                fun sanitize(value: Double): Double =
-                                        when {
-                                                value.isInfinite() -> 0.0
-                                                value.isNaN() -> 0.0
-                                                else -> value
-                                        }
-
-                                val summaryData =
-                                        mapOf(
-                                                "single_core_score" to
-                                                        sanitize(results.singleCoreScore),
-                                                "multi_core_score" to
-                                                        sanitize(results.multiCoreScore),
-                                                "final_score" to
-                                                        sanitize(results.finalWeightedScore),
-                                                "normalized_score" to
-                                                        sanitize(results.normalizedScore),
-                                                "rating" to
-                                                        determineRating(results.normalizedScore),
-                                                "detailed_results" to
-                                                        results.detailedResults.map { result ->
-                                                                mapOf(
-                                                                        "name" to result.name,
-                                                                        "executionTimeMs" to
-                                                                                sanitize(
-                                                                                        result.executionTimeMs
-                                                                                ),
-                                                                        "opsPerSecond" to
-                                                                                sanitize(
-                                                                                        result.opsPerSecond
-                                                                                ),
-                                                                        "isValid" to result.isValid,
-                                                                        "metricsJson" to
-                                                                                result.metricsJson
-                                                                )
-                                                        }
-                                        )
-
-                                val gson = com.google.gson.Gson()
-                                val summaryJson = gson.toJson(summaryData)
-
-                                Log.d(
-                                        "BenchmarkScreen",
-                                        "Progress-based navigation: Calling onBenchmarkEnd and onBenchmarkComplete..."
-                                )
-                                onBenchmarkEnd?.invoke()
-                                onBenchmarkComplete(summaryJson)
-                                Log.d("BenchmarkScreen", "Progress-based navigation triggered!")
-                        }
-                }
-        }
-
         // Start on load
         LaunchedEffect(Unit) {
                 onBenchmarkStart?.invoke()
@@ -322,12 +260,13 @@ fun BenchmarkScreen(
                                                 modifier = Modifier.padding(vertical = 8.dp)
                                         ) {
                                                 // Map backend value to user-friendly display
-                                                val workloadDisplay = when (uiState.workloadPreset) {
-                                                        "slow" -> "Low Accuracy - Fastest"
-                                                        "mid" -> "Mid Accuracy - Fast"
-                                                        "flagship" -> "High Accuracy - Slow"
-                                                        else -> uiState.workloadPreset
-                                                }
+                                                val workloadDisplay =
+                                                        when (uiState.workloadPreset) {
+                                                                "slow" -> "Low Accuracy - Fastest"
+                                                                "mid" -> "Mid Accuracy - Fast"
+                                                                "flagship" -> "High Accuracy - Slow"
+                                                                else -> uiState.workloadPreset
+                                                        }
                                                 Text(
                                                         text = "Workload: $workloadDisplay",
                                                         style = MaterialTheme.typography.labelLarge,

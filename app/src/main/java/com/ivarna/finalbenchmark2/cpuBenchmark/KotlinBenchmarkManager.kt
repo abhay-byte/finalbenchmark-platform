@@ -24,36 +24,35 @@ class KotlinBenchmarkManager {
                 // CONSOLIDATED: Single source of truth for scaling factors
                 // Target: Single-core ~200, Multi-core ~800 (each benchmark contributes ~20/~80)
                 // Raw opsPerSecond is in ops/s, UI displays as Mops/s (divide by 1e6)
-                private val SINGLE_CORE_FACTORS =
-                        mapOf(
-                                BenchmarkName.PRIME_GENERATION to 4.61e-6, // 20 / 2.17e6 ops/s
-                                BenchmarkName.FIBONACCI_ITERATIVE to 0.58e-6, // 20 / 17.23e6 ops/s
-                                BenchmarkName.MATRIX_MULTIPLICATION to
-                                        1.965e-8, // 20 / 508.85e6 ops/s
-                                BenchmarkName.HASH_COMPUTING to 3.57e-5, // 20 / 0.28e6 ops/s
-                                BenchmarkName.STRING_SORTING to 2.52e-7, // 20 / 39.65e6 ops/s
-                                BenchmarkName.RAY_TRACING to 3.89e-6, // 20 / 2.57e6 ops/s
-                                BenchmarkName.COMPRESSION to 2.135e-8, // 20 / 468.69e6 ops/s
-                                BenchmarkName.MONTE_CARLO to 0.79e-6, // 20 / 12.68e6 ops/s
-                                BenchmarkName.JSON_PARSING to 2.235e-6, // 20 / 4.47e6 ops/s
-                                BenchmarkName.N_QUEENS to 2.16e-7 // 20 / 46.36e6 ops/s
-                        )
+ private val SINGLE_CORE_FACTORS =
+    mapOf(
+        BenchmarkName.PRIME_GENERATION to 6.78e-6,
+        BenchmarkName.FIBONACCI_ITERATIVE to 0.836e-6,    // 20 / 23.94e6
+        BenchmarkName.MATRIX_MULTIPLICATION to 3.640e-8,   // 20 / 549.52e6 ops/s        BenchmarkName.HASH_COMPUTING to 2.70e-5,          // 20 / 0.74e6
+        BenchmarkName.HASH_COMPUTING to 5.714e-5,          // 20 / 0.35e6 ops/s        BenchmarkName.RAY_TRACING to 7.63e-6,             // 20 / 2.62e6
+        BenchmarkName.COMPRESSION to 2.82e-8,            // 20 / 709.46e6
+        BenchmarkName.MONTE_CARLO to 1.11e-6,             // 20 / 18.05e6
+        BenchmarkName.JSON_PARSING to 2.79e-6,            // 20 / 7.16e6
+        BenchmarkName.N_QUEENS to 2.83e-7                 // 20 / 70.83e6
+    )
 
-                // Multi-core factors: Target ~80 per benchmark for total ~800
-                private val MULTI_CORE_FACTORS =
-                        mapOf(
-                                BenchmarkName.PRIME_GENERATION to 4.88e-6, // 80 / 8.20e6 ops/s
-                                BenchmarkName.FIBONACCI_ITERATIVE to 4.5e-7, // 80 / 88.64e6 ops/s
-                                BenchmarkName.MATRIX_MULTIPLICATION to
-                                        1.045e-8, // 80 / 3826.63e6 ops/s
-                                BenchmarkName.HASH_COMPUTING to 1.99e-5, // 80 / 2.04e6 ops/s
-                                BenchmarkName.STRING_SORTING to 2.87e-7, // 80 / 139.33e6 ops/s
-                                BenchmarkName.RAY_TRACING to 4.545e-5, // 80 / 0.88e6 ops/s
-                                BenchmarkName.COMPRESSION to 2.28e-8, // 80 / 1755.67e6 ops/s
-                                BenchmarkName.MONTE_CARLO to 0.94e-6, // 80 / 42.49e6 ops/s
-                                BenchmarkName.JSON_PARSING to 2.405e-6, // 80 / 16.62e6 ops/s
-                                BenchmarkName.N_QUEENS to 2.48e-7 // 80 / 161.21e6 ops/s
-                        )
+
+private val MULTI_CORE_FACTORS =
+    mapOf(
+        BenchmarkName.PRIME_GENERATION to 8.77e-6,        // 100 / 11.40e6
+        BenchmarkName.FIBONACCI_ITERATIVE to 8.57e-7,     // 100 / 116.71e6
+        BenchmarkName.MATRIX_MULTIPLICATION to 1.80e-8,  // 100 / 5563.97e6
+        BenchmarkName.HASH_COMPUTING to 3.40e-5,          // 100 / 2.94e6
+        BenchmarkName.STRING_SORTING to 5.70e-7,          // 100 / 175.43e6
+        BenchmarkName.RAY_TRACING to 1.91e-5,             // 100 / 5.24e6
+        BenchmarkName.COMPRESSION to 4.27e-8,            // 100 / 2342.86e6
+        BenchmarkName.MONTE_CARLO to 1.49e-6,             // 100 / 67.21e6
+        BenchmarkName.JSON_PARSING to 4.26e-6,            // 100 / 23.45e6
+        BenchmarkName.N_QUEENS to 4.01e-7                 // 100 / 249.28e6
+    )
+
+
+
         }
 
         suspend fun runAllBenchmarks(deviceTier: String = "Flagship") {

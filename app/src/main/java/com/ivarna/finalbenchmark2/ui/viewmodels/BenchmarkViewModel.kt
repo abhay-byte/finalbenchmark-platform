@@ -436,6 +436,14 @@ class BenchmarkViewModel(
                                         "Benchmark completed! State set to Completed with results: ${finalResults.finalWeightedScore}"
                                 )
 
+                                // Stop performance monitoring and capture metrics BEFORE creating
+                                // summary JSON
+                                lastPerformanceMetricsJson = performanceMonitor.stop()
+                                Log.d(
+                                        "BenchmarkViewModel",
+                                        "Captured performance metrics: ${lastPerformanceMetricsJson.take(100)}..."
+                                )
+
                                 // DIRECT CALLBACK: Call the completion callback directly to ensure
                                 // navigation works
                                 if (onBenchmarkCompleteCallback != null) {
@@ -447,6 +455,30 @@ class BenchmarkViewModel(
                                                                 value.isInfinite() -> 0.0
                                                                 value.isNaN() -> 0.0
                                                                 else -> value
+                                                        }
+
+                                                // Parse performance metrics JSON to avoid
+                                                // double-escaping by Gson
+                                                val performanceMetricsObject =
+                                                        try {
+                                                                if (lastPerformanceMetricsJson
+                                                                                .isNotBlank() &&
+                                                                                lastPerformanceMetricsJson !=
+                                                                                        "{}"
+                                                                ) {
+                                                                        JSONObject(
+                                                                                lastPerformanceMetricsJson
+                                                                        )
+                                                                } else {
+                                                                        JSONObject()
+                                                                }
+                                                        } catch (e: Exception) {
+                                                                Log.e(
+                                                                        "BenchmarkViewModel",
+                                                                        "Error parsing performance metrics JSON",
+                                                                        e
+                                                                )
+                                                                JSONObject()
                                                         }
 
                                                 val summaryData =
@@ -474,6 +506,8 @@ class BenchmarkViewModel(
                                                                 "rating" to
                                                                         "Good", // Simple rating for
                                                                 // now
+                                                                "performance_metrics" to
+                                                                        performanceMetricsObject, // FIXED: Use JSONObject instead of String
                                                                 "detailed_results" to
                                                                         finalResults.detailedResults
                                                                                 .map { result ->
@@ -501,7 +535,7 @@ class BenchmarkViewModel(
 
                                                 Log.d(
                                                         "BenchmarkViewModel",
-                                                        "Calling onBenchmarkCompleteCallback with JSON: $summaryJson"
+                                                        "Calling onBenchmarkCompleteCallback with JSON (includes performance_metrics): ${summaryJson.take(200)}..."
                                                 )
                                                 onBenchmarkCompleteCallback!!(summaryJson)
                                                 Log.d(
@@ -524,12 +558,6 @@ class BenchmarkViewModel(
 
                                 // Save to database with performance metrics
                                 if (historyRepository != null) {
-                                        // Stop performance monitoring and capture metrics
-                                        lastPerformanceMetricsJson = performanceMonitor.stop()
-                                        Log.d(
-                                                "BenchmarkViewModel",
-                                                "Captured performance metrics: ${lastPerformanceMetricsJson.take(100)}..."
-                                        )
 
                                         saveCpuBenchmarkResult(
                                                 finalResults,
