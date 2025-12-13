@@ -184,6 +184,7 @@ fun HistoryScreen(viewModel: HistoryViewModel, navController: NavController) {
                                                 "multi_core_score": ${result.multiCoreScore},
                                                 "final_score": ${result.finalScore},
                                                 "normalized_score": ${result.normalizedScore},
+                                                "timestamp": ${result.timestamp},
                                                 "performance_metrics": ${if (result.performanceMetricsJson.isNotEmpty()) result.performanceMetricsJson else "{}"},
                                                 "detailed_results": $detailedResultsJson
                                             }

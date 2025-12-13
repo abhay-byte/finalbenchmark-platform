@@ -506,6 +506,8 @@ class BenchmarkViewModel(
                                                                 "rating" to
                                                                         "Good", // Simple rating for
                                                                 // now
+                                                                "timestamp" to
+                                                                        System.currentTimeMillis(), // Capture completion time
                                                                 "performance_metrics" to
                                                                         performanceMetricsObject, // FIXED: Use JSONObject instead of String
                                                                 "detailed_results" to
@@ -535,7 +537,11 @@ class BenchmarkViewModel(
 
                                                 Log.d(
                                                         "BenchmarkViewModel",
-                                                        "Calling onBenchmarkCompleteCallback with JSON (includes performance_metrics): ${summaryJson.take(200)}..."
+                                                        "Timestamp in summaryData: ${summaryData["timestamp"]}"
+                                                )
+                                                Log.d(
+                                                        "BenchmarkViewModel",
+                                                        "Calling onBenchmarkCompleteCallback with JSON (includes performance_metrics): ${summaryJson.take(300)}..."
                                                 )
                                                 onBenchmarkCompleteCallback!!(summaryJson)
                                                 Log.d(

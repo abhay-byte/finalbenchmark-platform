@@ -1,5 +1,6 @@
 package com.ivarna.finalbenchmark2.ui.screens
 
+import android.content.Intent
 import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -13,6 +14,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -53,32 +56,36 @@ data class BenchmarkSummary(
 
 // Scaling factors for converting performance (ops/s) to score
 // These must match the factors in KotlinBenchmarkManager.kt
+// Single-core factors: Target 20 points per benchmark for total ~200
 private val SINGLE_CORE_FACTORS =
         mapOf(
-                BenchmarkName.PRIME_GENERATION to 6.78e-6,
-                BenchmarkName.FIBONACCI_ITERATIVE to 0.836e-6, // 20 / 23.94e6
-                BenchmarkName.MATRIX_MULTIPLICATION to 3.640e-8,   // 20 / 549.52e6 ops/s        BenchmarkName.HASH_COMPUTING to 2.70e-5,          // 20 / 0.74e6
-                BenchmarkName.HASH_COMPUTING to 5.714e-5, 
-                BenchmarkName.STRING_SORTING to 3.09e-7, // 20 / 64.71e6
-                BenchmarkName.RAY_TRACING to 7.63e-6, // 20 / 2.62e6
-                BenchmarkName.COMPRESSION to 2.82e-8, // 20 / 709.46e6
-                BenchmarkName.MONTE_CARLO to 1.11e-6, // 20 / 18.05e6
-                BenchmarkName.JSON_PARSING to 2.79e-6, // 20 / 7.16e6
-                BenchmarkName.N_QUEENS to 2.83e-7 // 20 / 70.83e6
+                // Target 20 / Performance (Mops/s)
+                BenchmarkName.PRIME_GENERATION to 3.597e-6, // 20 / 2.90e6 ops/s
+                BenchmarkName.FIBONACCI_ITERATIVE to 8.730e-7, // 20 / 22.91 Mops/s
+                BenchmarkName.MATRIX_MULTIPLICATION to 3.1293e-8, // 20 / 639.13 Mops/s
+                BenchmarkName.HASH_COMPUTING to 5.556e-5, // 20 / 0.36 Mops/s
+                BenchmarkName.STRING_SORTING to 3.204e-7, // 20 / 62.42 Mops/s
+                BenchmarkName.RAY_TRACING to 9.804e-6, // 20 / 2.04 Mops/s
+                BenchmarkName.COMPRESSION to 3.0486e-8, // 20 / 656.04 Mops/s
+                BenchmarkName.MONTE_CARLO to 1.225e-6, // 20 / 16.32 Mops/s
+                BenchmarkName.JSON_PARSING to 3.120e-6, // 20 / 6.41 Mops/s
+                BenchmarkName.N_QUEENS to 4.022e-7 // 20 / 66.18e6 ops/s
         )
 
+// Multi-core factors: Target 100 points per benchmark for total ~1000
 private val MULTI_CORE_FACTORS =
         mapOf(
-                BenchmarkName.PRIME_GENERATION to 8.77e-6, // 100 / 11.40e6
-                BenchmarkName.FIBONACCI_ITERATIVE to 8.57e-7, // 100 / 116.71e6
-                BenchmarkName.MATRIX_MULTIPLICATION to 1.80e-8, // 100 / 5563.97e6
-                BenchmarkName.HASH_COMPUTING to 3.40e-5, // 100 / 2.94e6
-                BenchmarkName.STRING_SORTING to 5.70e-7, // 100 / 175.43e6
-                BenchmarkName.RAY_TRACING to 1.91e-5, // 100 / 5.24e6
-                BenchmarkName.COMPRESSION to 4.27e-8, // 100 / 2342.86e6
-                BenchmarkName.MONTE_CARLO to 1.49e-6, // 100 / 67.21e6
-                BenchmarkName.JSON_PARSING to 4.26e-6, // 100 / 23.45e6
-                BenchmarkName.N_QUEENS to 4.01e-7 // 100 / 249.28e6
+                // Target 100 / Performance (Mops/s)
+                BenchmarkName.PRIME_GENERATION to 6.501e-6, // 100 / 11.11e6 ops/s
+                BenchmarkName.FIBONACCI_ITERATIVE to 8.428e-7, // 100 / 118.65 Mops/s
+                BenchmarkName.MATRIX_MULTIPLICATION to 1.8299e-8, // 100 / 5464.89 Mops/s
+                BenchmarkName.HASH_COMPUTING to 3.086e-5, // 100 / 3.24 Mops/s
+                BenchmarkName.STRING_SORTING to 6.008e-7, // 100 / 166.44 Mops/s
+                BenchmarkName.RAY_TRACING to 1.859e-5, // 100 / 5.38 Mops/s
+                BenchmarkName.COMPRESSION to 4.3929e-8, // 100 / 2276.42 Mops/s
+                BenchmarkName.MONTE_CARLO to 1.593e-6, // 100 / 62.76 Mops/s
+                BenchmarkName.JSON_PARSING to 4.373e-6, // 100 / 22.87 Mops/s
+                BenchmarkName.N_QUEENS to 4.313e-7 // 100 / 231.84e6 ops/s
         )
 
 @OptIn(
@@ -90,9 +97,14 @@ fun ResultScreen(
         summaryJson: String,
         onRunAgain: () -> Unit,
         onBackToHome: () -> Unit,
-        onShowDetailedResults: (List<BenchmarkResult>) -> Unit = {}
+        onShowDetailedResults: (List<BenchmarkResult>) -> Unit = {},
+        historyRepository: com.ivarna.finalbenchmark2.data.repository.HistoryRepository? = null,
+        benchmarkId: Long? = null
 ) {
         val context = LocalContext.current
+        val coroutineScope = rememberCoroutineScope()
+        var showDeleteDialog by remember { mutableStateOf(false) }
+
         val summary =
                 remember(summaryJson) {
                         try {
@@ -218,7 +230,11 @@ fun ResultScreen(
                                                 jsonObject.optDouble("normalized_score", 0.0),
                                         detailedResults = detailedResults,
                                         deviceSummary = deviceSummary,
-                                        timestamp = System.currentTimeMillis(),
+                                        timestamp =
+                                                jsonObject.optLong(
+                                                        "timestamp",
+                                                        System.currentTimeMillis()
+                                                ),
                                         // Handle performance_metrics - could be string or object
                                         performanceMetricsJson =
                                                 run {
@@ -272,9 +288,87 @@ fun ResultScreen(
                         }
                 }
 
+        // Share benchmark function
+        val shareBenchmark: () -> Unit = {
+                val deviceInfo = DeviceInfoCollector.getDeviceInfo(context)
+
+                val shareText = buildString {
+                        appendLine("FinalBenchmark Result")
+                        appendLine(
+                                "Date: ${SimpleDateFormat("MMM dd, yyyy hh:mm a", Locale.getDefault()).format(Date(summary.timestamp))}"
+                        )
+                        appendLine()
+                        appendLine("Device Info:")
+                        appendLine("SOC: ${summary.deviceSummary?.cpuName ?: deviceInfo.socName}")
+                        appendLine("CPU: ${deviceInfo.manufacturer} ${deviceInfo.deviceModel}")
+                        appendLine(
+                                "Cores: ${deviceInfo.totalCores} (${deviceInfo.bigCores} big + ${deviceInfo.smallCores} small)"
+                        )
+                        val gpuName =
+                                summary.deviceSummary?.gpuName?.takeIf {
+                                        it.isNotBlank() && it != "Unknown GPU"
+                                }
+                                        ?: deviceInfo.gpuModel
+                        val gpuVendor =
+                                summary.deviceSummary?.gpuVendor?.takeIf { it.isNotBlank() }
+                                        ?: deviceInfo.gpuVendor
+                        appendLine("GPU: $gpuName ($gpuVendor)")
+                        appendLine()
+                        appendLine("Scores:")
+                        appendLine("Total Score: ${String.format("%.0f", summary.finalScore)}")
+                        appendLine("Normalized: ${String.format("%.0f", summary.normalizedScore)}")
+                        appendLine()
+                        appendLine("CPU Scores:")
+                        appendLine("Single-Core: ${String.format("%.0f", summary.singleCoreScore)}")
+                        appendLine("Multi-Core: ${String.format("%.0f", summary.multiCoreScore)}")
+                        appendLine()
+                        appendLine("Individual Details:")
+                        summary.detailedResults.forEach { result ->
+                                // Calculate score for this benchmark
+                                val benchmarkName =
+                                        BenchmarkName.values().find {
+                                                result.name.contains(
+                                                        it.displayName(),
+                                                        ignoreCase = true
+                                                )
+                                        }
+                                val factor =
+                                        if (result.name.startsWith("Single-Core")) {
+                                                SINGLE_CORE_FACTORS[benchmarkName] ?: 0.0
+                                        } else {
+                                                MULTI_CORE_FACTORS[benchmarkName] ?: 0.0
+                                        }
+                                val score = result.opsPerSecond * factor
+
+                                appendLine(
+                                        "- ${result.name}: ${String.format(Locale.US, "%.2f", result.opsPerSecond / 1_000_000.0)} Mops/s | Score: ${String.format("%.2f", score)} (${String.format(Locale.US, "%.2f s", result.executionTimeMs / 1000.0)})"
+                                )
+                        }
+                }
+
+                val sendIntent =
+                        Intent(Intent.ACTION_SEND).apply {
+                                putExtra(Intent.EXTRA_TEXT, shareText)
+                                type = "text/plain"
+                        }
+                val shareIntent = Intent.createChooser(sendIntent, "Share Benchmark")
+                context.startActivity(shareIntent)
+        }
+
+        // Delete benchmark function
+        val deleteBenchmark: () -> Unit = {
+                benchmarkId?.let { id ->
+                        historyRepository?.let { repo ->
+                                coroutineScope.launch {
+                                        repo.deleteResultById(id)
+                                        onBackToHome()
+                                }
+                        }
+                }
+        }
+
         val tabs = remember { listOf("Summary", "Detailed Data", "Rankings") }
         val pagerState = rememberPagerState(pageCount = { tabs.size }, initialPage = 0)
-        val coroutineScope = rememberCoroutineScope()
 
         // Format timestamp
         val formattedTimestamp =
@@ -312,6 +406,30 @@ fun ResultScreen(
                                                         )
                                                 }
                                         },
+                                        actions = {
+                                                IconButton(onClick = { shareBenchmark() }) {
+                                                        Icon(
+                                                                imageVector = Icons.Rounded.Share,
+                                                                contentDescription = "Share"
+                                                        )
+                                                }
+                                                if (historyRepository != null && benchmarkId != null
+                                                ) {
+                                                        IconButton(
+                                                                onClick = {
+                                                                        showDeleteDialog = true
+                                                                }
+                                                        ) {
+                                                                Icon(
+                                                                        imageVector =
+                                                                                Icons.Rounded
+                                                                                        .Delete,
+                                                                        contentDescription =
+                                                                                "Delete"
+                                                                )
+                                                        }
+                                                }
+                                        },
                                         colors =
                                                 TopAppBarDefaults.topAppBarColors(
                                                         containerColor =
@@ -322,6 +440,31 @@ fun ResultScreen(
                                 )
                         }
                 ) { paddingValues ->
+                        // Delete confirmation dialog
+                        if (showDeleteDialog) {
+                                AlertDialog(
+                                        onDismissRequest = { showDeleteDialog = false },
+                                        title = { Text("Delete Benchmark") },
+                                        text = {
+                                                Text(
+                                                        "Are you sure you want to delete this benchmark? This action cannot be undone."
+                                                )
+                                        },
+                                        confirmButton = {
+                                                TextButton(
+                                                        onClick = {
+                                                                deleteBenchmark()
+                                                                showDeleteDialog = false
+                                                        }
+                                                ) { Text("Delete") }
+                                        },
+                                        dismissButton = {
+                                                TextButton(onClick = { showDeleteDialog = false }) {
+                                                        Text("Cancel")
+                                                }
+                                        }
+                                )
+                        }
                         Column(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
                                 // Tab Row
                                 TabRow(

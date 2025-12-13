@@ -24,35 +24,37 @@ class KotlinBenchmarkManager {
                 // CONSOLIDATED: Single source of truth for scaling factors
                 // Target: Single-core ~200, Multi-core ~800 (each benchmark contributes ~20/~80)
                 // Raw opsPerSecond is in ops/s, UI displays as Mops/s (divide by 1e6)
- private val SINGLE_CORE_FACTORS =
+// Single-core factors: Target 20 points per benchmark for total ~200
+private val SINGLE_CORE_FACTORS =
     mapOf(
-        BenchmarkName.PRIME_GENERATION to 6.78e-6,
-        BenchmarkName.FIBONACCI_ITERATIVE to 0.836e-6,    // 20 / 23.94e6
-        BenchmarkName.MATRIX_MULTIPLICATION to 3.640e-8,   // 20 / 549.52e6 ops/s        BenchmarkName.HASH_COMPUTING to 2.70e-5,          // 20 / 0.74e6
-        BenchmarkName.HASH_COMPUTING to 5.714e-5,          // 20 / 0.35e6 ops/s        BenchmarkName.RAY_TRACING to 7.63e-6,             // 20 / 2.62e6
-        BenchmarkName.COMPRESSION to 2.82e-8,            // 20 / 709.46e6
-        BenchmarkName.MONTE_CARLO to 1.11e-6,             // 20 / 18.05e6
-        BenchmarkName.JSON_PARSING to 2.79e-6,            // 20 / 7.16e6
-        BenchmarkName.N_QUEENS to 2.83e-7                 // 20 / 70.83e6
+        // Target 20 / Performance (Mops/s)
+BenchmarkName.PRIME_GENERATION to 3.597e-6,        // 20 / 2.90e6 ops/s        
+BenchmarkName.FIBONACCI_ITERATIVE to 8.730e-7,     // 20 / 22.91 Mops/s
+        BenchmarkName.MATRIX_MULTIPLICATION to 3.1293e-8,  // 20 / 639.13 Mops/s
+        BenchmarkName.HASH_COMPUTING to 5.556e-5,          // 20 / 0.36 Mops/s
+        BenchmarkName.STRING_SORTING to 3.204e-7,          // 20 / 62.42 Mops/s
+        BenchmarkName.RAY_TRACING to 9.804e-6,             // 20 / 2.04 Mops/s
+        BenchmarkName.COMPRESSION to 3.0486e-8,            // 20 / 656.04 Mops/s
+        BenchmarkName.MONTE_CARLO to 1.225e-6,             // 20 / 16.32 Mops/s
+        BenchmarkName.JSON_PARSING to 3.120e-6,            // 20 / 6.41 Mops/s
+BenchmarkName.N_QUEENS to 4.022e-7                 // 20 / 66.18e6 ops/s
     )
 
-
+// Multi-core factors: Target 100 points per benchmark for total ~1000
 private val MULTI_CORE_FACTORS =
     mapOf(
-        BenchmarkName.PRIME_GENERATION to 8.77e-6,        // 100 / 11.40e6
-        BenchmarkName.FIBONACCI_ITERATIVE to 8.57e-7,     // 100 / 116.71e6
-        BenchmarkName.MATRIX_MULTIPLICATION to 1.80e-8,  // 100 / 5563.97e6
-        BenchmarkName.HASH_COMPUTING to 3.40e-5,          // 100 / 2.94e6
-        BenchmarkName.STRING_SORTING to 5.70e-7,          // 100 / 175.43e6
-        BenchmarkName.RAY_TRACING to 1.91e-5,             // 100 / 5.24e6
-        BenchmarkName.COMPRESSION to 4.27e-8,            // 100 / 2342.86e6
-        BenchmarkName.MONTE_CARLO to 1.49e-6,             // 100 / 67.21e6
-        BenchmarkName.JSON_PARSING to 4.26e-6,            // 100 / 23.45e6
-        BenchmarkName.N_QUEENS to 4.01e-7                 // 100 / 249.28e6
+        // Target 100 / Performance (Mops/s)
+BenchmarkName.PRIME_GENERATION to 6.501e-6,        // 100 / 11.11e6 ops/s        
+BenchmarkName.FIBONACCI_ITERATIVE to 8.428e-7,     // 100 / 118.65 Mops/s
+        BenchmarkName.MATRIX_MULTIPLICATION to 1.8299e-8,  // 100 / 5464.89 Mops/s
+        BenchmarkName.HASH_COMPUTING to 3.086e-5,          // 100 / 3.24 Mops/s
+        BenchmarkName.STRING_SORTING to 6.008e-7,          // 100 / 166.44 Mops/s
+        BenchmarkName.RAY_TRACING to 1.859e-5,             // 100 / 5.38 Mops/s
+        BenchmarkName.COMPRESSION to 4.3929e-8,            // 100 / 2276.42 Mops/s
+        BenchmarkName.MONTE_CARLO to 1.593e-6,             // 100 / 62.76 Mops/s
+        BenchmarkName.JSON_PARSING to 4.373e-6,            // 100 / 22.87 Mops/s
+BenchmarkName.N_QUEENS to 4.313e-7                 // 100 / 231.84e6 ops/s
     )
-
-
-
         }
 
         suspend fun runAllBenchmarks(deviceTier: String = "Flagship") {
@@ -617,14 +619,14 @@ private val MULTI_CORE_FACTORS =
                                                 5_000, // CACHE-RESIDENT: Explicit control - target
                                         // ~1.0-2.0s
                                         rayTracingIterations =
-                                                100, // FIXED: Increased to 2000 to reach ~5s
+                                                800, // FIXED: Increased to 2000 to reach ~5s
                                         // target
                                         // duration for better thermal testing
                                         rayTracingResolution =
                                                 Pair(
-                                                        100, // REVERTED: 256×256 caused thermal
+                                                        256, // REVERTED: 256×256 caused thermal
                                                         // throttling
-                                                        100
+                                                        256
                                                 ), // OPTIMIZED: Increased from 100×100 to 256×256
                                         // for better multi-core scaling
                                         rayTracingDepth = 5,

@@ -155,6 +155,8 @@ fun BenchmarkScreen(
                                                                 determineRating(
                                                                         results.normalizedScore
                                                                 ),
+                                                        "timestamp" to
+                                                                System.currentTimeMillis(), // Capture completion time
                                                         "performance_metrics" to performanceMetrics,
                                                         "detailed_results" to
                                                                 results.detailedResults.map { result
@@ -182,6 +184,14 @@ fun BenchmarkScreen(
                                         val gson = com.google.gson.Gson()
                                         val summaryJson = gson.toJson(summaryData)
 
+                                        Log.d(
+                                                "BenchmarkScreen",
+                                                "Timestamp in summaryData: ${summaryData["timestamp"]}"
+                                        )
+                                        Log.d(
+                                                "BenchmarkScreen",
+                                                "Summary JSON (first 500 chars): ${summaryJson.take(500)}"
+                                        )
                                         Log.d(
                                                 "BenchmarkScreen",
                                                 "Calling onBenchmarkEnd and onBenchmarkComplete..."
