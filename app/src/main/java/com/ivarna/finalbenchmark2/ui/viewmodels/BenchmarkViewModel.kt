@@ -106,6 +106,11 @@ class BenchmarkViewModel(
         private val powerUtils = PowerUtils(application)
         private val tempUtils = TemperatureUtils(application)
 
+        // Performance monitor for collecting metrics during benchmark run
+        private val performanceMonitor =
+                com.ivarna.finalbenchmark2.utils.PerformanceMonitor(application)
+        private var lastPerformanceMetricsJson: String = ""
+
         // Job for system monitoring to prevent multiple instances
         private var monitorJob: Job? = null
 
@@ -218,6 +223,9 @@ class BenchmarkViewModel(
                                         "BenchmarkViewModel",
                                         "Using Android thread priority for performance optimization"
                                 )
+
+                                // Start performance monitoring for metrics collection
+                                performanceMonitor.start()
 
                                 // 1. RESET STATE - Initialize test states
                                 val testNames =
@@ -514,9 +522,19 @@ class BenchmarkViewModel(
                                         )
                                 }
 
-                                // Save to database
+                                // Save to database with performance metrics
                                 if (historyRepository != null) {
-                                        saveCpuBenchmarkResult(finalResults)
+                                        // Stop performance monitoring and capture metrics
+                                        lastPerformanceMetricsJson = performanceMonitor.stop()
+                                        Log.d(
+                                                "BenchmarkViewModel",
+                                                "Captured performance metrics: ${lastPerformanceMetricsJson.take(100)}..."
+                                        )
+
+                                        saveCpuBenchmarkResult(
+                                                finalResults,
+                                                lastPerformanceMetricsJson
+                                        )
                                 }
 
                                 // Stop foreground service
@@ -702,7 +720,7 @@ class BenchmarkViewModel(
                 runBenchmarks(preset)
         }
 
-        fun saveCpuBenchmarkResult(results: BenchmarkResults) {
+        fun saveCpuBenchmarkResult(results: BenchmarkResults, performanceMetricsJson: String = "") {
                 if (historyRepository == null) {
                         Log.w(
                                 "BenchmarkViewModel",
@@ -728,7 +746,9 @@ class BenchmarkViewModel(
                                                         singleCoreScore = results.singleCoreScore,
                                                         multiCoreScore = results.multiCoreScore,
                                                         normalizedScore = results.normalizedScore,
-                                                        detailedResultsJson = detailedJson
+                                                        detailedResultsJson = detailedJson,
+                                                        performanceMetricsJson =
+                                                                performanceMetricsJson
                                                 )
 
                                 // 3. Helper to extract scores safely from the new
