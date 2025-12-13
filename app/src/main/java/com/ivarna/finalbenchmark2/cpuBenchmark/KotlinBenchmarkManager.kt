@@ -26,31 +26,33 @@ class KotlinBenchmarkManager {
                 // Raw opsPerSecond is in ops/s, UI displays as Mops/s (divide by 1e6)
                 private val SINGLE_CORE_FACTORS =
                         mapOf(
-                                "Prime Generation" to 4.61e-6, // 20 / 2.17e6 ops/s
-                                "Fibonacci Iterative" to 0.58e-6, // 20 / 17.23e6 ops/s
-                                "Matrix Multiplication" to 1.965e-8, // 20 / 508.85e6 ops/s
-                                "Hash Computing" to 3.57e-5, // 20 / 0.28e6 ops/s
-                                "String Sorting" to 2.52e-7, // 20 / 39.65e6 ops/s
-                                "Ray Tracing" to 3.89e-6, // 20 / 2.57e6 ops/s
-                                "Compression" to 2.135e-8, // 20 / 468.69e6 ops/s
-                                "Monte Carlo" to 0.79e-6, // 20 / 12.68e6 ops/s
-                                "JSON Parsing" to 2.235e-6, // 20 / 4.47e6 ops/s
-                                "N-Queens" to 2.16e-7 // 20 / 46.36e6 ops/s
+                                BenchmarkName.PRIME_GENERATION to 4.61e-6, // 20 / 2.17e6 ops/s
+                                BenchmarkName.FIBONACCI_ITERATIVE to 0.58e-6, // 20 / 17.23e6 ops/s
+                                BenchmarkName.MATRIX_MULTIPLICATION to
+                                        1.965e-8, // 20 / 508.85e6 ops/s
+                                BenchmarkName.HASH_COMPUTING to 3.57e-5, // 20 / 0.28e6 ops/s
+                                BenchmarkName.STRING_SORTING to 2.52e-7, // 20 / 39.65e6 ops/s
+                                BenchmarkName.RAY_TRACING to 3.89e-6, // 20 / 2.57e6 ops/s
+                                BenchmarkName.COMPRESSION to 2.135e-8, // 20 / 468.69e6 ops/s
+                                BenchmarkName.MONTE_CARLO to 0.79e-6, // 20 / 12.68e6 ops/s
+                                BenchmarkName.JSON_PARSING to 2.235e-6, // 20 / 4.47e6 ops/s
+                                BenchmarkName.N_QUEENS to 2.16e-7 // 20 / 46.36e6 ops/s
                         )
 
                 // Multi-core factors: Target ~80 per benchmark for total ~800
                 private val MULTI_CORE_FACTORS =
                         mapOf(
-                                "Prime Generation" to 4.88e-6, // 80 / 8.20e6 ops/s
-                                "Fibonacci Iterative" to 4.5e-7, // 80 / 88.64e6 ops/s
-                                "Matrix Multiplication" to 1.045e-8, // 80 / 3826.63e6 ops/s
-                                "Hash Computing" to 1.99e-5, // 80 / 2.04e6 ops/s
-                                "String Sorting" to 2.87e-7, // 80 / 139.33e6 ops/s
-                                "Ray Tracing" to 4.545e-5, // 80 / 0.88e6 ops/s
-                                "Compression" to 2.28e-8, // 80 / 1755.67e6 ops/s
-                                "Monte Carlo" to 0.94e-6, // 80 / 42.49e6 ops/s
-                                "JSON Parsing" to 2.405e-6, // 80 / 16.62e6 ops/s
-                                "N-Queens" to 2.48e-7 // 80 / 161.21e6 ops/s
+                                BenchmarkName.PRIME_GENERATION to 4.88e-6, // 80 / 8.20e6 ops/s
+                                BenchmarkName.FIBONACCI_ITERATIVE to 4.5e-7, // 80 / 88.64e6 ops/s
+                                BenchmarkName.MATRIX_MULTIPLICATION to
+                                        1.045e-8, // 80 / 3826.63e6 ops/s
+                                BenchmarkName.HASH_COMPUTING to 1.99e-5, // 80 / 2.04e6 ops/s
+                                BenchmarkName.STRING_SORTING to 2.87e-7, // 80 / 139.33e6 ops/s
+                                BenchmarkName.RAY_TRACING to 4.545e-5, // 80 / 0.88e6 ops/s
+                                BenchmarkName.COMPRESSION to 2.28e-8, // 80 / 1755.67e6 ops/s
+                                BenchmarkName.MONTE_CARLO to 0.94e-6, // 80 / 42.49e6 ops/s
+                                BenchmarkName.JSON_PARSING to 2.405e-6, // 80 / 16.62e6 ops/s
+                                BenchmarkName.N_QUEENS to 2.48e-7 // 80 / 161.21e6 ops/s
                         )
         }
 
@@ -82,14 +84,14 @@ class KotlinBenchmarkManager {
                 )
 
                 // Fibonacci Iterative
-                emitBenchmarkStart("Single-Core Fibonacci Iterative", "SINGLE")
+                emitBenchmarkStart(BenchmarkName.FIBONACCI_ITERATIVE.singleCore(), "SINGLE")
                 val singleFibResult =
-                        safeBenchmarkRun("Single-Core Fibonacci Iterative") {
+                        safeBenchmarkRun(BenchmarkName.FIBONACCI_ITERATIVE.singleCore()) {
                                 SingleCoreBenchmarks.fibonacciRecursive(params)
                         }
                 singleResults.add(singleFibResult)
                 emitBenchmarkComplete(
-                        "Single-Core Fibonacci Iterative",
+                        BenchmarkName.FIBONACCI_ITERATIVE.singleCore(),
                         "SINGLE",
                         singleFibResult.executionTimeMs.toLong(),
                         singleFibResult.opsPerSecond
@@ -225,14 +227,14 @@ class KotlinBenchmarkManager {
                 )
 
                 // Fibonacci Iterative
-                emitBenchmarkStart("Multi-Core Fibonacci Iterative", "MULTI")
+                emitBenchmarkStart(BenchmarkName.FIBONACCI_ITERATIVE.multiCore(), "MULTI")
                 val multiFibResult =
-                        safeBenchmarkRun("Multi-Core Fibonacci Iterative") {
+                        safeBenchmarkRun(BenchmarkName.FIBONACCI_ITERATIVE.multiCore()) {
                                 MultiCoreBenchmarks.fibonacciRecursive(params)
                         }
                 multiResults.add(multiFibResult)
                 emitBenchmarkComplete(
-                        "Multi-Core Fibonacci Iterative",
+                        BenchmarkName.FIBONACCI_ITERATIVE.multiCore(),
                         "MULTI",
                         multiFibResult.executionTimeMs.toLong(),
                         multiFibResult.opsPerSecond
@@ -394,18 +396,16 @@ class KotlinBenchmarkManager {
                 // Calculate single-core score using weighted scoring
                 var calculatedSingleCoreScore = 0.0
                 for (result in singleResults) {
-                        val cleanName = result.name.replace("Single-Core ", "").trim()
-                        val factor =
-                                SINGLE_CORE_FACTORS[cleanName] ?: SINGLE_CORE_FACTORS.values.first()
+                        val benchmarkName = BenchmarkName.fromString(result.name)
+                        val factor = benchmarkName?.let { SINGLE_CORE_FACTORS[it] } ?: 0.0
                         calculatedSingleCoreScore += result.opsPerSecond * factor
                 }
 
                 // Calculate multi-core score using weighted scoring
                 var calculatedMultiCoreScore = 0.0
                 for (result in multiResults) {
-                        val cleanName = result.name.replace("Multi-Core ", "").trim()
-                        val factor =
-                                MULTI_CORE_FACTORS[cleanName] ?: MULTI_CORE_FACTORS.values.first()
+                        val benchmarkName = BenchmarkName.fromString(result.name)
+                        val factor = benchmarkName?.let { MULTI_CORE_FACTORS[it] } ?: 0.0
                         calculatedMultiCoreScore += result.opsPerSecond * factor
                 }
 

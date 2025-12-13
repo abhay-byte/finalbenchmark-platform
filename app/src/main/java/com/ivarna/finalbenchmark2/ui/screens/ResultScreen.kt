@@ -25,6 +25,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkName
 import com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkResult
 import com.ivarna.finalbenchmark2.ui.theme.FinalBenchmark2Theme
 import com.ivarna.finalbenchmark2.ui.theme.GruvboxDarkAccent
@@ -54,30 +55,30 @@ data class BenchmarkSummary(
 // These must match the factors in KotlinBenchmarkManager.kt
 private val SINGLE_CORE_FACTORS =
         mapOf(
-                "Prime Generation" to 4.61e-6,
-                "Fibonacci Iterative" to 0.58e-6,
-                "Matrix Multiplication" to 1.965e-8,
-                "Hash Computing" to 3.57e-5,
-                "String Sorting" to 2.52e-7,
-                "Ray Tracing" to 3.89e-6,
-                "Compression" to 2.135e-8,
-                "Monte Carlo π" to 0.79e-6,
-                "JSON Parsing" to 2.235e-6,
-                "N-Queens" to 2.16e-7
+                BenchmarkName.PRIME_GENERATION to 4.61e-6,
+                BenchmarkName.FIBONACCI_ITERATIVE to 0.58e-6,
+                BenchmarkName.MATRIX_MULTIPLICATION to 1.965e-8,
+                BenchmarkName.HASH_COMPUTING to 3.57e-5,
+                BenchmarkName.STRING_SORTING to 2.52e-7,
+                BenchmarkName.RAY_TRACING to 3.89e-6,
+                BenchmarkName.COMPRESSION to 2.135e-8,
+                BenchmarkName.MONTE_CARLO to 0.79e-6,
+                BenchmarkName.JSON_PARSING to 2.235e-6,
+                BenchmarkName.N_QUEENS to 2.16e-7
         )
 
 private val MULTI_CORE_FACTORS =
         mapOf(
-                "Prime Generation" to 4.88e-6,
-                "Fibonacci Iterative" to 4.5e-7,
-                "Matrix Multiplication" to 1.045e-8,
-                "Hash Computing" to 1.99e-5,
-                "String Sorting" to 2.87e-7,
-                "Ray Tracing" to 4.545e-5,
-                "Compression" to 2.28e-8,
-                "Monte Carlo π" to 0.94e-6,
-                "JSON Parsing" to 2.405e-6,
-                "N-Queens" to 2.48e-7
+                BenchmarkName.PRIME_GENERATION to 4.88e-6,
+                BenchmarkName.FIBONACCI_ITERATIVE to 4.5e-7,
+                BenchmarkName.MATRIX_MULTIPLICATION to 1.045e-8,
+                BenchmarkName.HASH_COMPUTING to 1.99e-5,
+                BenchmarkName.STRING_SORTING to 2.87e-7,
+                BenchmarkName.RAY_TRACING to 4.545e-5,
+                BenchmarkName.COMPRESSION to 2.28e-8,
+                BenchmarkName.MONTE_CARLO to 0.94e-6,
+                BenchmarkName.JSON_PARSING to 2.405e-6,
+                BenchmarkName.N_QUEENS to 2.48e-7
         )
 
 @OptIn(
@@ -740,9 +741,10 @@ fun BenchmarkResultItem(result: BenchmarkResult) {
         val isSingleCore = result.name.startsWith("Single-Core")
         val scalingFactors = if (isSingleCore) SINGLE_CORE_FACTORS else MULTI_CORE_FACTORS
 
-        // Calculate individual score: opsPerSecond * scalingFactor
+        // Calculate individual score using enum-based lookup
+        val benchmarkName = BenchmarkName.fromString(result.name)
         val individualScore =
-                scalingFactors[cleanName]?.let { factor -> result.opsPerSecond * factor } ?: 0.0
+                benchmarkName?.let { scalingFactors[it]?.times(result.opsPerSecond) } ?: 0.0
 
         Card(
                 modifier = Modifier.fillMaxWidth(),
