@@ -437,6 +437,33 @@ fun HistoryDetailScreen(
 
                                 // 4. Detailed Test Results
                                 items(detailedResults) { result -> TestResultRow(result = result) }
+
+                                // 5. Performance Monitoring Section (if data available)
+                                item {
+                                        val performanceMetrics =
+                                                resultState?.benchmarkResult?.performanceMetricsJson
+                                                        ?: ""
+                                        if (performanceMetrics.isNotEmpty() &&
+                                                        performanceMetrics != "{}"
+                                        ) {
+                                                Spacer(modifier = Modifier.height(16.dp))
+                                                Text(
+                                                        text = "Performance Metrics",
+                                                        style =
+                                                                MaterialTheme.typography
+                                                                        .headlineSmall,
+                                                        fontWeight = FontWeight.Bold,
+                                                        modifier =
+                                                                Modifier.padding(
+                                                                        start = 8.dp,
+                                                                        bottom = 8.dp
+                                                                )
+                                                )
+                                                PerformanceMonitoringSection(
+                                                        performanceMetricsJson = performanceMetrics
+                                                )
+                                        }
+                                }
                         }
                 }
                         ?: run {
