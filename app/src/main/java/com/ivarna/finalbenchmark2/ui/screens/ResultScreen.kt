@@ -5,10 +5,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ExpandLess
@@ -742,8 +742,9 @@ fun BenchmarkResultItem(result: BenchmarkResult) {
 
 @Composable
 private fun RankingsTab(finalScore: Double, singleCoreScore: Double, multiCoreScore: Double) {
+        val scrollState = androidx.compose.foundation.rememberScrollState()
         Column(
-                modifier = Modifier.fillMaxSize().padding(16.dp),
+                modifier = Modifier.fillMaxSize().padding(16.dp).verticalScroll(scrollState),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
                 // Final Score Bar at top
@@ -1266,10 +1267,10 @@ private fun RankingsTab(finalScore: Double, singleCoreScore: Double, multiCoreSc
                 )
 
                 // Rankings Content
-                LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
+                Column(
+                        modifier = Modifier.fillMaxWidth(),
                         verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) { items(rankedItems) { item -> RankingItemCard(item) } }
+                ) { rankedItems.forEach { item -> RankingItemCard(item) } }
         }
 }
 

@@ -79,9 +79,9 @@ fun ResultPowerGraph(
             elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-            // Title with duration
+            // Title
             Text(
-                    text = "Power Consumption (${durationSeconds}s benchmark)",
+                    text = "Power Consumption",
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface
             )
