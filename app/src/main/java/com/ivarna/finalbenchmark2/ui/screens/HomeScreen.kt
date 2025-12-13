@@ -682,7 +682,7 @@ fun HomeScreen(onStartBenchmark: (String) -> Unit, onNavigateToSettings: () -> U
                                         }
                                 }
 
-                                // Start CPU Benchmark Button
+                                // Start Benchmark Button
                                 Button(
                                         onClick = {
                                                 // Call optimizations before starting benchmark
@@ -714,7 +714,7 @@ fun HomeScreen(onStartBenchmark: (String) -> Unit, onNavigateToSettings: () -> U
                                         ) // Generic icon
                                         Spacer(modifier = Modifier.width(8.dp))
                                         Text(
-                                                text = "START CPU BENCHMARK",
+                                                text = "START BENCHMARK",
                                                 fontSize = 16.sp,
                                                 fontWeight = FontWeight.Bold,
                                                 letterSpacing = 1.sp
