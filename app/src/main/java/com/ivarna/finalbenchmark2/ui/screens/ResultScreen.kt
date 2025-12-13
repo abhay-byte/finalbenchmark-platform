@@ -188,8 +188,16 @@ fun ResultScreen(
                                         detailedResults = detailedResults,
                                         deviceSummary = deviceSummary,
                                         timestamp = System.currentTimeMillis(),
-                                        performanceMetricsJson =
-                                                jsonObject.optString("performance_metrics", "{}")
+                                        // Handle performance_metrics - could be string or object
+                                        performanceMetricsJson = run {
+                                                val metricsValue = jsonObject.opt("performance_metrics")
+                                                when {
+                                                        metricsValue == null -> "{}"
+                                                        metricsValue is String -> metricsValue.ifBlank { "{}" }
+                                                        metricsValue is org.json.JSONObject -> metricsValue.toString()
+                                                        else -> metricsValue.toString()
+                                                }
+                                        }
                                 )
                         } catch (e: Exception) {
                                 Log.e("ResultScreen", "Error parsing summary JSON: ${e.message}", e)

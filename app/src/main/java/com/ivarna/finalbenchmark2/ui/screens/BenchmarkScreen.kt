@@ -321,9 +321,15 @@ fun BenchmarkScreen(
                                                 tonalElevation = 2.dp,
                                                 modifier = Modifier.padding(vertical = 8.dp)
                                         ) {
+                                                // Map backend value to user-friendly display
+                                                val workloadDisplay = when (uiState.workloadPreset) {
+                                                        "slow" -> "Low Accuracy - Fastest"
+                                                        "mid" -> "Mid Accuracy - Fast"
+                                                        "flagship" -> "High Accuracy - Slow"
+                                                        else -> uiState.workloadPreset
+                                                }
                                                 Text(
-                                                        text =
-                                                                "Workload: ${uiState.workloadPreset}",
+                                                        text = "Workload: $workloadDisplay",
                                                         style = MaterialTheme.typography.labelLarge,
                                                         color =
                                                                 MaterialTheme.colorScheme
