@@ -17,6 +17,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -882,157 +884,377 @@ private fun RankingsTab(finalScore: Double, singleCoreScore: Double, multiCoreSc
                                 0
                         }
 
-                // Comparison Cards Row
-                Row(
+                // Modern Comparison Cards - Vertical Layout with Bar Graphs
+                Column(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                        // Beats X% devices card with circular progress
+                        // Performance Percentile Card with Bar Graph
                         Card(
-                                modifier = Modifier.weight(1f),
+                                modifier = Modifier.fillMaxWidth(),
                                 colors =
                                         CardDefaults.cardColors(
-                                                containerColor =
-                                                        MaterialTheme.colorScheme.secondaryContainer
-                                        )
+                                                containerColor = MaterialTheme.colorScheme.surface
+                                        ),
+                                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                         ) {
-                                Column(
-                                        modifier = Modifier.fillMaxWidth().padding(16.dp),
-                                        horizontalAlignment = Alignment.CenterHorizontally
-                                ) {
-                                        Box(
-                                                contentAlignment = Alignment.Center,
-                                                modifier = Modifier.size(80.dp)
+                                Column(modifier = Modifier.fillMaxWidth().padding(20.dp)) {
+                                        Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.SpaceBetween,
+                                                verticalAlignment = Alignment.CenterVertically
                                         ) {
-                                                CircularProgressIndicator(
-                                                        progress = { beatsPercentage / 100f },
-                                                        modifier = Modifier.size(80.dp),
-                                                        strokeWidth = 8.dp,
-                                                        color = MaterialTheme.colorScheme.primary,
-                                                        trackColor =
+                                                Text(
+                                                        text = "Performance Ranking",
+                                                        fontSize = 14.sp,
+                                                        fontWeight = FontWeight.Medium,
+                                                        color =
                                                                 MaterialTheme.colorScheme
-                                                                        .surfaceVariant
+                                                                        .onSurfaceVariant
                                                 )
                                                 Text(
                                                         text = "$beatsPercentage%",
-                                                        fontSize = 18.sp,
+                                                        fontSize = 24.sp,
                                                         fontWeight = FontWeight.Bold,
                                                         color = MaterialTheme.colorScheme.primary
                                                 )
                                         }
-                                        Spacer(modifier = Modifier.height(8.dp))
-                                        Text(
-                                                text = "Beats",
-                                                fontSize = 12.sp,
-                                                color =
-                                                        MaterialTheme.colorScheme
-                                                                .onSecondaryContainer
-                                        )
+
+                                        Spacer(modifier = Modifier.height(12.dp))
+
+                                        // Horizontal Bar Graph
+                                        Box(
+                                                modifier =
+                                                        Modifier.fillMaxWidth()
+                                                                .height(12.dp)
+                                                                .clip(RoundedCornerShape(6.dp))
+                                                                .background(
+                                                                        MaterialTheme.colorScheme
+                                                                                .surfaceVariant
+                                                                )
+                                        ) {
+                                                Box(
+                                                        modifier =
+                                                                Modifier.fillMaxHeight()
+                                                                        .fillMaxWidth(
+                                                                                beatsPercentage /
+                                                                                        100f
+                                                                        )
+                                                                        .clip(
+                                                                                RoundedCornerShape(
+                                                                                        6.dp
+                                                                                )
+                                                                        )
+                                                                        .background(
+                                                                                brush =
+                                                                                        Brush.horizontalGradient(
+                                                                                                colors =
+                                                                                                        listOf(
+                                                                                                                MaterialTheme
+                                                                                                                        .colorScheme
+                                                                                                                        .primary,
+                                                                                                                MaterialTheme
+                                                                                                                        .colorScheme
+                                                                                                                        .tertiary
+                                                                                                        )
+                                                                                        )
+                                                                        )
+                                                )
+                                        }
+
+                                        Spacer(modifier = Modifier.height(10.dp))
+
                                         Text(
                                                 text =
-                                                        "$devicesBeaten of ${totalDevices - 1} devices",
-                                                fontSize = 11.sp,
-                                                fontWeight = FontWeight.Medium,
-                                                color =
-                                                        MaterialTheme.colorScheme
-                                                                .onSecondaryContainer.copy(
-                                                                alpha = 0.7f
-                                                        )
+                                                        if (beatsPercentage >= 100) {
+                                                                "Your device outperforms all tested devices."
+                                                        } else if (beatsPercentage >= 75) {
+                                                                "Your device is in the top tier of performance."
+                                                        } else if (beatsPercentage >= 50) {
+                                                                "Your device performs above average."
+                                                        } else if (beatsPercentage >= 25) {
+                                                                "Your device has moderate performance."
+                                                        } else {
+                                                                "Your device has entry-level performance."
+                                                        },
+                                                fontSize = 13.sp,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                lineHeight = 18.sp
                                         )
                                 }
                         }
 
-                        // Better than next device card
-                        Card(
-                                modifier = Modifier.weight(1f),
-                                colors =
-                                        CardDefaults.cardColors(
-                                                containerColor =
-                                                        if (percentBetterThanNext > 0)
-                                                                MaterialTheme.colorScheme
-                                                                        .tertiaryContainer
-                                                        else
-                                                                MaterialTheme.colorScheme
-                                                                        .surfaceVariant
-                                        )
-                        ) {
-                                Column(
-                                        modifier = Modifier.fillMaxWidth().padding(16.dp),
-                                        horizontalAlignment = Alignment.CenterHorizontally
+                        // Speed Comparison Card with Bar Graph
+                        if (nextLowerDevice != null) {
+                                Card(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        colors =
+                                                CardDefaults.cardColors(
+                                                        containerColor =
+                                                                MaterialTheme.colorScheme.surface
+                                                ),
+                                        elevation =
+                                                CardDefaults.cardElevation(defaultElevation = 2.dp)
                                 ) {
-                                        if (nextLowerDevice != null && percentBetterThanNext > 0) {
-                                                Text(
-                                                        text = "+$percentBetterThanNext%",
-                                                        fontSize = 28.sp,
-                                                        fontWeight = FontWeight.Bold,
-                                                        color = MaterialTheme.colorScheme.tertiary
-                                                )
-                                                Spacer(modifier = Modifier.height(8.dp))
-                                                Text(
-                                                        text = "faster than",
-                                                        fontSize = 12.sp,
-                                                        color =
-                                                                MaterialTheme.colorScheme
-                                                                        .onTertiaryContainer
-                                                )
-                                                Text(
-                                                        text = nextLowerDevice.name,
-                                                        fontSize = 11.sp,
-                                                        fontWeight = FontWeight.Medium,
-                                                        color =
-                                                                MaterialTheme.colorScheme
-                                                                        .onTertiaryContainer.copy(
-                                                                        alpha = 0.7f
-                                                                ),
-                                                        textAlign = TextAlign.Center,
-                                                        maxLines = 2
-                                                )
-                                        } else if (userRank == rankedItems.size - 1) {
-                                                Text(text = "🏆", fontSize = 28.sp)
-                                                Spacer(modifier = Modifier.height(8.dp))
-                                                Text(
-                                                        text = "Top ranked!",
-                                                        fontSize = 12.sp,
-                                                        fontWeight = FontWeight.Medium,
-                                                        color =
-                                                                MaterialTheme.colorScheme
-                                                                        .onSurfaceVariant
-                                                )
-                                        } else {
+                                        Column(modifier = Modifier.fillMaxWidth().padding(20.dp)) {
+                                                Row(
+                                                        modifier = Modifier.fillMaxWidth(),
+                                                        horizontalArrangement =
+                                                                Arrangement.SpaceBetween,
+                                                        verticalAlignment =
+                                                                Alignment.CenterVertically
+                                                ) {
+                                                        Text(
+                                                                text = "Speed Advantage",
+                                                                fontSize = 14.sp,
+                                                                fontWeight = FontWeight.Medium,
+                                                                color =
+                                                                        MaterialTheme.colorScheme
+                                                                                .onSurfaceVariant
+                                                        )
+                                                        Text(
+                                                                text =
+                                                                        if (percentBetterThanNext >=
+                                                                                        0
+                                                                        )
+                                                                                "+$percentBetterThanNext%"
+                                                                        else
+                                                                                "$percentBetterThanNext%",
+                                                                fontSize = 24.sp,
+                                                                fontWeight = FontWeight.Bold,
+                                                                color =
+                                                                        if (percentBetterThanNext >=
+                                                                                        0
+                                                                        )
+                                                                                MaterialTheme
+                                                                                        .colorScheme
+                                                                                        .tertiary
+                                                                        else
+                                                                                MaterialTheme
+                                                                                        .colorScheme
+                                                                                        .error
+                                                        )
+                                                }
+
+                                                Spacer(modifier = Modifier.height(12.dp))
+
+                                                // Comparison Bar Graph - shows both devices
+                                                Column(
+                                                        verticalArrangement =
+                                                                Arrangement.spacedBy(6.dp)
+                                                ) {
+                                                        // Your device bar
+                                                        Row(
+                                                                modifier = Modifier.fillMaxWidth(),
+                                                                verticalAlignment =
+                                                                        Alignment.CenterVertically
+                                                        ) {
+                                                                Text(
+                                                                        text = "You",
+                                                                        fontSize = 11.sp,
+                                                                        color =
+                                                                                MaterialTheme
+                                                                                        .colorScheme
+                                                                                        .onSurfaceVariant,
+                                                                        modifier =
+                                                                                Modifier.width(
+                                                                                        40.dp
+                                                                                )
+                                                                )
+                                                                Box(
+                                                                        modifier =
+                                                                                Modifier.weight(1f)
+                                                                                        .height(
+                                                                                                8.dp
+                                                                                        )
+                                                                                        .clip(
+                                                                                                RoundedCornerShape(
+                                                                                                        4.dp
+                                                                                                )
+                                                                                        )
+                                                                                        .background(
+                                                                                                MaterialTheme
+                                                                                                        .colorScheme
+                                                                                                        .surfaceVariant
+                                                                                        )
+                                                                ) {
+                                                                        val userBarWidth =
+                                                                                if (finalScore >
+                                                                                                nextLowerDevice
+                                                                                                        .normalizedScore
+                                                                                )
+                                                                                        1f
+                                                                                else
+                                                                                        (finalScore /
+                                                                                                        nextLowerDevice
+                                                                                                                .normalizedScore
+                                                                                                                .toDouble())
+                                                                                                .toFloat()
+                                                                                                .coerceIn(
+                                                                                                        0f,
+                                                                                                        1f
+                                                                                                )
+                                                                        Box(
+                                                                                modifier =
+                                                                                        Modifier.fillMaxHeight()
+                                                                                                .fillMaxWidth(
+                                                                                                        userBarWidth
+                                                                                                )
+                                                                                                .clip(
+                                                                                                        RoundedCornerShape(
+                                                                                                                4.dp
+                                                                                                        )
+                                                                                                )
+                                                                                                .background(
+                                                                                                        MaterialTheme
+                                                                                                                .colorScheme
+                                                                                                                .primary
+                                                                                                )
+                                                                        )
+                                                                }
+                                                        }
+
+                                                        // Next device bar
+                                                        Row(
+                                                                modifier = Modifier.fillMaxWidth(),
+                                                                verticalAlignment =
+                                                                        Alignment.CenterVertically
+                                                        ) {
+                                                                Text(
+                                                                        text =
+                                                                                nextLowerDevice.name
+                                                                                        .take(4),
+                                                                        fontSize = 11.sp,
+                                                                        color =
+                                                                                MaterialTheme
+                                                                                        .colorScheme
+                                                                                        .onSurfaceVariant,
+                                                                        modifier =
+                                                                                Modifier.width(
+                                                                                        40.dp
+                                                                                )
+                                                                )
+                                                                Box(
+                                                                        modifier =
+                                                                                Modifier.weight(1f)
+                                                                                        .height(
+                                                                                                8.dp
+                                                                                        )
+                                                                                        .clip(
+                                                                                                RoundedCornerShape(
+                                                                                                        4.dp
+                                                                                                )
+                                                                                        )
+                                                                                        .background(
+                                                                                                MaterialTheme
+                                                                                                        .colorScheme
+                                                                                                        .surfaceVariant
+                                                                                        )
+                                                                ) {
+                                                                        val otherBarWidth =
+                                                                                if (nextLowerDevice
+                                                                                                .normalizedScore >=
+                                                                                                finalScore
+                                                                                )
+                                                                                        1f
+                                                                                else
+                                                                                        (nextLowerDevice
+                                                                                                        .normalizedScore /
+                                                                                                        finalScore)
+                                                                                                .toFloat()
+                                                                                                .coerceIn(
+                                                                                                        0f,
+                                                                                                        1f
+                                                                                                )
+                                                                        Box(
+                                                                                modifier =
+                                                                                        Modifier.fillMaxHeight()
+                                                                                                .fillMaxWidth(
+                                                                                                        otherBarWidth
+                                                                                                )
+                                                                                                .clip(
+                                                                                                        RoundedCornerShape(
+                                                                                                                4.dp
+                                                                                                        )
+                                                                                                )
+                                                                                                .background(
+                                                                                                        MaterialTheme
+                                                                                                                .colorScheme
+                                                                                                                .outline
+                                                                                                                .copy(
+                                                                                                                        alpha =
+                                                                                                                                0.6f
+                                                                                                                )
+                                                                                                )
+                                                                        )
+                                                                }
+                                                        }
+                                                }
+
+                                                Spacer(modifier = Modifier.height(10.dp))
+
                                                 Text(
                                                         text =
-                                                                "-${kotlin.math.abs(percentBetterThanNext)}%",
-                                                        fontSize = 28.sp,
-                                                        fontWeight = FontWeight.Bold,
-                                                        color = MaterialTheme.colorScheme.error
-                                                )
-                                                Spacer(modifier = Modifier.height(8.dp))
-                                                Text(
-                                                        text = "behind",
-                                                        fontSize = 12.sp,
+                                                                if (percentBetterThanNext > 0) {
+                                                                        "Your device is $percentBetterThanNext% faster than ${nextLowerDevice.name}."
+                                                                } else if (percentBetterThanNext < 0
+                                                                ) {
+                                                                        "Your device is ${kotlin.math.abs(percentBetterThanNext)}% slower than ${nextLowerDevice.name}."
+                                                                } else {
+                                                                        "Your device performs similarly to ${nextLowerDevice.name}."
+                                                                },
+                                                        fontSize = 13.sp,
                                                         color =
                                                                 MaterialTheme.colorScheme
-                                                                        .onSurfaceVariant
+                                                                        .onSurfaceVariant,
+                                                        lineHeight = 18.sp
                                                 )
-                                                Text(
-                                                        text = nextLowerDevice?.name
-                                                                        ?: "next device",
-                                                        fontSize = 11.sp,
-                                                        fontWeight = FontWeight.Medium,
-                                                        color =
+                                        }
+                                }
+                        } else if (userRank == 0) {
+                                // Top ranked - special card
+                                Card(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        colors =
+                                                CardDefaults.cardColors(
+                                                        containerColor =
                                                                 MaterialTheme.colorScheme
-                                                                        .onSurfaceVariant.copy(
-                                                                        alpha = 0.7f
-                                                                ),
-                                                        textAlign = TextAlign.Center,
-                                                        maxLines = 2
-                                                )
+                                                                        .primaryContainer
+                                                ),
+                                        elevation =
+                                                CardDefaults.cardElevation(defaultElevation = 2.dp)
+                                ) {
+                                        Row(
+                                                modifier = Modifier.fillMaxWidth().padding(20.dp),
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                                        ) {
+                                                Text(text = "🏆", fontSize = 32.sp)
+                                                Column {
+                                                        Text(
+                                                                text = "Top Performance!",
+                                                                fontSize = 16.sp,
+                                                                fontWeight = FontWeight.Bold,
+                                                                color =
+                                                                        MaterialTheme.colorScheme
+                                                                                .onPrimaryContainer
+                                                        )
+                                                        Text(
+                                                                text =
+                                                                        "Your device leads the performance rankings.",
+                                                                fontSize = 13.sp,
+                                                                color =
+                                                                        MaterialTheme.colorScheme
+                                                                                .onPrimaryContainer
+                                                                                .copy(alpha = 0.8f)
+                                                        )
+                                                }
                                         }
                                 }
                         }
                 }
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
                 // Rankings Content
                 LazyColumn(
