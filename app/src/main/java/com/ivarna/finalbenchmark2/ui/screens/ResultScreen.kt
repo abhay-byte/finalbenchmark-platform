@@ -55,7 +55,7 @@ data class BenchmarkSummary(
 private val SINGLE_CORE_FACTORS =
         mapOf(
                 "Prime Generation" to 4.61e-6,
-                "Fibonacci Recursive" to 0.58e-6,
+                "Fibonacci Iterative" to 0.58e-6,
                 "Matrix Multiplication" to 1.965e-8,
                 "Hash Computing" to 3.57e-5,
                 "String Sorting" to 2.52e-7,
@@ -69,7 +69,7 @@ private val SINGLE_CORE_FACTORS =
 private val MULTI_CORE_FACTORS =
         mapOf(
                 "Prime Generation" to 4.88e-6,
-                "Fibonacci Recursive" to 4.5e-7,
+                "Fibonacci Iterative" to 4.5e-7,
                 "Matrix Multiplication" to 1.045e-8,
                 "Hash Computing" to 1.99e-5,
                 "String Sorting" to 2.87e-7,
