@@ -1014,52 +1014,24 @@ private fun RankingsTab(finalScore: Double, singleCoreScore: Double, multiCoreSc
                 val hardcodedReferenceDevices =
                         listOf(
                                 RankingItem(
-                                        name = "Snapdragon 8 Elite",
-                                        normalizedScore = 1200,
-                                        singleCore = 2850,
-                                        multiCore = 10200,
-                                        isCurrentUser = false
-                                ),
-                                RankingItem(
                                         name = "Snapdragon 8 Gen 3",
-                                        normalizedScore = 900,
-                                        singleCore = 2600,
-                                        multiCore = 8500,
-                                        isCurrentUser = false
-                                ),
-                                RankingItem(
-                                        name = "Snapdragon 8s Gen 3",
-                                        normalizedScore = 750,
-                                        singleCore = 2400,
-                                        multiCore = 7200,
-                                        isCurrentUser = false
-                                ),
-                                RankingItem(
-                                        name = "Snapdragon 7+ Gen 3",
-                                        normalizedScore = 720,
-                                        singleCore = 2350,
-                                        multiCore = 7000,
+                                        normalizedScore = 820,
+                                        singleCore = 200,
+                                        multiCore = 1154,
                                         isCurrentUser = false
                                 ),
                                 RankingItem(
                                         name = "Dimensity 8300",
-                                        normalizedScore = 650,
-                                        singleCore = 2200,
-                                        multiCore = 6500,
-                                        isCurrentUser = false
-                                ),
-                                RankingItem(
-                                        name = "Helio G95",
-                                        normalizedScore = 250,
-                                        singleCore = 1100,
-                                        multiCore = 3500,
+                                        normalizedScore = 641,
+                                        singleCore = 160,
+                                        multiCore = 900,
                                         isCurrentUser = false
                                 ),
                                 RankingItem(
                                         name = "Snapdragon 845",
-                                        normalizedScore = 200,
-                                        singleCore = 900,
-                                        multiCore = 3000,
+                                        normalizedScore = 197,
+                                        singleCore = 52,
+                                        multiCore = 275,
                                         isCurrentUser = false
                                 )
                         )

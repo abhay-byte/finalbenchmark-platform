@@ -11,12 +11,12 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 data class RankingItem(
-    val rank: Int = 0,
-    val name: String,
-    val normalizedScore: Int,
-    val singleCore: Int,
-    val multiCore: Int,
-    val isCurrentUser: Boolean = false
+        val rank: Int = 0,
+        val name: String,
+        val normalizedScore: Int,
+        val singleCore: Int,
+        val multiCore: Int,
+        val isCurrentUser: Boolean = false
 )
 
 sealed interface RankingScreenState {
@@ -25,9 +25,7 @@ sealed interface RankingScreenState {
     object Error : RankingScreenState
 }
 
-class RankingViewModel(
-    private val repository: HistoryRepository
-) : ViewModel() {
+class RankingViewModel(private val repository: HistoryRepository) : ViewModel() {
 
     private val _selectedCategory = MutableStateFlow("CPU")
     val selectedCategory: StateFlow<String> = _selectedCategory.asStateFlow()
@@ -35,57 +33,30 @@ class RankingViewModel(
     private val _screenState = MutableStateFlow<RankingScreenState>(RankingScreenState.Loading)
     val screenState: StateFlow<RankingScreenState> = _screenState.asStateFlow()
 
-    private val hardcodedReferenceDevices = listOf(
-        RankingItem(
-            name = "Snapdragon 8 Elite",
-            normalizedScore = 1200,
-            singleCore = 2850,
-            multiCore = 10200,
-            isCurrentUser = false
-        ),
-        RankingItem(
-            name = "Snapdragon 8 Gen 3",
-            normalizedScore = 900,
-            singleCore = 2600,
-            multiCore = 8500,
-            isCurrentUser = false
-        ),
-        RankingItem(
-            name = "Snapdragon 8s Gen 3",
-            normalizedScore = 750,
-            singleCore = 2400,
-            multiCore = 7200,
-            isCurrentUser = false
-        ),
-        RankingItem(
-            name = "Snapdragon 7+ Gen 3",
-            normalizedScore = 720,
-            singleCore = 2350,
-            multiCore = 7000,
-            isCurrentUser = false
-        ),
-        RankingItem(
-            name = "Dimensity 8300",
-            normalizedScore = 650,
-            singleCore = 2200,
-            multiCore = 6500,
-            isCurrentUser = false
-        ),
-        RankingItem(
-            name = "Helio G95",
-            normalizedScore = 250,
-            singleCore = 1100,
-            multiCore = 3500,
-            isCurrentUser = false
-        ),
-        RankingItem(
-            name = "Snapdragon 845",
-            normalizedScore = 200,
-            singleCore = 900,
-            multiCore = 3000,
-            isCurrentUser = false
-        )
-    )
+    private val hardcodedReferenceDevices =
+            listOf(
+                    RankingItem(
+                            name = "Snapdragon 8 Gen 3",
+                            normalizedScore = 820,
+                            singleCore = 200,
+                            multiCore = 1154,
+                            isCurrentUser = false
+                    ),
+                    RankingItem(
+                            name = "Dimensity 8300",
+                            normalizedScore = 641,
+                            singleCore = 160,
+                            multiCore = 900,
+                            isCurrentUser = false
+                    ),
+                    RankingItem(
+                            name = "Snapdragon 845",
+                            normalizedScore = 197,
+                            singleCore = 52,
+                            multiCore = 275,
+                            isCurrentUser = false
+                    )
+            )
 
     init {
         loadRankings()
@@ -99,42 +70,54 @@ class RankingViewModel(
         viewModelScope.launch {
             try {
                 _screenState.value = RankingScreenState.Loading
-                
+
                 // Fetch the highest CPU score from the user's device
                 val userDeviceName = "Your Device (${Build.MODEL})"
                 var userScore: RankingItem? = null
-                
+
                 // Collect the latest results to find the highest CPU score
                 repository.getAllResults().collect { benchmarkResults ->
-                    val highestCpuScore = benchmarkResults
-                        .filter { it.benchmarkResult.type.contains("CPU", ignoreCase = true) }
-                        .maxByOrNull { it.benchmarkResult.normalizedScore }
-                    
+                    val highestCpuScore =
+                            benchmarkResults
+                                    .filter {
+                                        it.benchmarkResult.type.contains("CPU", ignoreCase = true)
+                                    }
+                                    .maxByOrNull { it.benchmarkResult.normalizedScore }
+
                     if (highestCpuScore != null) {
-                        userScore = RankingItem(
-                            name = userDeviceName,
-                            normalizedScore = highestCpuScore.benchmarkResult.normalizedScore.toInt(),
-                            singleCore = highestCpuScore.benchmarkResult.singleCoreScore.toInt(),
-                            multiCore = highestCpuScore.benchmarkResult.multiCoreScore.toInt(),
-                            isCurrentUser = true
-                        )
+                        userScore =
+                                RankingItem(
+                                        name = userDeviceName,
+                                        normalizedScore =
+                                                highestCpuScore.benchmarkResult.normalizedScore
+                                                        .toInt(),
+                                        singleCore =
+                                                highestCpuScore.benchmarkResult.singleCoreScore
+                                                        .toInt(),
+                                        multiCore =
+                                                highestCpuScore.benchmarkResult.multiCoreScore
+                                                        .toInt(),
+                                        isCurrentUser = true
+                                )
                     }
-                    
+
                     // Merge and sort
-                    val allDevices = mutableListOf<RankingItem>().apply {
-                        addAll(hardcodedReferenceDevices)
-                        if (userScore != null) {
-                            add(userScore!!)
-                        }
-                    }
-                    
+                    val allDevices =
+                            mutableListOf<RankingItem>().apply {
+                                addAll(hardcodedReferenceDevices)
+                                if (userScore != null) {
+                                    add(userScore!!)
+                                }
+                            }
+
                     // Sort by normalized score in descending order and assign ranks
-                    val rankedItems = allDevices
-                        .sortedByDescending { it.normalizedScore }
-                        .mapIndexed { index, item ->
-                            item.copy(rank = index + 1)
-                        }
-                    
+                    val rankedItems =
+                            allDevices.sortedByDescending { it.normalizedScore }.mapIndexed {
+                                    index,
+                                    item ->
+                                item.copy(rank = index + 1)
+                            }
+
                     _screenState.value = RankingScreenState.Success(rankedItems)
                 }
             } catch (e: Exception) {
@@ -144,9 +127,8 @@ class RankingViewModel(
     }
 }
 
-class RankingViewModelFactory(
-    private val repository: HistoryRepository
-) : ViewModelProvider.Factory {
+class RankingViewModelFactory(private val repository: HistoryRepository) :
+        ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(RankingViewModel::class.java)) {
