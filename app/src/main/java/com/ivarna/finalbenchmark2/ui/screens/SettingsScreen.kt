@@ -55,8 +55,8 @@ fun SettingsScreen(
 
         val themes =
                 listOf(
-                        "Light",
-                        "Dark",
+                        "Light Monet",
+                        "Dark Monet",
                         "Gruvbox",
                         "Nord",
                         "Dracula",
