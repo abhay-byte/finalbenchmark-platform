@@ -766,7 +766,7 @@ fun AboutSection() {
                         onClick = {
                                 openUrl(
                                         context,
-                                        "https://play.google.com/store/apps/dev?id=8004929841101888920"
+                                        "https://play.google.com/store/apps/details?id=com.ivarna.finalbenchmark2"
                                 )
                         }
                 ) {
@@ -1063,7 +1063,7 @@ fun AboutSection() {
                         onClick = {
                                 openUrl(
                                         context,
-                                        "https://github.com/abhay-byte/finalbenchmark-platform"
+                                        "https://github.com/abhay-byte/FinalBenchmark-Platform"
                                 )
                         }
                 ) {

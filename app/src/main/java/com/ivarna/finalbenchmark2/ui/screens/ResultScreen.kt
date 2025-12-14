@@ -57,6 +57,20 @@ data class BenchmarkSummary(
 // Scaling factors for converting performance (ops/s) to score
 // These must match the factors in KotlinBenchmarkManager.kt
 // Single-core factors: Target 20 points per benchmark for total ~200
+private val SCORING_FACTORS =
+    mapOf(
+        // Target 20 / Performance (Mops/s)
+BenchmarkName.PRIME_GENERATION to 3.597e-6,        // 20 / 2.90e6 ops/s        
+BenchmarkName.FIBONACCI_ITERATIVE to 8.730e-7,     // 20 / 22.91 Mops/s
+        BenchmarkName.MATRIX_MULTIPLICATION to 3.1293e-8,  // 20 / 639.13 Mops/s
+        BenchmarkName.HASH_COMPUTING to 5.556e-5,          // 20 / 0.36 Mops/s
+        BenchmarkName.STRING_SORTING to 3.204e-7,          // 20 / 62.42 Mops/s
+        BenchmarkName.RAY_TRACING to 9.804e-6,             // 20 / 2.04 Mops/s
+        BenchmarkName.COMPRESSION to 3.0486e-8,            // 20 / 656.04 Mops/s
+        BenchmarkName.MONTE_CARLO to 1.225e-6,             // 20 / 16.32 Mops/s
+        BenchmarkName.JSON_PARSING to 3.120e-6,            // 20 / 6.41 Mops/s
+BenchmarkName.N_QUEENS to 4.022e-7                 // 20 / 66.18e6 ops/s
+    )
 private val SINGLE_CORE_FACTORS =
         mapOf(
                 // Target 20 / Performance (Mops/s)
@@ -334,9 +348,9 @@ fun ResultScreen(
                                         }
                                 val factor =
                                         if (result.name.startsWith("Single-Core")) {
-                                                SINGLE_CORE_FACTORS[benchmarkName] ?: 0.0
+                                                SCORING_FACTORS[benchmarkName] ?: 0.0
                                         } else {
-                                                MULTI_CORE_FACTORS[benchmarkName] ?: 0.0
+                                                SCORING_FACTORS[benchmarkName] ?: 0.0
                                         }
                                 val score = result.opsPerSecond * factor
 
@@ -902,7 +916,7 @@ fun BenchmarkResultItem(result: BenchmarkResult) {
 
         // Determine if this is a single-core or multi-core benchmark
         val isSingleCore = result.name.startsWith("Single-Core")
-        val scalingFactors = if (isSingleCore) SINGLE_CORE_FACTORS else MULTI_CORE_FACTORS
+        val scalingFactors = if (isSingleCore) SCORING_FACTORS else SCORING_FACTORS
 
         // Calculate individual score using enum-based lookup
         val benchmarkName = BenchmarkName.fromString(result.name)
