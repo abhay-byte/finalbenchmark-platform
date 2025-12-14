@@ -1,0 +1,10 @@
+- Massive APK size optimization: Reduced from 78MB to 21.8MB (72% reduction)
+- Converted all PNG images to WebP format for 95% image size reduction
+- Enabled R8 minification and resource shrinking for all builds
+- Added 16 KB page size alignment support for newer Android devices
+- Updated theme dropdown labels to "Light Monet" and "Dark Monet"
+- Updated rankings with real benchmark data for three reference devices
+- Fixed permission request cards centering alignment
+- Improved Hardware section card styling to match OS section
+- Enable ABI splitting to generate separate APKs per architecture
+- Unified Score Scaling for single and multi core scores

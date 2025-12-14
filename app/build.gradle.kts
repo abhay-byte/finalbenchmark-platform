@@ -16,8 +16,8 @@ android {
         applicationId = "com.ivarna.finalbenchmark2"
         minSdk = 24
         targetSdk = 36
-        versionCode = 1
-        versionName = "0.17e76db.1411225"
+        versionCode = 2
+        versionName = "0.a78e1a4.1411225"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
