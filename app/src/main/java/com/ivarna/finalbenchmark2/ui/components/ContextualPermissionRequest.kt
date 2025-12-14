@@ -111,17 +111,6 @@ fun PhoneStatePermissionRequest(modifier: Modifier = Modifier, content: @Composa
 }
 
 @Composable
-fun LocationPermissionRequest(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
-        ContextualPermissionRequest(
-                permission = Manifest.permission.ACCESS_FINE_LOCATION,
-                rationaleText =
-                        "Location permission is needed to show WiFi SSID/BSSID and Cell Tower info",
-                modifier = modifier,
-                content = content
-        )
-}
-
-@Composable
 fun BodySensorsPermissionRequest(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
         ContextualPermissionRequest(
                 permission = Manifest.permission.BODY_SENSORS,
