@@ -20,7 +20,7 @@ Builds:
       - update-alternatives --auto java
     gradle:
       - yes
-    ndk: r27c
+    ndk: r29
 
 AutoUpdateMode: Version
 UpdateCheckMode: Tags
