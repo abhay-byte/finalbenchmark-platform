@@ -10,7 +10,7 @@ android {
     namespace = "com.ivarna.finalbenchmark2"
     compileSdk { version = release(36) }
 
-    ndkVersion = "25.2.9519653"
+    ndkVersion = "29.0.13113456"
 
     defaultConfig {
         applicationId = "com.ivarna.finalbenchmark2"

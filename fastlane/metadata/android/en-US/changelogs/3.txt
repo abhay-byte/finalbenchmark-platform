@@ -8,3 +8,8 @@
 - Improved Hardware section card styling to match OS section
 - Enable ABI splitting to generate separate APKs per architecture
 - Unified Score Scaling for single and multi core scores
+- Removed screen orientation restriction to support foldables and tablets (Android 16+)
+- Added explicit 16KB page size CMake flag for better Android 15+ device compatibility
+- Updated NDK to version 29 for native 16KB page size alignment
+- Updated NDK to version 29 for native 16KB page size alignment
+- Updated NDK to version 29 for native 16KB page size alignment
