@@ -34,107 +34,118 @@ fun ContextualPermissionRequest(
         modifier: Modifier = Modifier,
         content: @Composable () -> Unit
 ) {
-    val context = LocalContext.current
-    var isGranted by remember {
-        mutableStateOf(
-                ContextCompat.checkSelfPermission(context, permission) ==
-                        PackageManager.PERMISSION_GRANTED
-        )
-    }
-
-    val launcher =
-            rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted
-                ->
-                isGranted = granted
-            }
-
-    if (isGranted) {
-        content()
-    } else {
-        Card(
-                colors =
-                        CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceVariant
-                        ),
-                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-                modifier = modifier.fillMaxWidth()
-        ) {
-            Column(
-                    modifier = Modifier.padding(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Icon(Icons.Rounded.Lock, null, tint = MaterialTheme.colorScheme.primary)
-                Text(text = "Permission Required", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
-                Text(
-                        text = rationaleText,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.padding(vertical = 8.dp)
+        val context = LocalContext.current
+        var isGranted by remember {
+                mutableStateOf(
+                        ContextCompat.checkSelfPermission(context, permission) ==
+                                PackageManager.PERMISSION_GRANTED
                 )
-                Button(onClick = { launcher.launch(permission) }) { Text("Grant Access") }
-            }
         }
-    }
+
+        val launcher =
+                rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
+                        granted ->
+                        isGranted = granted
+                }
+
+        if (isGranted) {
+                content()
+        } else {
+                Card(
+                        colors =
+                                CardDefaults.cardColors(
+                                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                                ),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+                        modifier = Modifier.fillMaxWidth()
+                ) {
+                        Column(
+                                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                                Icon(
+                                        Icons.Rounded.Lock,
+                                        null,
+                                        tint = MaterialTheme.colorScheme.primary
+                                )
+                                Text(
+                                        text = "Permission Required",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                        text = rationaleText,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        textAlign = TextAlign.Center,
+                                        modifier = Modifier.padding(vertical = 8.dp)
+                                )
+                                Button(onClick = { launcher.launch(permission) }) {
+                                        Text("Grant Access")
+                                }
+                        }
+                }
+        }
 }
 
 // Convenience composables for specific permissions
 @Composable
 fun CameraPermissionRequest(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
-    ContextualPermissionRequest(
-            permission = Manifest.permission.CAMERA,
-            rationaleText = "Camera permission is needed to show camera capabilities",
-            modifier = modifier,
-            content = content
-    )
+        ContextualPermissionRequest(
+                permission = Manifest.permission.CAMERA,
+                rationaleText = "Camera permission is needed to show camera capabilities",
+                modifier = modifier,
+                content = content
+        )
 }
 
 @Composable
 fun PhoneStatePermissionRequest(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
-    ContextualPermissionRequest(
-            permission = Manifest.permission.READ_PHONE_STATE,
-            rationaleText =
-                    "Phone permission is needed to show Network Signal strength and SIM information",
-            modifier = modifier,
-            content = content
-    )
+        ContextualPermissionRequest(
+                permission = Manifest.permission.READ_PHONE_STATE,
+                rationaleText =
+                        "Phone permission is needed to show Network Signal strength and SIM information",
+                modifier = modifier,
+                content = content
+        )
 }
 
 @Composable
 fun LocationPermissionRequest(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
-    ContextualPermissionRequest(
-            permission = Manifest.permission.ACCESS_FINE_LOCATION,
-            rationaleText =
-                    "Location permission is needed to show WiFi SSID/BSSID and Cell Tower info",
-            modifier = modifier,
-            content = content
-    )
+        ContextualPermissionRequest(
+                permission = Manifest.permission.ACCESS_FINE_LOCATION,
+                rationaleText =
+                        "Location permission is needed to show WiFi SSID/BSSID and Cell Tower info",
+                modifier = modifier,
+                content = content
+        )
 }
 
 @Composable
 fun BodySensorsPermissionRequest(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
-    ContextualPermissionRequest(
-            permission = Manifest.permission.BODY_SENSORS,
-            rationaleText =
-                    "Body sensors permission is needed to access heart rate and other sensor data",
-            modifier = modifier,
-            content = content
-    )
+        ContextualPermissionRequest(
+                permission = Manifest.permission.BODY_SENSORS,
+                rationaleText =
+                        "Body sensors permission is needed to access heart rate and other sensor data",
+                modifier = modifier,
+                content = content
+        )
 }
 
 @Composable
 fun BluetoothPermissionRequest(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
-    val permission =
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
-                Manifest.permission.BLUETOOTH_CONNECT
-            } else {
-                Manifest.permission.BLUETOOTH
-            }
+        val permission =
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                        Manifest.permission.BLUETOOTH_CONNECT
+                } else {
+                        Manifest.permission.BLUETOOTH
+                }
 
-    ContextualPermissionRequest(
-            permission = permission,
-            rationaleText = "Bluetooth permission is needed to access Bluetooth device information",
-            modifier = modifier,
-            content = content
-    )
+        ContextualPermissionRequest(
+                permission = permission,
+                rationaleText =
+                        "Bluetooth permission is needed to access Bluetooth device information",
+                modifier = modifier,
+                content = content
+        )
 }
