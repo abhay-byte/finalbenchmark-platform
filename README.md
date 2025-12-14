@@ -1,116 +1,90 @@
-# FinalBenchmark2 - CPU Benchmark Application
+<div align="center">
 
-A comprehensive CPU benchmarking application that tests processor performance with various computational tasks using Rust-powered native libraries.
+<img src="assets/logo_2.png" alt="FinalBenchmark 2 Logo" width="200"/>
+
+# FinalBenchmark 2
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://playbadges.pavi2410.com/badge/full?id=com.ivarna.finalbenchmark2&theme=dark">
+  <img alt="Get it on Google Play" src="https://playbadges.pavi2410.com/badge/full?id=com.ivarna.finalbenchmark2">
+</picture>
+
+[![GitHub Downloads](https://img.shields.io/github/downloads/abhay-byte/finalbenchmark-platform/total?style=flat-square&logo=github)](https://github.com/abhay-byte/finalbenchmark-platform/releases)
+[![GitHub Stars](https://img.shields.io/github/stars/abhay-byte/finalbenchmark-platform?style=flat-square&logo=github)](https://github.com/abhay-byte/finalbenchmark-platform/stargazers)
+[![GitHub Forks](https://img.shields.io/github/forks/abhay-byte/finalbenchmark-platform?style=flat-square&logo=github)](https://github.com/abhay-byte/finalbenchmark-platform/network/members)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=flat-square)](LICENSE)
+[![FOSS](https://img.shields.io/badge/FOSS-100%25-green?style=flat-square)](https://opensource.org/)
+
+![Play Store Downloads](https://playbadges.pavi2410.com/badge/downloads?id=com.ivarna.finalbenchmark2&pretty)
+![Play Store Rating](https://playbadges.pavi2410.com/badge/ratings?id=com.ivarna.finalbenchmark2&pretty)
+![Play Store Version](https://playbadges.pavi2410.com/badge/version?id=com.ivarna.finalbenchmark2)
+
+A comprehensive Android CPU benchmarking application with detailed scoring and visualization. *(GPU, RAM, and Storage benchmarks coming soon)*
+
+</div>
+
+---
+
+
+<div align="center">
+
+| | | | | | |
+|:-----------:|:------------------:|:-------:|:--------:|:--------:|:------:|
+| <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/1.png" width="150"/> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/2.png" width="150"/> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/3.png" width="150"/> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/4.png" width="150"/> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/5.png" width="150"/> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/6.png" width="150"/> |
+
+</div>
+
+---
 
 ## 🚀 Features
 
-- **Real-time Benchmarking**: Visual progress updates for each CPU test
-- **Comprehensive Tests**: 10 single-core and 10 multi-core benchmark tests
-- **Native Performance**: Rust-powered CPU-intensive operations via JNI
-- **Modern UI**: Jetpack Compose with Material3 design
-- **Detailed Reports**: Final score calculation with ratings
+### ✅ Currently Implemented
+- **Comprehensive CPU Benchmarking**: Tests integer operations, floating-point calculations, multi-core performance, compression algorithms, and cryptographic operations
+- **Scoring System**: Normalized scores with single-core and multi-core performance ratings
+- **Results History**: Stores and displays historical benchmark results
+- **Rankings**: Compare your device with other popular devices
+- **Export Functionality**: Export results in JSON, CSV, or text formats
+- **Modern UI**: Jetpack Compose with Material Design 3 components
+- **Thermal Management**: Prevents device overheating during intensive tests
 
-## 📋 Benchmark Tests
+### 🔜 Coming Soon
+- **AI/ML Benchmarking**: LLM inference, image classification, object detection, text embedding, and speech-to-text
+- **GPU Benchmarking**: Rendering performance, compute operations, and memory bandwidth
+- **RAM Benchmarking**: Memory read/write speeds, latency, and bandwidth
+- **Storage Benchmarking**: Storage read/write speeds, IOPS, and latency
+- **Productivity Tests**: UI rendering, image processing, video encoding, and multi-tasking
 
-### Single-Core Tests
+## 📋 CPU Benchmark Tests
+
+All tests run in both **Single-Core** and **Multi-Core** modes:
+
 - Prime Generation
-- Fibonacci Calculation (Recursive)
+- Fibonacci Iterative
 - Matrix Multiplication
-- Hash Computing (SHA-2/MD5)
+- Hash Computing (SHA-256/MD5)
 - String Sorting
 - Ray Tracing
 - Compression (LZMA)
-- Monte Carlo Pi Estimation
+- Monte Carlo
 - JSON Parsing
-- N-Queens Problem
+- N-Queens
 
-### Multi-Core Tests
-- Same algorithms optimized for multi-core execution
-
-## 🛠️ Project Structure
-
-```
-app/src/main/java/com/ivarna/finalbenchmark2/
-├── cpuBenchmark/           # Native interface and managers
-│   ├── BenchmarkEvent.kt   # Data classes
-│   ├── CpuBenchmarkNative.kt # JNI interface
-│   └── BenchmarkManager.kt # Benchmark orchestrator
-├── ui/screens/            # Compose UI screens
-│   ├── WelcomeScreen.kt   # Intro screen
-│   ├── BenchmarkScreen.kt # Real-time progress
-│   └── ResultScreen.kt    # Final report
-├── navigation/            # Navigation graph
-└── MainActivity.kt        # Entry point
-```
-
-## 🔧 Building the Native Library
-
-The application uses a Rust-based CPU benchmark engine. To build the native library for Android:
-
-1. **Setup Environment**:
-   ```bash
-   export ANDROID_NDK_HOME=/path/to/your/ndk
-   rustup target add aarch64-linux-android armv7-linux-androideabi x86_64-linux-android i686-linux-android
-   cargo install cargo-ndk
-   rustup component add rust-src
-   ```
-
-2. **Build Native Libraries**:
-   ```bash
-   ./build_android_native.sh
-   ```
-
-3. **Build Android App**:
-   ```bash
-   ./gradlew assembleDebug
-   ```
-
-For detailed instructions, see [README_NATIVE_BUILD.md](README_NATIVE_BUILD.md).
-
-## 📱 Running the Application
-
-After building both the native library and the Android app:
+## 🔧 Building
 
 ```bash
-# Install the app
-adb install app/build/outputs/apk/debug/app-debug.apk
-
-# Or run directly from Gradle
-./gradlew installDebug
+git clone https://github.com/abhay-byte/finalbenchmark-platform.git
+cd finalbenchmark-platform
+./gradlew assembleDebug
 ```
 
-## 🏗️ Architecture
+## 📄 License
 
-- **Frontend**: Kotlin + Jetpack Compose with Material3
-- **Backend**: Rust-powered native library via JNI
-- **Communication**: JSON-based parameter passing and result retrieval
-- **UI Flow**: Welcome → Benchmark → Result screens
-- **State Management**: Kotlin Coroutines + Flows for real-time updates
+This project is licensed under the Apache 2.0 License - see the [LICENSE](LICENSE) file for details.
 
-## 🧪 Testing Flow
+---
 
-1. User starts benchmark from Welcome screen
-2. App attempts to call native Rust functions
-3. If native library is available, runs actual CPU-intensive tests
-4. If native library is missing, falls back to simulation mode
-5. Real-time progress updates shown during execution
-6. Final results displayed with scores and ratings
+<div align="center">
 
-## 🎯 Implementation Status
+Made with ❤️ by [Abhay](https://github.com/abhay-byte)
 
-✅ **Complete CPU Benchmark Flow**
-- Data classes for benchmark events and results
-- JNI interface for Rust FFI
-- Welcome, Benchmark, and Result screens
-- Real-time progress updates
-- Navigation between screens
-- Proper error handling with graceful fallback
-- App icon integration
-
-✅ **Native Library Integration Ready**
-- Proper JNI structure with all function declarations
-- Error handling for missing native libraries
-- Simulation fallback when native functions unavailable
-- Build scripts and documentation for native compilation
-
-The implementation is complete and ready for integration with the compiled Rust native library. When the native library is included, the app will execute actual Rust CPU benchmark functions rather than simulations.
+</div>
