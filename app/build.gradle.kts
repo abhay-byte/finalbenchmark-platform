@@ -61,10 +61,6 @@ android {
     // Disable PNG crunching for reproducible builds
     androidResources {
         noCompress += listOf("tflite", "lite")
-        @Suppress("UnstableApiUsage")
-        aaptOptions {
-            cruncherEnabled = false
-        }
     }
 
     buildTypes {
