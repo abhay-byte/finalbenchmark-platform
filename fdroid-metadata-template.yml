@@ -14,7 +14,7 @@ Repo: https://github.com/abhay-byte/finalbenchmark-platform
 Builds:
   - versionName: 0.2.25
     versionCode: 3
-    commit: 3cb560c26c72156315d7d1c3e61d1cb9f84dcd27
+    commit: 52e296af3f4b740bcd74cea4d4daf23a73ccac34
     subdir: app
     sudo:
       - apt-get update
