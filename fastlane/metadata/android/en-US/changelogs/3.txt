@@ -4,7 +4,7 @@ Change log for version 0.ab10215.1411225:
 - Enabled R8 minification and resource shrinking for all builds
 - Added 16 KB page size alignment support for newer Android devices
 - Updated theme dropdown labels to "Light Monet" and "Dark Monet"
-- Updated rankings with real benchmark data for three reference devices
+- Updated rankings with real benchmark data: Snapdragon 8 Gen 3 (1110), Dimensity 8300 (950), Snapdragon 845 (270)
 - Fixed permission request cards centering alignment
 - Improved Hardware section card styling to match OS section
 - Enable ABI splitting to generate separate APKs per architecture
