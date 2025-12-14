@@ -10,14 +10,14 @@ android {
     namespace = "com.ivarna.finalbenchmark2"
     compileSdk { version = release(36) }
 
-    ndkVersion = "29.0.13113456"
+    ndkVersion = "27.2.12479018"
 
     defaultConfig {
         applicationId = "com.ivarna.finalbenchmark2"
         minSdk = 24
         targetSdk = 36
-        versionCode = 2
-        versionName = "0.2.02fecae.1411225"
+        versionCode = 3
+        versionName = "0.2.25"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
