@@ -1,3 +1,5 @@
+import org.gradle.api.tasks.bundling.AbstractArchiveTask
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -56,6 +58,15 @@ android {
         }
     }
 
+    // Disable PNG crunching for reproducible builds
+    androidResources {
+        noCompress += listOf("tflite", "lite")
+        @Suppress("UnstableApiUsage")
+        aaptOptions {
+            cruncherEnabled = false
+        }
+    }
+
     buildTypes {
         debug {
             isDebuggable = true
@@ -101,6 +112,12 @@ android {
     buildFeatures { compose = true }
 
     packaging { jniLibs { useLegacyPackaging = true } }
+}
+
+// Reproducible builds configuration for F-Droid
+tasks.withType<AbstractArchiveTask>().configureEach {
+    isPreserveFileTimestamps = false
+    isReproducibleFileOrder = true
 }
 
 dependencies {
