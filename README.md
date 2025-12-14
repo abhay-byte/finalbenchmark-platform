@@ -4,10 +4,8 @@
 
 # FinalBenchmark 2
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://playbadges.pavi2410.com/badge/full?id=com.ivarna.finalbenchmark2&theme=dark">
-  <img alt="Get it on Google Play" src="https://playbadges.pavi2410.com/badge/full?id=com.ivarna.finalbenchmark2">
-</picture>
+[![Get it on Google Play](https://img.shields.io/badge/Get%20it%20on-Google%20Play-blue?style=for-the-badge&logo=google-play)](https://play.google.com/store/apps/details?id=com.ivarna.finalbenchmark2)
+[![Download Latest Release](https://img.shields.io/badge/Download-Latest%20Release-green?style=for-the-badge&logo=android)](https://github.com/abhay-byte/finalbenchmark-platform/releases/latest)
 
 [![GitHub Downloads](https://img.shields.io/github/downloads/abhay-byte/finalbenchmark-platform/total?style=flat-square&logo=github)](https://github.com/abhay-byte/finalbenchmark-platform/releases)
 [![GitHub Stars](https://img.shields.io/github/stars/abhay-byte/finalbenchmark-platform?style=flat-square&logo=github)](https://github.com/abhay-byte/finalbenchmark-platform/stargazers)
