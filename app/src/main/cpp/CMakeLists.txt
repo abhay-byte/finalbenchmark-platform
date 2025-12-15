@@ -1,5 +1,9 @@
 cmake_minimum_required(VERSION 3.22.1)
 
+# F-Droid reproducible builds: disable build-id and remove embedded build paths
+add_link_options("LINKER:--build-id=none")
+add_compile_options("-ffile-prefix-map=${CMAKE_CURRENT_SOURCE_DIR}=.")
+
 project("vulkan-native")
 
 # Set C++ standard
