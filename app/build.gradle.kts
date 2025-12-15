@@ -58,9 +58,16 @@ android {
         }
     }
 
-    // Disable PNG crunching for reproducible builds
     androidResources {
-        noCompress += listOf("tflite", "lite")
+        // Disable PNG crunching for reproducible builds
+        @Suppress("UnstableApiUsage")
+        ignoreAssetsPattern = "!.svn:!.git:.*:!CVS:!thumbs.db:!picasa.ini:!*.scc:*~"
+    }
+
+    // Disable dependency metadata block for F-Droid
+    dependenciesInfo {
+        includeInApk = false
+        includeInBundle = false
     }
 
     buildTypes {
