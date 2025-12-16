@@ -561,7 +561,7 @@ fun SummaryTab(summary: BenchmarkSummary) {
                                                 text = String.format("%.2f", summary.finalScore),
                                                 fontSize = 48.sp,
                                                 fontWeight = FontWeight.Bold,
-                                                color = MaterialTheme.colorScheme.primary
+                                                color = MaterialTheme.colorScheme.onPrimaryContainer
                                         )
                                 }
                         }
