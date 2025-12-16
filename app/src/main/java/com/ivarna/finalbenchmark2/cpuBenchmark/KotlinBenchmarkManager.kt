@@ -577,7 +577,7 @@ BenchmarkName.N_QUEENS to 4.313e-7                 // 100 / 231.84e6 ops/s
                                         jsonParsingIterations =
                                                 500, // CACHE-RESIDENT: Low iterations for slow
                                         // devices (~1-2s)
-                                        nqueensSize = 11 // INCREASED: 92 solutions, ~1.5s (was 8)
+                                        nqueensSize = 12 // INCREASED: 92 solutions, ~1.5s (was 8)
                                 )
                         "mid" ->
                                 WorkloadParams(

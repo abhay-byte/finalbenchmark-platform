@@ -8,7 +8,7 @@ Version 0.3 - UI Improvements & Bug Fixes
 • Improved GPU section UI with scrollable lists and elegant design
 • Enhanced CPU topology display in Device screen
 • Added MP Ratio card showing multi-core scaling efficiency
-• Adjusted single-core benchmark scoring factors for better balance
+• Adjusted benchmark scoring factors for better balance
 
 Bug Fixes:
 • Fixed CPU Governor Hints status persistence after benchmark

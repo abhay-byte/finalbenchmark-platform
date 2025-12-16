@@ -109,7 +109,7 @@ fun ResultPowerGraph(
                         Text(
                                 text = String.format("%.2f W", avgPower),
                                 style = MaterialTheme.typography.titleSmall,
-                                color = if (avgPower >= 0) errorColor else secondaryColor
+                                color = if (avgPower >= 0) secondaryColor else errorColor
                         )
                     }
 
@@ -137,7 +137,7 @@ fun ResultPowerGraph(
                         Text(
                                 text = String.format("%.2f W", maxPowerVal),
                                 style = MaterialTheme.typography.titleSmall,
-                                color = errorColor
+                                color = secondaryColor
                         )
                     }
                 }
@@ -177,10 +177,9 @@ fun ResultPowerGraph(
                         // Draw Y-axis grid lines and labels
                         for (i in 0..numYTicks) {
                             val powerValue = minPower + (powerRange * i / numYTicks)
-                            val y =
-                                    height -
-                                            padding -
-                                            ((powerValue - minPower) / powerRange * graphHeight)
+                            // INVERTED Y-AXIS: minPower is at TOP (padding), maxPower is at BOTTOM (height - padding)
+                            // Formula: y = padding + ((powerValue - minPower) / powerRange * graphHeight)
+                            val y = padding + ((powerValue - minPower) / powerRange * graphHeight)
 
                             // Grid line
                             drawLine(
@@ -254,7 +253,8 @@ fun ResultPowerGraph(
                                         }
 
                                 val x = padding + (timeProgress * graphWidth)
-                                val y = height - padding - (powerProgress * graphHeight)
+                                // INVERTED Y-AXIS
+                                val y = padding + (powerProgress * graphHeight)
 
                                 if (index == 0) {
                                     path.moveTo(x, y)
@@ -265,7 +265,7 @@ fun ResultPowerGraph(
 
                             // Calculate average power to determine line color
                             val avgPower = dataPoints.map { it.powerWatts }.average().toFloat()
-                            val lineColor = if (avgPower >= 0) errorColor else secondaryColor
+                            val lineColor = if (avgPower >= 0) secondaryColor else errorColor
 
                             drawPath(path = path, color = lineColor, style = Stroke(width = 3f))
 
@@ -282,10 +282,11 @@ fun ResultPowerGraph(
                                         }
 
                                 val x = padding + (timeProgress * graphWidth)
-                                val y = height - padding - (powerProgress * graphHeight)
+                                // INVERTED Y-AXIS
+                                val y = padding + (powerProgress * graphHeight)
 
                                 val pointColor =
-                                        if (point.powerWatts >= 0) errorColor else secondaryColor
+                                        if (point.powerWatts >= 0) secondaryColor else errorColor
 
                                 drawCircle(color = pointColor, radius = 4f, center = Offset(x, y))
                             }
@@ -293,8 +294,8 @@ fun ResultPowerGraph(
 
                         // Draw zero line if applicable
                         if (minPower < 0 && maxPower > 0) {
-                            val zeroY =
-                                    height - padding - ((0f - minPower) / powerRange * graphHeight)
+                            // INVERTED Y-AXIS for Zero Line
+                            val zeroY = padding + ((0f - minPower) / powerRange * graphHeight)
                             drawLine(
                                     color = Color.Gray.copy(alpha = 0.5f),
                                     start = Offset(padding, zeroY),
