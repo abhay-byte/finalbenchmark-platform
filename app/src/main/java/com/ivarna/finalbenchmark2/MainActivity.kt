@@ -796,7 +796,7 @@ class MainActivity : ComponentActivity() {
     
     /**
      * Initialize governor hints
-     * Detects current governor and prepares for changes
+     * Just reads the current governor state and updates display
      */
     private fun initializeGovernorHints() {
         try {
@@ -806,95 +806,32 @@ class MainActivity : ComponentActivity() {
             
             Log.i(TAG, "Current CPU Governor: $currentGovernor")
             
-            // Check if we can write (requires root)
-            val governorFile = File("/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor")
-            val canWrite = if (governorFile.exists() && governorFile.canRead()) {
-                governorFile.canWrite()
-            } else {
-                false
-            }
-            Log.i(TAG, "Governor write access: ${if (canWrite) "YES (rooted)" else "NO (not rooted)"}")
-            
-            // If governor is already in performance mode, mark as applied
+            // Simply check if governor is in performance mode
             isGovernorHintApplied = (currentGovernor == "performance")
             
             if (isGovernorHintApplied) {
-                Log.i(TAG, "✓ Governor already in performance mode - optimization enabled")
+                Log.i(TAG, "✓ Governor is in performance mode")
             } else {
-                Log.i(TAG, "Governor not in performance mode - will attempt to set when benchmark starts")
+                Log.i(TAG, "Governor is in $currentGovernor mode (requires root to change)")
             }
             
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to initialize governor hints", e)
+            Log.e(TAG, "Failed to read governor state", e)
             originalGovernor = null
             isGovernorHintApplied = false
         }
     }
     
     /**
-     * Apply governor hints for maximum performance
-     * This attempts multiple methods, most require root
+     * Update governor status
+     * Simply checks current governor state and updates UI
+     * Does not attempt to change governor (requires root)
      */
     private fun applyGovernorHints() {
-        Log.i(TAG, "Attempting to apply CPU Governor hints...")
+        Log.i(TAG, "Checking CPU Governor status...")
         
-        // First check if device is rooted and root access works
-        val isRootAvailable = checkRootAccess()
-        
-        if (isRootAvailable) {
-            Log.i(TAG, "Root access available, attempting to set governor to performance mode")
-            val methodSuccess = trySetGovernorWithRoot()
-            isGovernorHintApplied = methodSuccess
-        } else {
-            Log.w(TAG, "Root access not available, using fallback methods")
-            
-            // Method 1: Direct write (requires root)
-            val method1Success = trySetGovernorDirect()
-            
-            // Method 2: Shell command (requires root)
-            if (!method1Success) {
-                val method2Success = trySetGovernorShell()
-                isGovernorHintApplied = method2Success
-            } else {
-                isGovernorHintApplied = true
-            }
-            
-            // Method 3: Frequency boost hint (doesn't require root, limited effect)
-            if (!isGovernorHintApplied) {
-                tryFrequencyBoostHint()
-            }
-        }
-        
-        // Verify the governor was actually set to performance mode
-        if (isGovernorHintApplied) {
-            val currentGovernor = getCurrentGovernor()
-            if (currentGovernor == "performance") {
-                Log.i(TAG, "✓ Governor hints APPLIED successfully - confirmed performance mode")
-            } else {
-                Log.w(TAG, "Governor hints reported as applied but verification shows: $currentGovernor")
-                isGovernorHintApplied = false
-            }
-        }
-        
-        if (isGovernorHintApplied) {
-            Log.i(TAG, "✓ Governor hints APPLIED successfully")
-        } else {
-            Log.w(TAG, "⚠ Governor hints NOT applied (requires root on most devices)")
-            Log.i(TAG, "ℹ Using other optimizations for performance")
-        }
-        
-        // IMPORTANT: Check actual governor state, not just whether we applied hints
-        // Governor might already be in performance mode from before
-        if (mainViewModel != null) {
-            val currentGovernor = getCurrentGovernor()
-            val governorStatus = if (currentGovernor == "performance") {
-                PerformanceOptimizationStatus.ENABLED
-            } else {
-                PerformanceOptimizationStatus.DISABLED
-            }
-            mainViewModel?.updateCpuGovernorHintsStatus(governorStatus)
-            Log.i(TAG, "Governor status update: $currentGovernor -> $governorStatus")
-        }
+        // Just check current governor and update status
+        updateGovernorStatus()
     }
     
     /**
@@ -1018,67 +955,36 @@ class MainActivity : ComponentActivity() {
     }
     
     /**
-     * Restore original governor when benchmark completes
+     * Unified function to check and update governor status
+     * This is the ONLY place where governor status is updated
      */
-    private fun restoreGovernor() {
-        // Always check and update status, even if we don't need to restore
+    private fun updateGovernorStatus() {
         try {
-            // If governor was never applied or no original governor saved, just update status
-            if (!isGovernorHintApplied || originalGovernor == null) {
-                // Still check current governor and update status accordingly
-                if (mainViewModel != null) {
-                    val currentGovernor = getCurrentGovernor()
-                    val governorStatus = if (currentGovernor == "performance") {
-                        PerformanceOptimizationStatus.ENABLED
-                    } else {
-                        PerformanceOptimizationStatus.DISABLED
-                    }
-                    mainViewModel?.updateCpuGovernorHintsStatus(governorStatus)
-                    Log.i(TAG, "Governor status updated (no restore needed): $currentGovernor -> $governorStatus")
-                }
-                return
-            }
-            
-            val numCores = Runtime.getRuntime().availableProcessors()
-            val targetGovernor = originalGovernor ?: "schedutil" // Default to schedutil if original is null
-            
-            // Check if we have root access for restoration
-            val isRootAvailable = checkRootAccess()
-            
-            if (isRootAvailable) {
-                Log.i(TAG, "Using root to restore governor to: $targetGovernor")
-                val command = StringBuilder()
-                for (cpu in 0 until numCores) {
-                    command.append("echo $targetGovernor > /sys/devices/system/cpu/cpu$cpu/cpufreq/scaling_governor; ")
-                }
-                
-                // Since executeCommand is a suspend function, we can't call it directly here
-                // Instead, we'll use a simpler approach or just use the fallback
-                Log.i(TAG, "Root restoration would happen here, using fallback method")
-                // Fallback to non-root method
-                restoreGovernorFallback(numCores, targetGovernor)
-            } else {
-                Log.i(TAG, "No root access, using fallback method to restore governor")
-                restoreGovernorFallback(numCores, targetGovernor)
-            }
-            
-            isGovernorHintApplied = false
-            
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to restore governor", e)
-        }
-        
-        // Always check current governor state and update status accordingly
-        if (mainViewModel != null) {
             val currentGovernor = getCurrentGovernor()
+            isGovernorHintApplied = (currentGovernor == "performance")
+            
             val governorStatus = if (currentGovernor == "performance") {
                 PerformanceOptimizationStatus.ENABLED
             } else {
                 PerformanceOptimizationStatus.DISABLED
             }
+            
             mainViewModel?.updateCpuGovernorHintsStatus(governorStatus)
-            Log.i(TAG, "Governor status after restore: $currentGovernor -> $governorStatus")
+            Log.i(TAG, "Governor status: $currentGovernor -> $governorStatus")
+            
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to update governor status", e)
+            mainViewModel?.updateCpuGovernorHintsStatus(PerformanceOptimizationStatus.DISABLED)
         }
+    }
+    
+    /**
+     * Called when benchmark completes
+     * Simply updates the current governor status
+     */
+    private fun restoreGovernor() {
+        Log.i(TAG, "Updating governor status after benchmark...")
+        updateGovernorStatus()
     }
     
     /**
