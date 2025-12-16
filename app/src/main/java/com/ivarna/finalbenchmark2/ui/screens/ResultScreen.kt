@@ -667,7 +667,7 @@ fun SummaryTab(summary: BenchmarkSummary) {
                                                 text = String.format("%.2fx", mpRatio),
                                                 fontSize = 16.sp,
                                                 fontWeight = FontWeight.Bold,
-                                                color = MaterialTheme.colorScheme.primary
+                                                color = MaterialTheme.colorScheme.secondary
                                         )
                                 }
                         }
