@@ -7,8 +7,12 @@ Version 0.3 - UI Improvements & Bug Fixes
 • Updated Rankings tab with latest reference devices (Snapdragon 8 Elite, 8s Gen 3, Helio G95)
 • Improved GPU section UI with scrollable lists and elegant design
 • Enhanced CPU topology display in Device screen
+• Added MP Ratio card showing multi-core scaling efficiency
+• Adjusted single-core benchmark scoring factors for better balance
 
 Bug Fixes:
 • Fixed CPU Governor Hints status persistence after benchmark
 • Corrected core count display for 3-tier CPU architectures
 • Synchronized ranking data across all screens
+• Fixed Final Score text visibility in Monokai theme
+• MP Ratio card now uses consistent colors across all themes
