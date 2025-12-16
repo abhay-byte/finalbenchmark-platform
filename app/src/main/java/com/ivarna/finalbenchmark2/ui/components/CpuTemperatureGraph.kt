@@ -78,7 +78,7 @@ fun CpuTemperatureGraph(dataPoints: List<TemperatureDataPoint>, modifier: Modifi
             Spacer(modifier = Modifier.height(8.dp))
 
             // Current and average temperature indicators
-            val currentTemp = dataPoints.lastOrNull()?.temperature ?: 0f
+            val maxTemp = dataPoints.maxOfOrNull { it.temperature } ?: 0f
             val avgTemp =
                     if (dataPoints.isNotEmpty()) {
                         dataPoints.map { it.temperature }.average().toFloat()
@@ -93,17 +93,17 @@ fun CpuTemperatureGraph(dataPoints: List<TemperatureDataPoint>, modifier: Modifi
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                            text = "Current: ",
+                            text = "Max: ",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                            text = String.format("%.1f°C", currentTemp),
+                            text = String.format("%.1f°C", maxTemp),
                             style = MaterialTheme.typography.titleSmall,
                             color =
                                     when {
-                                        currentTemp > 70f -> errorColor
-                                        currentTemp > 60f -> tertiaryColor
+                                        maxTemp > 70f -> errorColor
+                                        maxTemp > 60f -> tertiaryColor
                                         else -> primaryColor
                                     }
                     )

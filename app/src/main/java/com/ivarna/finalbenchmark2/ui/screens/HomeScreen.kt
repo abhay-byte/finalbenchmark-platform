@@ -1170,12 +1170,12 @@ fun BenchmarkTipsCard() {
                                                 modifier = Modifier.padding(bottom = 16.dp)
                                         )
 
-                                        // Tip 1: Disable Thermal Modules
+                                        // Tip 1: Flash Thermal Disable Module
                                         TipRow(
                                                 number = "1",
-                                                title = "Disable Thermal Modules",
+                                                title = "Flash Thermal Disable Module",
                                                 description =
-                                                        "Turn off thermal throttling to achieve maximum performance during benchmarks"
+                                                        "Flash thermal disable module to prevent thermal throttling during benchmarks"
                                         )
 
                                         // Tip 2: Keep Device Cool
