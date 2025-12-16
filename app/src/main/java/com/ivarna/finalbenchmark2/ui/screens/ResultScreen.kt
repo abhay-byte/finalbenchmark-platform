@@ -1028,6 +1028,13 @@ private fun RankingsTab(finalScore: Double, singleCoreScore: Double, multiCoreSc
                 val hardcodedReferenceDevices =
                         listOf(
                                 RankingItem(
+                                        name = "Snapdragon 8 Elite",
+                                        normalizedScore = 1744,
+                                        singleCore = 344,
+                                        multiCore = 2499,
+                                        isCurrentUser = false
+                                ),
+                                RankingItem(
                                         name = "Snapdragon 8 Gen 3",
                                         normalizedScore = 1110,
                                         singleCore = 335,
@@ -1035,10 +1042,24 @@ private fun RankingsTab(finalScore: Double, singleCoreScore: Double, multiCoreSc
                                         isCurrentUser = false
                                 ),
                                 RankingItem(
+                                        name = "Snapdragon 8s Gen 3",
+                                        normalizedScore = 981,
+                                        singleCore = 310,
+                                        multiCore = 1343,
+                                        isCurrentUser = false
+                                ),
+                                RankingItem(
                                         name = "Dimensity 8300",
                                         normalizedScore = 950,
                                         singleCore = 265,
                                         multiCore = 1325,
+                                        isCurrentUser = false
+                                ),
+                                RankingItem(
+                                        name = "MediaTek Helio G95",
+                                        normalizedScore = 454,
+                                        singleCore = 135,
+                                        multiCore = 625,
                                         isCurrentUser = false
                                 ),
                                 RankingItem(
