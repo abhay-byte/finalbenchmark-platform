@@ -52,6 +52,7 @@ object SingleCoreBenchmarks {
                         val opsPerSecond = ops / (timeMs / 1000.0)
 
                         CpuAffinityManager.resetPerformance()
+                        CpuAffinityManager.resetCpuAffinity()
 
                         return@withContext BenchmarkResult(
                                 name = "Single-Core Prime Generation",
@@ -114,6 +115,7 @@ object SingleCoreBenchmarks {
                         val opsPerSecond = actualOps / (timeMs / 1000.0)
 
                         CpuAffinityManager.resetPerformance()
+                        CpuAffinityManager.resetCpuAffinity()
 
                         return@withContext BenchmarkResult(
                                 name = "Single-Core Fibonacci Iterative",
@@ -178,6 +180,7 @@ object SingleCoreBenchmarks {
                         val opsPerSecond = totalOps / (timeMs / 1000.0)
 
                         CpuAffinityManager.resetPerformance()
+                        CpuAffinityManager.resetCpuAffinity()
 
                         return@withContext BenchmarkResult(
                                 name = "Single-Core Matrix Multiplication",
@@ -248,6 +251,7 @@ object SingleCoreBenchmarks {
                         val opsPerSecond = iterations.toDouble() / (timeMs / 1000.0)
 
                         CpuAffinityManager.resetPerformance()
+                        CpuAffinityManager.resetCpuAffinity()
 
                         return@withContext BenchmarkResult(
                                 name = "Single-Core Hash Computing",
@@ -333,6 +337,7 @@ object SingleCoreBenchmarks {
                         val opsPerSecond = totalComparisons / (timeMs / 1000.0)
 
                         CpuAffinityManager.resetPerformance()
+                        CpuAffinityManager.resetCpuAffinity()
 
                         return@withContext BenchmarkResult(
                                 name = "Single-Core String Sorting",
@@ -491,6 +496,7 @@ object SingleCoreBenchmarks {
                         val raysPerSecond = totalRays / (timeMs / 1000.0)
 
                         CpuAffinityManager.resetPerformance()
+                        CpuAffinityManager.resetCpuAffinity()
 
                         return@withContext BenchmarkResult(
                                 name = "Single-Core Ray Tracing",
@@ -553,6 +559,7 @@ object SingleCoreBenchmarks {
                         val throughput = totalBytes.toDouble() / (timeMs / 1000.0)
 
                         CpuAffinityManager.resetPerformance()
+                        CpuAffinityManager.resetCpuAffinity()
 
                         return@withContext BenchmarkResult(
                                 name = "Single-Core Compression",
@@ -662,6 +669,7 @@ object SingleCoreBenchmarks {
                         val isValid = accuracy < accuracyThreshold && timeMs > 0 && opsPerSecond > 0
 
                         CpuAffinityManager.resetPerformance()
+                        CpuAffinityManager.resetCpuAffinity()
 
                         return@withContext BenchmarkResult(
                                 name = "Single-Core Monte Carlo π",
@@ -733,6 +741,7 @@ object SingleCoreBenchmarks {
                         val opsPerSecond = totalElementCount.toDouble() / (timeMs / 1000.0)
 
                         CpuAffinityManager.resetPerformance()
+                        CpuAffinityManager.resetCpuAffinity()
 
                         return@withContext BenchmarkResult(
                                 name = "Single-Core JSON Parsing",
@@ -794,6 +803,7 @@ object SingleCoreBenchmarks {
                         val opsPerSecond = iterationCount.toDouble() / (timeMs / 1000.0)
 
                         CpuAffinityManager.resetPerformance()
+                        CpuAffinityManager.resetCpuAffinity()
 
                         return@withContext BenchmarkResult(
                                 name = "Single-Core N-Queens",

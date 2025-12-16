@@ -72,6 +72,7 @@ add_library(
     SHARED
     vulkan_info.cpp
     cpu_info.cpp  # Added CPU info native implementation
+    cpu_affinity.cpp  # Added CPU affinity control for single-core benchmarks
 )
 
 # Find required libraries
