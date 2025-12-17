@@ -18,6 +18,11 @@ android {
     namespace = "com.ivarna.finalbenchmark2"
     compileSdk { version = release(36) }
 
+    // F-Droid reproducible builds: disable baseline profiles
+    androidResources {
+        ignoreAssetsPattern = "!.svn:!.git:!.DS_Store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~:!*.prof:!*.profm"
+    }
+
     ndkVersion = "27.2.12479018"
 
     defaultConfig {
