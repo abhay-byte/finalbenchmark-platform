@@ -60,16 +60,16 @@ data class BenchmarkSummary(
         private val SCORING_FACTORS =
         mapOf(
                 // Target 20 / Performance (Mops/s)
-                BenchmarkName.PRIME_GENERATION to 1.7985e-6,        // 20 / 2.90e6 ops/s        
+                BenchmarkName.PRIME_GENERATION to 1.7985e-6*2,        // 20 / 2.90e6 ops/s        
                 BenchmarkName.FIBONACCI_ITERATIVE to 4.365e-7,     // 20 / 22.91 Mops/s
-                BenchmarkName.MATRIX_MULTIPLICATION to 1.56465e-8,  // 20 / 639.13 Mops/s
-                BenchmarkName.HASH_COMPUTING to 2.778e-5,          // 20 / 0.36 Mops/s
-                BenchmarkName.STRING_SORTING to 1.602e-7,          // 20 / 62.42 Mops/s
+                BenchmarkName.MATRIX_MULTIPLICATION to 1.56465e-8/4,  // 20 / 639.13 Mops/s
+                BenchmarkName.HASH_COMPUTING to 2.778e-5/2,          // 20 / 0.36 Mops/s
+                BenchmarkName.STRING_SORTING to 1.602e-7/2,          // 20 / 62.42 Mops/s
                 BenchmarkName.RAY_TRACING to 4.902e-6,             // 20 / 2.04 Mops/s
                 BenchmarkName.COMPRESSION to 1.5243e-8,            // 20 / 656.04 Mops/s
                 BenchmarkName.MONTE_CARLO to 0.6125e-6,             // 20 / 16.32 Mops/s
-                BenchmarkName.JSON_PARSING to 1.56e-6,            // 20 / 6.41 Mops/s
-                BenchmarkName.N_QUEENS to 2.011e-7                 // 20 / 66.18e6 ops/s
+                BenchmarkName.JSON_PARSING to 1.56e-6*4,            // 20 / 6.41 Mops/s
+                BenchmarkName.N_QUEENS to 2.011e-7/2                 // 20 / 66.18e6 ops/s
         )
 
 @OptIn(
