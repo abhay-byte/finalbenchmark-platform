@@ -90,52 +90,184 @@ object BenchmarkHelpers {
     }
 
     /**
-     * Cache-Resident Matrix Multiplication - OPTIMIZED
+     * Matrix Multiplication using Strassen's Algorithm
      *
-     * Performs multiple matrix multiplications (A × B = C) using optimized i-k-j loop order for
-     * cache efficiency. Uses small matrices that fit in CPU cache to prevent memory bottlenecks.
+     * Implements Strassen's divide-and-conquer matrix multiplication algorithm
+     * with O(n^2.807) complexity instead of O(n^3) for naive multiplication.
+     * Falls back to standard multiplication for small matrices (threshold = 64).
+     * Creates fresh matrices for EACH iteration to prevent any caching effects.
      *
-     * CACHE-RESIDENT STRATEGY:
-     * - Small matrix size (128x128) fits in L2/L3 cache
-     * - Multiple repetitions to maintain CPU utilization
-     * - Matrices A, B, and C allocated ONCE, reused across repetitions
-     * - Matrix C is reset using Arrays.fill() to avoid allocations
-     *
-     * @param size The size of the square matrices (size × size) - should be small (128)
+     * @param size The size of the square matrices (size × size) - must be power of 2
      * @param repetitions Number of times to repeat the matrix multiplication
      * @return The checksum of the final resulting matrix C
      */
     fun performMatrixMultiplication(size: Int, repetitions: Int = 1): Long {
-        // CACHE-RESIDENT: Allocate all matrices ONCE outside the loop
-        val a = Array(size) { DoubleArray(size) { kotlin.random.Random.nextDouble() } }
-        val b = Array(size) { DoubleArray(size) { kotlin.random.Random.nextDouble() } }
-        val c = Array(size) { DoubleArray(size) } // Allocate once, reset inside loop
-
-        // CACHE-RESIDENT: Repeat the multiplication multiple times
+        var checksum = 0L
+        
+        // Ensure size is a power of 2 for Strassen's algorithm
+        val paddedSize = nextPowerOfTwo(size)
+        
         repeat(repetitions) { rep ->
-            // OPTIMIZED: Reset matrix C using Arrays.fill (zero-allocation operation)
-            for (i in 0 until size) {
-                Arrays.fill(c[i], 0.0)
+            // Create fresh Random with unique seed per iteration
+            val random = java.util.Random(System.nanoTime() + rep)
+            
+            // Create NEW matrices for each iteration - no caching
+            val a = Array(paddedSize) { i ->
+                DoubleArray(paddedSize) { j ->
+                    if (i < size && j < size) random.nextDouble() else 0.0
+                }
             }
-
-            // OPTIMIZED: Use i-k-j loop order for better cache locality
-            for (i in 0 until size) {
-                for (k in 0 until size) {
-                    val aik = a[i][k]
-                    for (j in 0 until size) {
-                        c[i][j] += aik * b[k][j]
-                    }
+            val b = Array(paddedSize) { i ->
+                DoubleArray(paddedSize) { j ->
+                    if (i < size && j < size) random.nextDouble() else 0.0
                 }
             }
 
-            // For the last repetition, return the checksum
-            if (rep == repetitions - 1) {
-                return calculateMatrixChecksum(c)
-            }
+            // Perform Strassen's multiplication
+            val c = strassenMultiply(a, b, paddedSize)
+
+            // Update checksum from each iteration (only use original size)
+            checksum = checksum xor calculateMatrixChecksumPartial(c, size)
         }
 
-        // This should never be reached, but Kotlin requires a return statement
-        return 0L
+        return checksum
+    }
+    
+    /**
+     * Find the next power of 2 >= n
+     */
+    private fun nextPowerOfTwo(n: Int): Int {
+        var power = 1
+        while (power < n) power *= 2
+        return power
+    }
+    
+    /**
+     * Calculate checksum for a partial matrix (up to given size)
+     */
+    private fun calculateMatrixChecksumPartial(matrix: Array<DoubleArray>, size: Int): Long {
+        var checksum = 0L
+        for (i in 0 until size) {
+            for (j in 0 until size) {
+                checksum = checksum xor java.lang.Double.doubleToLongBits(matrix[i][j])
+            }
+        }
+        return checksum
+    }
+    
+    // Threshold below which we use standard multiplication
+    private const val STRASSEN_THRESHOLD = 64
+    
+    /**
+     * Strassen's Matrix Multiplication Algorithm
+     * Recursively divides matrices and uses 7 multiplications instead of 8
+     */
+    private fun strassenMultiply(a: Array<DoubleArray>, b: Array<DoubleArray>, n: Int): Array<DoubleArray> {
+        // Base case: use standard multiplication for small matrices
+        if (n <= STRASSEN_THRESHOLD) {
+            return standardMultiply(a, b, n)
+        }
+        
+        val half = n / 2
+        
+        // Split matrices into quadrants
+        val a11 = getQuadrant(a, 0, 0, half)
+        val a12 = getQuadrant(a, 0, half, half)
+        val a21 = getQuadrant(a, half, 0, half)
+        val a22 = getQuadrant(a, half, half, half)
+        
+        val b11 = getQuadrant(b, 0, 0, half)
+        val b12 = getQuadrant(b, 0, half, half)
+        val b21 = getQuadrant(b, half, 0, half)
+        val b22 = getQuadrant(b, half, half, half)
+        
+        // Compute the 7 Strassen products
+        val m1 = strassenMultiply(addMatrices(a11, a22, half), addMatrices(b11, b22, half), half)
+        val m2 = strassenMultiply(addMatrices(a21, a22, half), b11, half)
+        val m3 = strassenMultiply(a11, subtractMatrices(b12, b22, half), half)
+        val m4 = strassenMultiply(a22, subtractMatrices(b21, b11, half), half)
+        val m5 = strassenMultiply(addMatrices(a11, a12, half), b22, half)
+        val m6 = strassenMultiply(subtractMatrices(a21, a11, half), addMatrices(b11, b12, half), half)
+        val m7 = strassenMultiply(subtractMatrices(a12, a22, half), addMatrices(b21, b22, half), half)
+        
+        // Compute result quadrants
+        val c11 = addMatrices(subtractMatrices(addMatrices(m1, m4, half), m5, half), m7, half)
+        val c12 = addMatrices(m3, m5, half)
+        val c21 = addMatrices(m2, m4, half)
+        val c22 = addMatrices(subtractMatrices(addMatrices(m1, m3, half), m2, half), m6, half)
+        
+        // Combine quadrants into result
+        return combineQuadrants(c11, c12, c21, c22, n)
+    }
+    
+    /**
+     * Standard O(n^3) matrix multiplication for small matrices
+     */
+    private fun standardMultiply(a: Array<DoubleArray>, b: Array<DoubleArray>, n: Int): Array<DoubleArray> {
+        val c = Array(n) { DoubleArray(n) }
+        for (i in 0 until n) {
+            for (k in 0 until n) {
+                val aik = a[i][k]
+                for (j in 0 until n) {
+                    c[i][j] += aik * b[k][j]
+                }
+            }
+        }
+        return c
+    }
+    
+    /**
+     * Extract a quadrant from a matrix
+     */
+    private fun getQuadrant(m: Array<DoubleArray>, rowStart: Int, colStart: Int, size: Int): Array<DoubleArray> {
+        return Array(size) { i ->
+            DoubleArray(size) { j ->
+                m[rowStart + i][colStart + j]
+            }
+        }
+    }
+    
+    /**
+     * Add two matrices
+     */
+    private fun addMatrices(a: Array<DoubleArray>, b: Array<DoubleArray>, n: Int): Array<DoubleArray> {
+        return Array(n) { i ->
+            DoubleArray(n) { j ->
+                a[i][j] + b[i][j]
+            }
+        }
+    }
+    
+    /**
+     * Subtract two matrices
+     */
+    private fun subtractMatrices(a: Array<DoubleArray>, b: Array<DoubleArray>, n: Int): Array<DoubleArray> {
+        return Array(n) { i ->
+            DoubleArray(n) { j ->
+                a[i][j] - b[i][j]
+            }
+        }
+    }
+    
+    /**
+     * Combine four quadrants into a single matrix
+     */
+    private fun combineQuadrants(
+        c11: Array<DoubleArray>, c12: Array<DoubleArray>,
+        c21: Array<DoubleArray>, c22: Array<DoubleArray>,
+        n: Int
+    ): Array<DoubleArray> {
+        val half = n / 2
+        return Array(n) { i ->
+            DoubleArray(n) { j ->
+                when {
+                    i < half && j < half -> c11[i][j]
+                    i < half && j >= half -> c12[i][j - half]
+                    i >= half && j < half -> c21[i - half][j]
+                    else -> c22[i - half][j - half]
+                }
+            }
+        }
     }
 
     /**

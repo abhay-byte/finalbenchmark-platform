@@ -1,18 +1,13 @@
-Version 0.3 - UI Improvements & Bug Fixes
+Version 0.4 - Matrix Multiplication Algorithm Overhaul
 
-• Fixed CPU Affinity Control to show accurate BIG/Mid/LITTLE core counts
-• Simplified CPU Governor Hints section for better reliability
-• Updated benchmark tip #1 to "Flash Thermal Disable Module"
-• Changed temperature graphs to show Max instead of Current temperature
-• Updated Rankings tab with latest reference devices (Snapdragon 8 Elite, 8s Gen 3, Helio G95)
-• Improved GPU section UI with scrollable lists and elegant design
-• Enhanced CPU topology display in Device screen
-• Added MP Ratio card showing multi-core scaling efficiency
-• Adjusted benchmark scoring factors for better balance
+• Implemented Strassen's divide-and-conquer matrix multiplication algorithm
+• O(n^2.807) complexity for improved performance consistency
+• Fresh random data generated for each benchmark iteration
+• Adjusted workload parameters for all device tiers
+• Fixed benchmark caching issues for more accurate results
 
-Bug Fixes:
-• Fixed CPU Governor Hints status persistence after benchmark
-• Corrected core count display for 3-tier CPU architectures
-• Synchronized ranking data across all screens
-• Fixed Final Score text visibility in Monokai theme
-• MP Ratio card now uses consistent colors across all themes
+Technical Changes:
+• Matrix sizes automatically padded to power of 2 for Strassen's algorithm
+• Threshold of 64 for fallback to standard multiplication
+• Unique random seeds per iteration to prevent data reuse
+• Updated iteration counts for Budget, MidRange, and Flagship tiers
