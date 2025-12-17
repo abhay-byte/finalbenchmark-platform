@@ -14,12 +14,6 @@ plugins {
     alias(libs.plugins.ksp)
 }
 
-// F-Droid reproducible builds: disable baseline profile generation
-baselineProfile {
-    automaticGenerationDuringBuild = false
-    saveInSrc = false
-}
-
 android {
     namespace = "com.ivarna.finalbenchmark2"
     compileSdk { version = release(36) }
