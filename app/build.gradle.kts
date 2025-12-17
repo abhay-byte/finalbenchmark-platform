@@ -70,10 +70,6 @@ android {
         includeInBundle = false
     }
 
-    // Disable baseline profiles for reproducible builds
-    experimentalProperties["android.experimental.art-profile-r8-rewriting"] = false
-    experimentalProperties["android.experimental.r8.dex-startup-optimization"] = false
-
     buildTypes {
         debug {
             isDebuggable = true
