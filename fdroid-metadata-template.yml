@@ -24,7 +24,19 @@ Builds:
       - yes
     ndk: r27c
 
+  - versionName: 0.3
+    versionCode: 4
+    commit: 963dab3882e4de4f86e3164da3f2ecd4be574673
+    subdir: app
+    sudo:
+      - apt-get update
+      - apt-get install -y cmake
+      - update-alternatives --auto java
+    gradle:
+      - yes
+    ndk: r27c
+
 AutoUpdateMode: Version
 UpdateCheckMode: Tags
-CurrentVersion: 0.2.25
-CurrentVersionCode: 3
+CurrentVersion: 0.3
+CurrentVersionCode: 4
