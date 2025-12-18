@@ -1160,111 +1160,76 @@ object MultiCoreBenchmarks {
         }
 
         /**
-         * Test 8: Multi-Core Monte Carlo Simulation for π - INLINED FOR ZERO OVERHEAD
+         * Test 8: Multi-Core Leibniz π Calculation
          *
-         * CRITICAL FIX FOR SCALING:
-         * - Inline Monte Carlo logic directly in async block (no function call overhead)
-         * - Each thread has its OWN Random instance with unique seed (no contention)
-         * - No shared state whatsoever between threads
-         * - Total work scales with cores: monteCarloSamples × numThreads
+         * ALGORITHM: Uses Leibniz formula: π/4 = 1 - 1/3 + 1/5 - 1/7 + 1/9 - ...
          *
-         * PERFORMANCE: ~10 Mops/s on 8-core devices (8x single-core baseline)
+         * WHY LEIBNIZ INSTEAD OF MONTE CARLO:
+         * - Deterministic: No random numbers, no caching issues
+         * - Predictable: Same iterations = same result
+         * - Scales linearly: Each thread processes separate range of terms
+         * - Pure arithmetic: Tests raw CPU throughput
+         *
+         * PERFORMANCE: Scales linearly with core count
          */
         suspend fun monteCarloPi(params: WorkloadParams, isTestRun: Boolean = false): BenchmarkResult = coroutineScope {
-                Log.d(TAG, "=== STARTING MULTI-CORE MONTE CARLO π - INLINED VERSION ===")
+                Log.d(TAG, "=== STARTING MULTI-CORE LEIBNIZ π ===")
                 Log.d(TAG, "Threads available: $numThreads")
-                Log.d(TAG, "Fixed workload per thread: ${params.monteCarloSamples} samples")
-                Log.d(
-                        TAG,
-                        "Total expected samples: ${params.monteCarloSamples.toLong() * numThreads}"
-                )
-                CpuAffinityManager.setMaxPerformance()
+                val iterationsPerThread = params.monteCarloSamples.toLong()
+                val totalIterations = iterationsPerThread * numThreads
+                Log.d(TAG, "Iterations per thread: $iterationsPerThread, Total: $totalIterations")
 
-                // Configuration
-                val samplesPerThread = params.monteCarloSamples.toLong()
-                val totalSamples = samplesPerThread * numThreads
+                CpuAffinityManager.setMaxPerformance()
 
                 // Start timing
                 val startTime = System.currentTimeMillis()
 
-                // Use Dispatchers.Default (no custom caching) with fresh coroutines each time
-                val results =
-                        (0 until numThreads).map { threadId ->
-                                async(Dispatchers.Default) {
-                                        var insideCircle = 0L
+                // Each thread calculates a portion of the Leibniz series
+                // Thread 0: terms 0, numThreads, 2*numThreads, ...
+                // Thread 1: terms 1, numThreads+1, 2*numThreads+1, ...
+                val results = (0 until numThreads).map { threadId ->
+                    async(Dispatchers.Default) {
+                        var sum = 0.0
+                        var term = threadId.toLong()
+                        val step = numThreads.toLong()
 
-                                        // Create fresh XorShift128Plus with unique entropy
-                                        val random = XorShift128Plus.withEntropy(
-                                            threadId.toLong(),
-                                            System.nanoTime(),
-                                            hashCode().toLong()
-                                        )
-
-                                        // Inline Monte Carlo logic - NO function calls
-                                        val batchSize = 256
-                                        val vectorizedSamples =
-                                                samplesPerThread / batchSize * batchSize
-                                        var processed = 0L
-
-                                        while (processed < vectorizedSamples) {
-                                                var localCount = 0
-
-                                                repeat(batchSize) {
-                                                        val x = random.nextDouble() * 2.0 - 1.0
-                                                        val y = random.nextDouble() * 2.0 - 1.0
-                                                        if (x * x + y * y <= 1.0) localCount++
-                                                }
-
-                                                insideCircle += localCount
-                                                processed += batchSize
-                                        }
-
-                                        // Handle remaining samples
-                                        repeat((samplesPerThread - vectorizedSamples).toInt()) {
-                                                val x = random.nextDouble() * 2.0 - 1.0
-                                                val y = random.nextDouble() * 2.0 - 1.0
-                                                if (x * x + y * y <= 1.0) insideCircle++
-                                        }
-
-                                        Log.d(
-                                                TAG,
-                                                "Thread $threadId: processed $samplesPerThread samples, inside: $insideCircle"
-                                        )
-                                        insideCircle
-                                }
+                        repeat(iterationsPerThread.toInt()) {
+                            // Leibniz: (-1)^n / (2n + 1)
+                            val denominator = 2.0 * term + 1.0
+                            val sign = if (term % 2 == 0L) 1.0 else -1.0
+                            sum += sign / denominator
+                            term += step
                         }
 
-                // Await all results
+                        Log.d(TAG, "Thread $threadId: computed $iterationsPerThread terms, partial sum: $sum")
+                        sum
+                    }
+                }
+
+                // Await all results and sum them
                 val threadResults = results.awaitAll()
-                val totalInsideCircle = threadResults.sum()
+                val totalSum = threadResults.sum()
 
                 val endTime = System.currentTimeMillis()
                 val timeMs = (endTime - startTime).toDouble()
 
-                // Calculate π estimate and metrics
-                val piEstimate = 4.0 * totalInsideCircle.toDouble() / totalSamples.toDouble()
-                val opsPerSecond = totalSamples.toDouble() / (timeMs / 1000.0)
+                // Calculate π estimate (Leibniz gives π/4)
+                val piEstimate = totalSum * 4.0
+                val opsPerSecond = totalIterations.toDouble() / (timeMs / 1000.0)
                 val accuracy = kotlin.math.abs(piEstimate - kotlin.math.PI)
 
-                // Accuracy threshold
-                val accuracyThreshold =
-                        when {
-                                totalSamples >= 5_000_000 -> 0.005
-                                totalSamples >= 1_000_000 -> 0.01
-                                else -> 0.02
-                        }
+                // Accuracy threshold based on iterations
+                val accuracyThreshold = when {
+                    totalIterations >= 100_000_000 -> 0.00001
+                    totalIterations >= 10_000_000 -> 0.0001
+                    totalIterations >= 1_000_000 -> 0.001
+                    else -> 0.01
+                }
 
-                val isValid =
-                        totalInsideCircle > 0 &&
-                                timeMs > 0 &&
-                                opsPerSecond > 0 &&
-                                accuracy < accuracyThreshold
+                val isValid = timeMs > 0 && opsPerSecond > 0 && accuracy < accuracyThreshold
 
-                Log.d(TAG, "=== MULTI-CORE MONTE CARLO π COMPLETE ===")
-                Log.d(
-                        TAG,
-                        "Time: ${timeMs}ms, Total Samples: $totalSamples, Ops/sec: $opsPerSecond"
-                )
+                Log.d(TAG, "=== MULTI-CORE LEIBNIZ π COMPLETE ===")
+                Log.d(TAG, "Time: ${timeMs}ms, Total iterations: $totalIterations, Ops/sec: $opsPerSecond")
                 Log.d(TAG, "π estimate: $piEstimate, Accuracy: $accuracy, Valid: $isValid")
 
                 CpuAffinityManager.resetPerformance()
@@ -1273,6 +1238,7 @@ object MultiCoreBenchmarks {
                 if (!isTestRun) {
                     kotlinx.coroutines.delay(1500)
                 }
+
                 BenchmarkResult(
                         name = "Multi-Core Monte Carlo π",
                         executionTimeMs = timeMs,
@@ -1281,24 +1247,18 @@ object MultiCoreBenchmarks {
                         metricsJson =
                                 JSONObject()
                                         .apply {
-                                                put("samples_per_thread", samplesPerThread)
+                                                put("iterations_per_thread", iterationsPerThread)
                                                 put("threads", numThreads)
-                                                put("total_samples", totalSamples)
+                                                put("total_iterations", totalIterations)
                                                 put("pi_estimate", piEstimate)
                                                 put("actual_pi", kotlin.math.PI)
                                                 put("accuracy", accuracy)
                                                 put("accuracy_threshold", accuracyThreshold)
-                                                put("inside_circle", totalInsideCircle)
+                                                put("partial_sum", totalSum)
                                                 put("time_ms", timeMs)
                                                 put("ops_per_second", opsPerSecond)
-                                                put(
-                                                        "implementation",
-                                                        "Inlined with per-thread XorShift128+"
-                                                )
-                                                put(
-                                                        "optimization",
-                                                        "XorShift128+ RNG (2-3x faster), true random seeding, zero shared state, vectorized batching"
-                                                )
+                                                put("implementation", "Leibniz formula")
+                                                put("optimization", "Deterministic, no randomness, strided thread distribution")
                                         }
                                         .toString()
                 )

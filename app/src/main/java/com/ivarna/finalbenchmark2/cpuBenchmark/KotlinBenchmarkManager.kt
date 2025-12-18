@@ -707,7 +707,7 @@ class KotlinBenchmarkManager {
                                                 2_000, // INCREASED: Target ~15s execution (was
                                         // 100)
                                         monteCarloSamples =
-                                                50_000_000, // FIXED WORK PER CORE: Target ~1.5s
+                                                500_000_000, // FIXED WORK PER CORE: Target ~1.5s
                                         // (was
                                         // 15M)
                                         jsonDataSizeMb = 1,

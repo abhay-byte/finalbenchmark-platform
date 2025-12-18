@@ -626,78 +626,55 @@ object SingleCoreBenchmarks {
                 }
 
         /**
-         * Test 8: Monte Carlo Simulation for π - INLINED FOR PERFORMANCE
+         * Test 8: Single-Core Leibniz π Calculation
          *
-         * CRITICAL: Uses same inlined logic as Multi-Core for fair comparison
-         * - Inline Monte Carlo logic (no function call overhead)
-         * - Uses java.util.Random (NOT ThreadLocalRandom which is 37x slower!)
-         * - Vectorized batching with batch size 256
-         * - Fixed workload: params.monteCarloSamples
+         * ALGORITHM: Uses Leibniz formula: π/4 = 1 - 1/3 + 1/5 - 1/7 + 1/9 - ...
          *
-         * PERFORMANCE: ~1.3 Mops/s baseline for single-core devices
+         * WHY LEIBNIZ INSTEAD OF MONTE CARLO:
+         * - Deterministic: No random numbers, no caching issues
+         * - Predictable: Same iterations = same result
+         * - Pure arithmetic: Tests raw CPU throughput
+         * - Fair comparison: Same algorithm as Multi-Core
+         *
+         * PERFORMANCE: Baseline for single-core comparison
          */
         suspend fun monteCarloPi(params: WorkloadParams, isTestRun: Boolean = false): BenchmarkResult =
                 withContext(Dispatchers.Default) {
-                        Log.d(
-                                TAG,
-                                "Starting Single-Core Monte Carlo π (samples: ${params.monteCarloSamples}) - INLINED VERSION"
-                        )
+                        Log.d(TAG, "Starting Single-Core Leibniz π (iterations: ${params.monteCarloSamples})")
                         CpuAffinityManager.setLastCoreAffinity()
                         CpuAffinityManager.setMaxPerformance()
 
-                        val samples = params.monteCarloSamples.toLong()
+                        val iterations = params.monteCarloSamples.toLong()
 
-                        val (insideCircle, timeMs) =
-                                BenchmarkHelpers.measureBenchmark {
-                                        var insideCircle = 0L
+                        val (partialSum, timeMs) = BenchmarkHelpers.measureBenchmark {
+                            var sum = 0.0
+                            var term = 0L
 
-                                        // OPTIMIZED: Use XorShift128+ (2-3x faster than java.util.Random)
-                                        // TRUE RANDOM: Auto-seeds with multiple entropy sources
-                                        // - System.nanoTime() + currentTimeMillis() + threadId + freeMemory
-                                        // - Ensures different random sequence every run (fixes 696% variance)
-                                        val random = XorShift128Plus()
+                            repeat(iterations.toInt()) {
+                                // Leibniz: (-1)^n / (2n + 1)
+                                val denominator = 2.0 * term + 1.0
+                                val sign = if (term % 2 == 0L) 1.0 else -1.0
+                                sum += sign / denominator
+                                term++
+                            }
 
-                                        // Inline Monte Carlo logic - same as Multi-Core
-                                        val batchSize = 256
-                                        val vectorizedSamples = samples / batchSize * batchSize
-                                        var processed = 0L
+                            sum
+                        }
 
-                                        while (processed < vectorizedSamples) {
-                                                var localCount = 0
-
-                                                repeat(batchSize) {
-                                                        val x = random.nextDouble() * 2.0 - 1.0
-                                                        val y = random.nextDouble() * 2.0 - 1.0
-                                                        if (x * x + y * y <= 1.0) localCount++
-                                                }
-
-                                                insideCircle += localCount
-                                                processed += batchSize
-                                        }
-
-                                        // Handle remaining samples
-                                        repeat((samples - vectorizedSamples).toInt()) {
-                                                val x = random.nextDouble() * 2.0 - 1.0
-                                                val y = random.nextDouble() * 2.0 - 1.0
-                                                if (x * x + y * y <= 1.0) insideCircle++
-                                        }
-
-                                        insideCircle
-                                }
-
-                        // Calculate π estimate and metrics
-                        val piEstimate = 4.0 * insideCircle.toDouble() / samples.toDouble()
-                        val opsPerSecond = samples.toDouble() / (timeMs / 1000.0)
+                        // Calculate π estimate (Leibniz gives π/4)
+                        val piEstimate = partialSum * 4.0
+                        val opsPerSecond = iterations.toDouble() / (timeMs / 1000.0)
                         val accuracy = kotlin.math.abs(piEstimate - kotlin.math.PI)
 
-                        // Accuracy threshold based on sample size
-                        val accuracyThreshold =
-                                when {
-                                        samples >= 1_000_000 -> 0.01 // Very tight for large samples
-                                        samples >= 500_000 -> 0.02 // Tight for medium samples
-                                        else -> 0.03 // Moderate for small samples
-                                }
-                        val isValid = accuracy < accuracyThreshold && timeMs > 0 && opsPerSecond > 0
+                        // Accuracy threshold based on iterations
+                        val accuracyThreshold = when {
+                            iterations >= 100_000_000 -> 0.00001
+                            iterations >= 10_000_000 -> 0.0001
+                            iterations >= 1_000_000 -> 0.001
+                            else -> 0.01
+                        }
+
+                        val isValid = timeMs > 0 && opsPerSecond > 0 && accuracy < accuracyThreshold
 
                         CpuAffinityManager.resetPerformance()
                         CpuAffinityManager.resetCpuAffinity()
@@ -706,6 +683,7 @@ object SingleCoreBenchmarks {
                         if (!isTestRun) {
                             kotlinx.coroutines.delay(1500)
                         }
+
                         return@withContext BenchmarkResult(
                                 name = "Single-Core Monte Carlo π",
                                 executionTimeMs = timeMs.toDouble(),
@@ -714,20 +692,14 @@ object SingleCoreBenchmarks {
                                 metricsJson =
                                         JSONObject()
                                                 .apply {
-                                                        put("samples", samples)
+                                                        put("iterations", iterations)
                                                         put("pi_estimate", piEstimate)
                                                         put("actual_pi", kotlin.math.PI)
                                                         put("accuracy", accuracy)
                                                         put("accuracy_threshold", accuracyThreshold)
-                                                        put("inside_circle", insideCircle)
-                                                        put(
-                                                                "implementation",
-                                                                "Inlined with XorShift128+"
-                                                        )
-                                                        put(
-                                                                "optimization",
-                                                                "XorShift128+ RNG (2-3x faster) - true random seeding, vectorized batching"
-                                                        )
+                                                        put("partial_sum", partialSum)
+                                                        put("implementation", "Leibniz formula")
+                                                        put("optimization", "Deterministic, no randomness")
                                                 }
                                                 .toString()
                         )
