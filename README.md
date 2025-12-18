@@ -14,11 +14,11 @@
 
 ---
 
-[![GitHub Downloads](https://img.shields.io/github/downloads/abhay-byte/finalbenchmark-platform/total?style=flat-square&logo=github)](https://github.com/abhay-byte/finalbenchmark-platform/releases)
-[![GitHub Stars](https://img.shields.io/github/stars/abhay-byte/finalbenchmark-platform?style=flat-square&logo=github)](https://github.com/abhay-byte/finalbenchmark-platform/stargazers)
-[![GitHub Forks](https://img.shields.io/github/forks/abhay-byte/finalbenchmark-platform?style=flat-square&logo=github)](https://github.com/abhay-byte/finalbenchmark-platform/network/members)
-[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=flat-square)](LICENSE)
-[![FOSS](https://img.shields.io/badge/FOSS-100%25-green?style=flat-square)](https://opensource.org/)
+[![GitHub Downloads](https://img.shields.io/github/downloads/abhay-byte/finalbenchmark-platform/total?style=for-the-badge&logo=github&logoColor=white&labelColor=24292e&color=success)](https://github.com/abhay-byte/finalbenchmark-platform/releases)
+[![GitHub Stars](https://img.shields.io/github/stars/abhay-byte/finalbenchmark-platform?style=for-the-badge&logo=github&logoColor=white&labelColor=24292e&color=yellow)](https://github.com/abhay-byte/finalbenchmark-platform/stargazers)
+[![GitHub Forks](https://img.shields.io/github/forks/abhay-byte/finalbenchmark-platform?style=for-the-badge&logo=github&logoColor=white&labelColor=24292e&color=blue)](https://github.com/abhay-byte/finalbenchmark-platform/network/members)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=for-the-badge&logo=apache&logoColor=white)](LICENSE)
+[![FOSS](https://img.shields.io/badge/FOSS-100%25-brightgreen?style=for-the-badge&logo=opensourceinitiative&logoColor=white)](https://opensource.org/)
 
 ![Play Store Downloads](https://playbadges.pavi2410.com/badge/downloads?id=com.ivarna.finalbenchmark2&pretty)
 ![Play Store Rating](https://playbadges.pavi2410.com/badge/ratings?id=com.ivarna.finalbenchmark2&pretty)
