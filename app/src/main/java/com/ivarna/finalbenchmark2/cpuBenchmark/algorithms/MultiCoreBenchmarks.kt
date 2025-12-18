@@ -1180,7 +1180,26 @@ object MultiCoreBenchmarks {
                 val samplesPerThread = params.monteCarloSamples.toLong()
                 val totalSamples = samplesPerThread * numThreads
 
-                // Start timing
+                // CRITICAL FIX: JIT Warm-up to prevent caching variance
+                // Run a small Monte Carlo sample to force JIT compilation
+                // This ensures consistent performance across consecutive runs
+                Log.d(TAG, "Running JIT warm-up...")
+                val warmupResults = (0 until numThreads).map { threadId ->
+                    async(highPriorityDispatcher) {
+                        val random = java.util.Random(System.nanoTime() + threadId)
+                        var count = 0L
+                        repeat(10_000) {
+                            val x = random.nextDouble() * 2.0 - 1.0
+                            val y = random.nextDouble() * 2.0 - 1.0
+                            if (x * x + y * y <= 1.0) count++
+                        }
+                        count
+                    }
+                }
+                warmupResults.awaitAll() // Wait for JIT warm-up to complete
+                Log.d(TAG, "JIT warm-up complete, starting timed benchmark...")
+
+                // Start timing AFTER JIT warm-up
                 val startTime = System.currentTimeMillis()
 
                 // CRITICAL: Inline Monte Carlo logic with per-thread Random
