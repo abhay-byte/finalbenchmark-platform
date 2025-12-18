@@ -26,7 +26,7 @@ Builds:
 
   - versionName: '0.3'
     versionCode: 4
-    commit: 0f3aedab1dcdc3cd381a842a0870c7d9aa62e44e
+    commit: 2728f248f3bc91ebbd6fa3bf1e4a514f71b10082
     subdir: app
     sudo:
       - apt-get update
