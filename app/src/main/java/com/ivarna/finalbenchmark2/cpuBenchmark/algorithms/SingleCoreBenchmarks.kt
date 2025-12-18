@@ -647,18 +647,6 @@ object SingleCoreBenchmarks {
 
                         val samples = params.monteCarloSamples.toLong()
 
-                        // CRITICAL FIX: JIT Warm-up to prevent caching variance
-                        // Run a small Monte Carlo sample to force JIT compilation
-                        Log.d(TAG, "Running JIT warm-up for Single-Core Monte Carlo...")
-                        val warmupRandom = java.util.Random(System.nanoTime())
-                        var warmupCount = 0L
-                        repeat(10_000) {
-                            val x = warmupRandom.nextDouble() * 2.0 - 1.0
-                            val y = warmupRandom.nextDouble() * 2.0 - 1.0
-                            if (x * x + y * y <= 1.0) warmupCount++
-                        }
-                        Log.d(TAG, "JIT warm-up complete (warmup hits: $warmupCount), starting timed benchmark...")
-
                         val (insideCircle, timeMs) =
                                 BenchmarkHelpers.measureBenchmark {
                                         var insideCircle = 0L
