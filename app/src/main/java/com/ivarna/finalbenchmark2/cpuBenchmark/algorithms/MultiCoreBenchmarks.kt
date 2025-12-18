@@ -1189,9 +1189,15 @@ object MultiCoreBenchmarks {
                                 async(highPriorityDispatcher) {
                                         var insideCircle = 0L
 
-                                        // CRITICAL: Each thread creates its OWN Random with unique
-                                        // seed
-                                        val random = java.util.Random(System.nanoTime() + threadId)
+                                        // CRITICAL: Each thread creates its OWN Random with unique seed
+                                // FIX: Combine multiple entropy sources to prevent seed collisions
+                                // between consecutive test runs (fixes 696% variance issue)
+                                val random = java.util.Random(
+                                    System.nanoTime() xor 
+                                    System.currentTimeMillis() xor 
+                                    threadId.toLong() xor 
+                                    hashCode().toLong()
+                                )
 
                                         // Inline Monte Carlo logic - NO function calls
                                         val batchSize = 256

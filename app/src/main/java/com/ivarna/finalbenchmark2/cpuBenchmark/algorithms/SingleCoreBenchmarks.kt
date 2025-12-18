@@ -651,8 +651,15 @@ object SingleCoreBenchmarks {
                                 BenchmarkHelpers.measureBenchmark {
                                         var insideCircle = 0L
 
-                                        // CRITICAL: Use java.util.Random, NOT ThreadLocalRandom!
-                                        val random = java.util.Random(System.nanoTime())
+                                        // CRITICAL: Use java.util.Random with strong seed mixing
+                                        // FIX: Combine multiple entropy sources to prevent seed collisions
+                                        // between consecutive test runs (fixes 696% variance issue)
+                                        val random = java.util.Random(
+                                            System.nanoTime() xor
+                                            System.currentTimeMillis() xor
+                                            Thread.currentThread().threadId() xor
+                                            hashCode().toLong()
+                                        )
 
                                         // Inline Monte Carlo logic - same as Multi-Core
                                         val batchSize = 256
