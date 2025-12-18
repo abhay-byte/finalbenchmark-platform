@@ -43,7 +43,7 @@ object MultiCoreBenchmarks {
          * Test 1: Parallel Prime Generation FIXED: Use strided loop for perfect load balancing Each
          * thread processes numbers with step = numThreads for equal work distribution
          */
-        suspend fun primeGeneration(params: WorkloadParams): BenchmarkResult = coroutineScope {
+        suspend fun primeGeneration(params: WorkloadParams, isTestRun: Boolean = false): BenchmarkResult = coroutineScope {
                 Log.d(
                         TAG,
                         "Starting Multi-Core Prime Generation - FIXED: Strided loop for load balancing"
@@ -98,8 +98,10 @@ object MultiCoreBenchmarks {
 
                 CpuAffinityManager.resetPerformance()
 
-                // Thermal stabilization delay
-                kotlinx.coroutines.delay(1500)
+                // Thermal stabilization delay (skip for test runs)
+                if (!isTestRun) {
+                    kotlinx.coroutines.delay(1500)
+                }
                 BenchmarkResult(
                         name = "Multi-Core Prime Generation",
                         executionTimeMs = timeMs.toDouble(),
@@ -137,7 +139,7 @@ object MultiCoreBenchmarks {
          *
          * PERFORMANCE: ~160 Mops/s on 8-core devices (8x single-core baseline)
          */
-        suspend fun fibonacciRecursive(params: WorkloadParams): BenchmarkResult = coroutineScope {
+        suspend fun fibonacciRecursive(params: WorkloadParams, isTestRun: Boolean = false): BenchmarkResult = coroutineScope {
                 Log.d(TAG, "=== STARTING MULTI-CORE FIBONACCI - CORE INDEPENDENT ===")
                 Log.d(TAG, "Threads available: $numThreads")
                 Log.d(TAG, "Fixed workload per thread: 10,000,000 iterations")
@@ -236,8 +238,10 @@ object MultiCoreBenchmarks {
 
                 CpuAffinityManager.resetPerformance()
 
-                // Thermal stabilization delay
-                kotlinx.coroutines.delay(1500)
+                // Thermal stabilization delay (skip for test runs)
+                if (!isTestRun) {
+                    kotlinx.coroutines.delay(1500)
+                }
                 BenchmarkResult(
                         name = "Multi-Core Fibonacci Iterative",
                         executionTimeMs = timeMs,
@@ -285,7 +289,7 @@ object MultiCoreBenchmarks {
          * This fixes the OOM crashes and enables true 8x multi-core scaling by testing CPU compute
          * performance instead of memory bandwidth.
          */
-        suspend fun matrixMultiplication(params: WorkloadParams): BenchmarkResult = coroutineScope {
+        suspend fun matrixMultiplication(params: WorkloadParams, isTestRun: Boolean = false): BenchmarkResult = coroutineScope {
                 Log.d(
                         TAG,
                         "=== STARTING MULTI-CORE MATRIX MULTIPLICATION - CACHE-RESIDENT STRATEGY ==="
@@ -382,8 +386,10 @@ object MultiCoreBenchmarks {
 
                 CpuAffinityManager.resetPerformance()
 
-                // Thermal stabilization delay
-                kotlinx.coroutines.delay(1500)
+                // Thermal stabilization delay (skip for test runs)
+                if (!isTestRun) {
+                    kotlinx.coroutines.delay(1500)
+                }
                 BenchmarkResult(
                         name = "Multi-Core Matrix Multiplication",
                         executionTimeMs = timeMs,
@@ -434,7 +440,7 @@ object MultiCoreBenchmarks {
          *
          * PERFORMANCE: ~1.6 Mops/s on 8-core devices (8x single-core baseline)
          */
-        suspend fun hashComputing(params: WorkloadParams): BenchmarkResult = coroutineScope {
+        suspend fun hashComputing(params: WorkloadParams, isTestRun: Boolean = false): BenchmarkResult = coroutineScope {
                 Log.d(TAG, "=== STARTING MULTI-CORE HASH COMPUTING - FIXED WORK PER CORE ===")
                 Log.d(TAG, "Threads available: $numThreads")
                 Log.d(TAG, "Fixed workload per thread: ${params.hashIterations} iterations")
@@ -526,8 +532,10 @@ object MultiCoreBenchmarks {
 
                 CpuAffinityManager.resetPerformance()
 
-                // Thermal stabilization delay
-                kotlinx.coroutines.delay(1500)
+                // Thermal stabilization delay (skip for test runs)
+                if (!isTestRun) {
+                    kotlinx.coroutines.delay(1500)
+                }
                 BenchmarkResult(
                         name = "Multi-Core Hash Computing",
                         executionTimeMs = timeMs,
@@ -576,7 +584,7 @@ object MultiCoreBenchmarks {
          *
          * PERFORMANCE: ~24.0 Mops/s on 8-core devices (8x single-core baseline)
          */
-        suspend fun stringSorting(params: WorkloadParams): BenchmarkResult = coroutineScope {
+        suspend fun stringSorting(params: WorkloadParams, isTestRun: Boolean = false): BenchmarkResult = coroutineScope {
                 Log.d(TAG, "=== STARTING MULTI-CORE STRING SORTING - CACHE-RESIDENT STRATEGY ===")
                 Log.d(TAG, "Threads available: $numThreads")
                 Log.d(TAG, "Using explicit iterations from params: ${params.stringSortIterations}")
@@ -681,8 +689,10 @@ object MultiCoreBenchmarks {
 
                 CpuAffinityManager.resetPerformance()
 
-                // Thermal stabilization delay
-                kotlinx.coroutines.delay(1500)
+                // Thermal stabilization delay (skip for test runs)
+                if (!isTestRun) {
+                    kotlinx.coroutines.delay(1500)
+                }
                 BenchmarkResult(
                         name = "Multi-Core String Sorting",
                         executionTimeMs = timeMs,
@@ -866,7 +876,7 @@ object MultiCoreBenchmarks {
          *
          * PERFORMANCE: ~20.0 Mops/s on 8-core devices (8x single-core baseline)
          */
-        suspend fun rayTracing(params: WorkloadParams): BenchmarkResult = coroutineScope {
+        suspend fun rayTracing(params: WorkloadParams, isTestRun: Boolean = false): BenchmarkResult = coroutineScope {
                 Log.d(TAG, "=== STARTING MULTI-CORE RAY TRACING - CACHE-RESIDENT STRATEGY ===")
                 Log.d(TAG, "Threads available: $numThreads")
                 Log.d(TAG, "Iterations per thread: ${params.rayTracingIterations}")
@@ -974,8 +984,10 @@ object MultiCoreBenchmarks {
 
                 CpuAffinityManager.resetPerformance()
 
-                // Thermal stabilization delay
-                kotlinx.coroutines.delay(1500)
+                // Thermal stabilization delay (skip for test runs)
+                if (!isTestRun) {
+                    kotlinx.coroutines.delay(1500)
+                }
                 BenchmarkResult(
                         name = "Multi-Core Ray Tracing",
                         executionTimeMs = timeMs,
@@ -1011,7 +1023,7 @@ object MultiCoreBenchmarks {
          *
          * PERFORMANCE: ~1.2 Gops/s on 8-core devices (8x single-core baseline)
          */
-        suspend fun compression(params: WorkloadParams): BenchmarkResult = coroutineScope {
+        suspend fun compression(params: WorkloadParams, isTestRun: Boolean = false): BenchmarkResult = coroutineScope {
                 Log.d(TAG, "=== STARTING MULTI-CORE COMPRESSION - FIXED WORK PER CORE ===")
                 Log.d(TAG, "Threads available: $numThreads")
                 Log.d(TAG, "Fixed workload per thread: ${params.compressionIterations} iterations")
@@ -1103,8 +1115,10 @@ object MultiCoreBenchmarks {
 
                 CpuAffinityManager.resetPerformance()
 
-                // Thermal stabilization delay
-                kotlinx.coroutines.delay(1500)
+                // Thermal stabilization delay (skip for test runs)
+                if (!isTestRun) {
+                    kotlinx.coroutines.delay(1500)
+                }
                 BenchmarkResult(
                         name = "Multi-Core Compression",
                         executionTimeMs = timeMs,
@@ -1152,7 +1166,7 @@ object MultiCoreBenchmarks {
          *
          * PERFORMANCE: ~10 Mops/s on 8-core devices (8x single-core baseline)
          */
-        suspend fun monteCarloPi(params: WorkloadParams): BenchmarkResult = coroutineScope {
+        suspend fun monteCarloPi(params: WorkloadParams, isTestRun: Boolean = false): BenchmarkResult = coroutineScope {
                 Log.d(TAG, "=== STARTING MULTI-CORE MONTE CARLO π - INLINED VERSION ===")
                 Log.d(TAG, "Threads available: $numThreads")
                 Log.d(TAG, "Fixed workload per thread: ${params.monteCarloSamples} samples")
@@ -1248,8 +1262,10 @@ object MultiCoreBenchmarks {
 
                 CpuAffinityManager.resetPerformance()
 
-                // Thermal stabilization delay
-                kotlinx.coroutines.delay(1500)
+                // Thermal stabilization delay (skip for test runs)
+                if (!isTestRun) {
+                    kotlinx.coroutines.delay(1500)
+                }
                 BenchmarkResult(
                         name = "Multi-Core Monte Carlo π",
                         executionTimeMs = timeMs,
@@ -1294,7 +1310,7 @@ object MultiCoreBenchmarks {
          *
          * PERFORMANCE: ~16.0 Mops/s on 8-core devices (8x single-core baseline)
          */
-        suspend fun jsonParsing(params: WorkloadParams): BenchmarkResult = coroutineScope {
+        suspend fun jsonParsing(params: WorkloadParams, isTestRun: Boolean = false): BenchmarkResult = coroutineScope {
                 Log.d(TAG, "=== STARTING MULTI-CORE JSON PARSING - CACHE-RESIDENT STRATEGY ===")
                 Log.d(TAG, "Threads available: $numThreads")
                 Log.d(
@@ -1387,8 +1403,10 @@ object MultiCoreBenchmarks {
 
                 CpuAffinityManager.resetPerformance()
 
-                // Thermal stabilization delay
-                kotlinx.coroutines.delay(1500)
+                // Thermal stabilization delay (skip for test runs)
+                if (!isTestRun) {
+                    kotlinx.coroutines.delay(1500)
+                }
                 BenchmarkResult(
                         name = "Multi-Core JSON Parsing",
                         executionTimeMs = timeMs,
@@ -1433,7 +1451,7 @@ object MultiCoreBenchmarks {
          *
          * PERFORMANCE: Scales linearly with cores (8 cores = 8× iterations in same time)
          */
-        suspend fun nqueens(params: WorkloadParams): BenchmarkResult = coroutineScope {
+        suspend fun nqueens(params: WorkloadParams, isTestRun: Boolean = false): BenchmarkResult = coroutineScope {
                 Log.d(TAG, "=== STARTING MULTI-CORE N-QUEENS - FIXED WORK PER CORE ===")
                 Log.d(TAG, "Threads available: $numThreads")
                 Log.d(TAG, "Board size: ${params.nqueensSize}")
@@ -1518,8 +1536,10 @@ object MultiCoreBenchmarks {
 
                 CpuAffinityManager.resetPerformance()
 
-                // Thermal stabilization delay
-                kotlinx.coroutines.delay(1500)
+                // Thermal stabilization delay (skip for test runs)
+                if (!isTestRun) {
+                    kotlinx.coroutines.delay(1500)
+                }
                 BenchmarkResult(
                         name = "Multi-Core N-Queens",
                         executionTimeMs = timeMs,

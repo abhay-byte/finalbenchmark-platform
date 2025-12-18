@@ -282,6 +282,28 @@ class BenchmarkViewModel(
                                         // Listen to benchmark events for UI updates
                                         try {
                                                 benchmarkManager.benchmarkEvents.collect { event ->
+                                                        // Handle TEST mode separately (warm-up workload)
+                                                        if (event.mode == "TEST") {
+                                                                when (event.state) {
+                                                                        "STARTED" -> {
+                                                                                _uiState.update { state ->
+                                                                                        state.copy(
+                                                                                                currentTestName = "Warming up device..."
+                                                                                        )
+                                                                                }
+                                                                        }
+                                                                        "COMPLETED" -> {
+                                                                                _uiState.update { state ->
+                                                                                        state.copy(
+                                                                                                currentTestName = "Warm-up complete, starting benchmarks..."
+                                                                                        )
+                                                                                }
+                                                                        }
+                                                                }
+                                                                return@collect // Skip normal processing for TEST events
+                                                        }
+
+                                                        // Normal benchmark event handling (SINGLE and MULTI modes)
                                                         when (event.state) {
                                                                 "STARTED" -> {
                                                                         _uiState.update { state ->

@@ -17,7 +17,7 @@ object SingleCoreBenchmarks {
          * algorithm Tests: Pure CPU arithmetic operations (division, modulo) FIXED: Use same
          * algorithm as Multi-Core for fair comparison
          */
-        suspend fun primeGeneration(params: WorkloadParams): BenchmarkResult =
+        suspend fun primeGeneration(params: WorkloadParams, isTestRun: Boolean = false): BenchmarkResult =
                 withContext(Dispatchers.Default) {
                         Log.d(
                                 TAG,
@@ -54,8 +54,10 @@ object SingleCoreBenchmarks {
                         CpuAffinityManager.resetPerformance()
                         CpuAffinityManager.resetCpuAffinity()
 
-                        // Thermal stabilization delay
-                        kotlinx.coroutines.delay(1500)
+                        // Thermal stabilization delay (skip for test runs)
+                        if (!isTestRun) {
+                            kotlinx.coroutines.delay(1500)
+                        }
                         return@withContext BenchmarkResult(
                                 name = "Single-Core Prime Generation",
                                 executionTimeMs = timeMs.toDouble(),
@@ -88,7 +90,7 @@ object SingleCoreBenchmarks {
          *
          * PERFORMANCE: ~20 Mops/s baseline for single-core devices
          */
-        suspend fun fibonacciRecursive(params: WorkloadParams): BenchmarkResult =
+        suspend fun fibonacciRecursive(params: WorkloadParams, isTestRun: Boolean = false): BenchmarkResult =
                 withContext(Dispatchers.Default) {
                         Log.d(
                                 TAG,
@@ -119,8 +121,10 @@ object SingleCoreBenchmarks {
                         CpuAffinityManager.resetPerformance()
                         CpuAffinityManager.resetCpuAffinity()
 
-                        // Thermal stabilization delay
-                        kotlinx.coroutines.delay(1500)
+                        // Thermal stabilization delay (skip for test runs)
+                        if (!isTestRun) {
+                            kotlinx.coroutines.delay(1500)
+                        }
                         return@withContext BenchmarkResult(
                                 name = "Single-Core Fibonacci Iterative",
                                 executionTimeMs = timeMs.toDouble(),
@@ -156,7 +160,7 @@ object SingleCoreBenchmarks {
          * benchmark times. Complexity: O(n³ × iterations) Tests: CPU compute performance, not
          * memory bandwidth.
          */
-        suspend fun matrixMultiplication(params: WorkloadParams): BenchmarkResult =
+        suspend fun matrixMultiplication(params: WorkloadParams, isTestRun: Boolean = false): BenchmarkResult =
                 withContext(Dispatchers.Default) {
                         Log.d(
                                 TAG,
@@ -186,8 +190,10 @@ object SingleCoreBenchmarks {
                         CpuAffinityManager.resetPerformance()
                         CpuAffinityManager.resetCpuAffinity()
 
-                        // Thermal stabilization delay
-                        kotlinx.coroutines.delay(1500)
+                        // Thermal stabilization delay (skip for test runs)
+                        if (!isTestRun) {
+                            kotlinx.coroutines.delay(1500)
+                        }
                         return@withContext BenchmarkResult(
                                 name = "Single-Core Matrix Multiplication",
                                 executionTimeMs = timeMs.toDouble(),
@@ -232,7 +238,7 @@ object SingleCoreBenchmarks {
          *
          * PERFORMANCE: ~0.2 Mops/s baseline for single-core devices
          */
-        suspend fun hashComputing(params: WorkloadParams): BenchmarkResult =
+        suspend fun hashComputing(params: WorkloadParams, isTestRun: Boolean = false): BenchmarkResult =
                 withContext(Dispatchers.Default) {
                         Log.d(TAG, "Starting Single-Core Hash Computing - FIXED WORK PER CORE")
                         CpuAffinityManager.setLastCoreAffinity()
@@ -259,8 +265,10 @@ object SingleCoreBenchmarks {
                         CpuAffinityManager.resetPerformance()
                         CpuAffinityManager.resetCpuAffinity()
 
-                        // Thermal stabilization delay
-                        kotlinx.coroutines.delay(1500)
+                        // Thermal stabilization delay (skip for test runs)
+                        if (!isTestRun) {
+                            kotlinx.coroutines.delay(1500)
+                        }
                         return@withContext BenchmarkResult(
                                 name = "Single-Core Hash Computing",
                                 executionTimeMs = timeMs.toDouble(),
@@ -303,7 +311,7 @@ object SingleCoreBenchmarks {
          *
          * PERFORMANCE: ~3.0 Mops/s baseline for single-core devices
          */
-        suspend fun stringSorting(params: WorkloadParams): BenchmarkResult =
+        suspend fun stringSorting(params: WorkloadParams, isTestRun: Boolean = false): BenchmarkResult =
                 withContext(Dispatchers.Default) {
                         Log.d(
                                 TAG,
@@ -347,8 +355,10 @@ object SingleCoreBenchmarks {
                         CpuAffinityManager.resetPerformance()
                         CpuAffinityManager.resetCpuAffinity()
 
-                        // Thermal stabilization delay
-                        kotlinx.coroutines.delay(1500)
+                        // Thermal stabilization delay (skip for test runs)
+                        if (!isTestRun) {
+                            kotlinx.coroutines.delay(1500)
+                        }
                         return@withContext BenchmarkResult(
                                 name = "Single-Core String Sorting",
                                 executionTimeMs = timeMs.toDouble(),
@@ -478,7 +488,7 @@ object SingleCoreBenchmarks {
          *
          * PERFORMANCE: ~2.5 Mops/s baseline for single-core devices
          */
-        suspend fun rayTracing(params: WorkloadParams): BenchmarkResult =
+        suspend fun rayTracing(params: WorkloadParams, isTestRun: Boolean = false): BenchmarkResult =
                 withContext(Dispatchers.Default) {
                         Log.d(
                                 TAG,
@@ -508,8 +518,10 @@ object SingleCoreBenchmarks {
                         CpuAffinityManager.resetPerformance()
                         CpuAffinityManager.resetCpuAffinity()
 
-                        // Thermal stabilization delay
-                        kotlinx.coroutines.delay(1500)
+                        // Thermal stabilization delay (skip for test runs)
+                        if (!isTestRun) {
+                            kotlinx.coroutines.delay(1500)
+                        }
                         return@withContext BenchmarkResult(
                                 name = "Single-Core Ray Tracing",
                                 executionTimeMs = timeMs.toDouble(),
@@ -547,7 +559,7 @@ object SingleCoreBenchmarks {
          *
          * PERFORMANCE: ~0.15 Gops/s baseline for single-core devices
          */
-        suspend fun compression(params: WorkloadParams): BenchmarkResult =
+        suspend fun compression(params: WorkloadParams, isTestRun: Boolean = false): BenchmarkResult =
                 withContext(Dispatchers.Default) {
                         Log.d(TAG, "Starting Single-Core Compression - FIXED WORK PER CORE")
                         CpuAffinityManager.setLastCoreAffinity()
@@ -573,8 +585,10 @@ object SingleCoreBenchmarks {
                         CpuAffinityManager.resetPerformance()
                         CpuAffinityManager.resetCpuAffinity()
 
-                        // Thermal stabilization delay
-                        kotlinx.coroutines.delay(1500)
+                        // Thermal stabilization delay (skip for test runs)
+                        if (!isTestRun) {
+                            kotlinx.coroutines.delay(1500)
+                        }
                         return@withContext BenchmarkResult(
                                 name = "Single-Core Compression",
                                 executionTimeMs = timeMs.toDouble(),
@@ -622,7 +636,7 @@ object SingleCoreBenchmarks {
          *
          * PERFORMANCE: ~1.3 Mops/s baseline for single-core devices
          */
-        suspend fun monteCarloPi(params: WorkloadParams): BenchmarkResult =
+        suspend fun monteCarloPi(params: WorkloadParams, isTestRun: Boolean = false): BenchmarkResult =
                 withContext(Dispatchers.Default) {
                         Log.d(
                                 TAG,
@@ -685,8 +699,10 @@ object SingleCoreBenchmarks {
                         CpuAffinityManager.resetPerformance()
                         CpuAffinityManager.resetCpuAffinity()
 
-                        // Thermal stabilization delay
-                        kotlinx.coroutines.delay(1500)
+                        // Thermal stabilization delay (skip for test runs)
+                        if (!isTestRun) {
+                            kotlinx.coroutines.delay(1500)
+                        }
                         return@withContext BenchmarkResult(
                                 name = "Single-Core Monte Carlo π",
                                 executionTimeMs = timeMs.toDouble(),
@@ -726,7 +742,7 @@ object SingleCoreBenchmarks {
          *
          * PERFORMANCE: ~2.0 Mops/s baseline for single-core devices
          */
-        suspend fun jsonParsing(params: WorkloadParams): BenchmarkResult =
+        suspend fun jsonParsing(params: WorkloadParams, isTestRun: Boolean = false): BenchmarkResult =
                 withContext(Dispatchers.Default) {
                         Log.d(
                                 TAG,
@@ -759,8 +775,10 @@ object SingleCoreBenchmarks {
                         CpuAffinityManager.resetPerformance()
                         CpuAffinityManager.resetCpuAffinity()
 
-                        // Thermal stabilization delay
-                        kotlinx.coroutines.delay(1500)
+                        // Thermal stabilization delay (skip for test runs)
+                        if (!isTestRun) {
+                            kotlinx.coroutines.delay(1500)
+                        }
                         return@withContext BenchmarkResult(
                                 name = "Single-Core JSON Parsing",
                                 executionTimeMs = timeMs.toDouble(),
@@ -795,7 +813,7 @@ object SingleCoreBenchmarks {
          *
          * PERFORMANCE: Varies by board size (N=10: ~350K iterations, N=12: ~14M iterations)
          */
-        suspend fun nqueens(params: WorkloadParams): BenchmarkResult =
+        suspend fun nqueens(params: WorkloadParams, isTestRun: Boolean = false): BenchmarkResult =
                 withContext(Dispatchers.Default) {
                         Log.d(
                                 TAG,
@@ -823,8 +841,10 @@ object SingleCoreBenchmarks {
                         CpuAffinityManager.resetPerformance()
                         CpuAffinityManager.resetCpuAffinity()
 
-                        // Thermal stabilization delay
-                        kotlinx.coroutines.delay(1500)
+                        // Thermal stabilization delay (skip for test runs)
+                        if (!isTestRun) {
+                            kotlinx.coroutines.delay(1500)
+                        }
                         return@withContext BenchmarkResult(
                                 name = "Single-Core N-Queens",
                                 executionTimeMs = timeMs.toDouble(),

@@ -39,11 +39,81 @@ class KotlinBenchmarkManager {
 
         }
 
+        /**
+         * Run test workload before actual benchmarks
+         * - Uses minimal "test" workload parameters
+         * - No delays between benchmarks
+         * - Results are NOT recorded
+         * - Purpose: Warm up device and stabilize performance
+         */
+        private suspend fun runTestWorkload() {
+                Log.d(TAG, "=== STARTING TEST WORKLOAD (Warm-up) ===")
+                val testParams = getWorkloadParams("test")
+                val isTestRun = true
+
+                // Emit test workload start event
+                _benchmarkEvents.emit(
+                        BenchmarkEvent(
+                                testName = "Test Workload",
+                                mode = "TEST",
+                                state = "STARTED",
+                                timeMs = 0,
+                                score = 0.0
+                        )
+                )
+
+                // Run all benchmarks with test parameters (no recording, no delays)
+                try {
+                        // Single-core test benchmarks
+                        SingleCoreBenchmarks.primeGeneration(testParams, isTestRun)
+                        SingleCoreBenchmarks.fibonacciRecursive(testParams, isTestRun)
+                        SingleCoreBenchmarks.matrixMultiplication(testParams, isTestRun)
+                        SingleCoreBenchmarks.hashComputing(testParams, isTestRun)
+                        SingleCoreBenchmarks.stringSorting(testParams, isTestRun)
+                        SingleCoreBenchmarks.rayTracing(testParams, isTestRun)
+                        SingleCoreBenchmarks.compression(testParams, isTestRun)
+                        SingleCoreBenchmarks.monteCarloPi(testParams, isTestRun)
+                        SingleCoreBenchmarks.jsonParsing(testParams, isTestRun)
+                        SingleCoreBenchmarks.nqueens(testParams, isTestRun)
+
+                        // Multi-core test benchmarks
+                        MultiCoreBenchmarks.primeGeneration(testParams, isTestRun)
+                        MultiCoreBenchmarks.fibonacciRecursive(testParams, isTestRun)
+                        MultiCoreBenchmarks.matrixMultiplication(testParams, isTestRun)
+                        MultiCoreBenchmarks.hashComputing(testParams, isTestRun)
+                        MultiCoreBenchmarks.stringSorting(testParams, isTestRun)
+                        MultiCoreBenchmarks.rayTracing(testParams, isTestRun)
+                        MultiCoreBenchmarks.compression(testParams, isTestRun)
+                        MultiCoreBenchmarks.monteCarloPi(testParams, isTestRun)
+                        MultiCoreBenchmarks.jsonParsing(testParams, isTestRun)
+                        MultiCoreBenchmarks.nqueens(testParams, isTestRun)
+
+                        Log.d(TAG, "=== TEST WORKLOAD COMPLETE ===")
+                } catch (e: Exception) {
+                        Log.w(TAG, "Test workload encountered error (non-critical): ${e.message}")
+                }
+
+                // Emit test workload complete event
+                _benchmarkEvents.emit(
+                        BenchmarkEvent(
+                                testName = "Test Workload",
+                                mode = "TEST",
+                                state = "COMPLETED",
+                                timeMs = 0,
+                                score = 0.0
+                        )
+                )
+        }
+
         suspend fun runAllBenchmarks(deviceTier: String = "Flagship") {
                 Log.d(
                         TAG,
                         "SINGLE_SOURCE_OF_TRUTH: Starting benchmark execution with device tier: $deviceTier"
                 )
+
+                // Run test workload first (warm-up)
+                runTestWorkload()
+
                 val params = getWorkloadParams(deviceTier)
 
                 // Log CPU topology
@@ -516,6 +586,26 @@ class KotlinBenchmarkManager {
 
         private fun getWorkloadParams(deviceTier: String): WorkloadParams {
                 return when (deviceTier.lowercase()) {
+                        "test" ->
+                                WorkloadParams(
+                                        primeRange = 1_000_000,
+                                        fibonacciNRange = Pair(92, 92),
+                                        fibonacciIterations = 5_000_000,
+                                        matrixSize = 128,
+                                        matrixIterations = 100,
+                                        hashDataSizeMb = 8,
+                                        hashIterations = 10_000,
+                                        stringSortIterations = 100,
+                                        rayTracingIterations = 10,
+                                        rayTracingResolution = Pair(100, 100),
+                                        rayTracingDepth = 2,
+                                        compressionDataSizeMb = 1,
+                                        compressionIterations = 100,
+                                        monteCarloSamples = 1_000_000,
+                                        jsonDataSizeMb = 1,
+                                        jsonParsingIterations = 100,
+                                        nqueensSize = 11
+                                )
                         "slow" ->
                                 WorkloadParams(
                                         primeRange = 10_000_000,
