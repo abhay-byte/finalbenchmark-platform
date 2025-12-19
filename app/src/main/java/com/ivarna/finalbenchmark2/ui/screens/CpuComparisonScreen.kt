@@ -27,6 +27,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.google.gson.Gson
+import com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkName
 import com.ivarna.finalbenchmark2.data.repository.HistoryRepository
 import com.ivarna.finalbenchmark2.ui.viewmodels.BenchmarkDetails
 import com.ivarna.finalbenchmark2.ui.viewmodels.RankingItem
@@ -35,16 +36,16 @@ import kotlinx.coroutines.launch
 
 // Scaling factors from KotlinBenchmarkManager
 private val SCORING_FACTORS = mapOf(
-    "PRIME_GENERATION" to 1.7985e-6*2,
-    "FIBONACCI_ITERATIVE" to 4.365e-7,
-    "MATRIX_MULTIPLICATION" to 1.56465e-8/4,
-    "HASH_COMPUTING" to 2.778e-5/2,
-    "STRING_SORTING" to 1.602e-7/2,
-    "RAY_TRACING" to 4.902e-6,
-    "COMPRESSION" to 1.5243e-8,
-    "MONTE_CARLO" to 0.6125e-6/50,
-    "JSON_PARSING" to 1.56e-6*4,
-    "N_QUEENS" to 2.011e-7/2
+    BenchmarkName.PRIME_GENERATION to 1.7985e-6*2,
+    BenchmarkName.FIBONACCI_ITERATIVE to 4.365e-7,
+    BenchmarkName.MATRIX_MULTIPLICATION to 1.56465e-8/4,
+    BenchmarkName.HASH_COMPUTING to 2.778e-5/2,
+    BenchmarkName.STRING_SORTING to 1.602e-7/2,
+    BenchmarkName.RAY_TRACING to 4.902e-6,
+    BenchmarkName.COMPRESSION to 1.5243e-8,
+    BenchmarkName.MONTE_CARLO to 0.6125e-6/50,
+    BenchmarkName.JSON_PARSING to 1.56e-6*4,
+    BenchmarkName.N_QUEENS to 2.011e-7/2
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -78,19 +79,48 @@ fun CpuComparisonScreen(
                     .maxByOrNull { it.benchmarkResult.normalizedScore }
                 
                 if (highestCpuScore != null) {
-                    val details = highestCpuScore.cpuTestDetail?.let { cpuDetail ->
+                    // Parse detailed results JSON to extract separate single-core and multi-core Mops/s
+                    val details = try {
+                        val gson = Gson()
+                        val detailedResultsJson = highestCpuScore.benchmarkResult.detailedResultsJson
+                        val benchmarkResults = gson.fromJson(
+                            detailedResultsJson,
+                            Array<com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkResult>::class.java
+                        ).toList()
+                        
+                        // Helper function to find Mops/s for a specific benchmark
+                        fun findMops(prefix: String, testName: String): Double {
+                            return benchmarkResults
+                                .firstOrNull { it.name == "$prefix $testName" }
+                                ?.opsPerSecond ?: 0.0
+                        }
+                        
                         BenchmarkDetails(
-                            primeNumberScore = cpuDetail.primeNumberScore,
-                            fibonacciScore = cpuDetail.fibonacciScore,
-                            matrixMultiplicationScore = cpuDetail.matrixMultiplicationScore,
-                            hashComputingScore = cpuDetail.hashComputingScore,
-                            stringSortingScore = cpuDetail.stringSortingScore,
-                            rayTracingScore = cpuDetail.rayTracingScore,
-                            compressionScore = cpuDetail.compressionScore,
-                            monteCarloScore = cpuDetail.monteCarloScore,
-                            jsonParsingScore = cpuDetail.jsonParsingScore,
-                            nQueensScore = cpuDetail.nQueensScore
+                            // Single-Core Mops/s values
+                            singleCorePrimeNumberMops = findMops("Single-Core", "Prime Generation"),
+                            singleCoreFibonacciMops = findMops("Single-Core", "Fibonacci Iterative"),
+                            singleCoreMatrixMultiplicationMops = findMops("Single-Core", "Matrix Multiplication"),
+                            singleCoreHashComputingMops = findMops("Single-Core", "Hash Computing"),
+                            singleCoreStringSortingMops = findMops("Single-Core", "String Sorting"),
+                            singleCoreRayTracingMops = findMops("Single-Core", "Ray Tracing"),
+                            singleCoreCompressionMops = findMops("Single-Core", "Compression"),
+                            singleCoreMonteCarloMops = findMops("Single-Core", "Monte Carlo π"),
+                            singleCoreJsonParsingMops = findMops("Single-Core", "JSON Parsing"),
+                            singleCoreNQueensMops = findMops("Single-Core", "N-Queens"),
+                            // Multi-Core Mops/s values
+                            multiCorePrimeNumberMops = findMops("Multi-Core", "Prime Generation"),
+                            multiCoreFibonacciMops = findMops("Multi-Core", "Fibonacci Iterative"),
+                            multiCoreMatrixMultiplicationMops = findMops("Multi-Core", "Matrix Multiplication"),
+                            multiCoreHashComputingMops = findMops("Multi-Core", "Hash Computing"),
+                            multiCoreStringSortingMops = findMops("Multi-Core", "String Sorting"),
+                            multiCoreRayTracingMops = findMops("Multi-Core", "Ray Tracing"),
+                            multiCoreCompressionMops = findMops("Multi-Core", "Compression"),
+                            multiCoreMonteCarloMops = findMops("Multi-Core", "Monte Carlo π"),
+                            multiCoreJsonParsingMops = findMops("Multi-Core", "JSON Parsing"),
+                            multiCoreNQueensMops = findMops("Multi-Core", "N-Queens")
                         )
+                    } catch (e: Exception) {
+                        null
                     }
                     
                     userDevice = RankingItem(
@@ -614,66 +644,71 @@ private fun getSingleCoreBenchmarkItems(
     val userDetails = userDevice?.benchmarkDetails
     val selectedDetails = selectedDevice.benchmarkDetails
     
+    // Helper function to calculate score from Mops/s
+    fun calculateScore(mops: Double, benchmarkName: BenchmarkName): Double {
+        return mops * (SCORING_FACTORS[benchmarkName] ?: 0.0)
+    }
+    
     return listOf(
         BenchmarkComparisonItem(
             name = "Prime Generation",
             icon = Icons.Rounded.Calculate,
-            userScore = userDetails?.primeNumberScore ?: 0.0,
-            selectedScore = selectedDetails?.primeNumberScore ?: 0.0
+            userScore = calculateScore(userDetails?.singleCorePrimeNumberMops ?: 0.0, BenchmarkName.PRIME_GENERATION),
+            selectedScore = calculateScore(selectedDetails?.singleCorePrimeNumberMops ?: 0.0, BenchmarkName.PRIME_GENERATION)
         ),
         BenchmarkComparisonItem(
             name = "Fibonacci",
             icon = Icons.Rounded.Functions,
-            userScore = userDetails?.fibonacciScore ?: 0.0,
-            selectedScore = selectedDetails?.fibonacciScore ?: 0.0
+            userScore = calculateScore(userDetails?.singleCoreFibonacciMops ?: 0.0, BenchmarkName.FIBONACCI_ITERATIVE),
+            selectedScore = calculateScore(selectedDetails?.singleCoreFibonacciMops ?: 0.0, BenchmarkName.FIBONACCI_ITERATIVE)
         ),
         BenchmarkComparisonItem(
             name = "Matrix Multiplication",
             icon = Icons.Rounded.GridOn,
-            userScore = userDetails?.matrixMultiplicationScore ?: 0.0,
-            selectedScore = selectedDetails?.matrixMultiplicationScore ?: 0.0
+            userScore = calculateScore(userDetails?.singleCoreMatrixMultiplicationMops ?: 0.0, BenchmarkName.MATRIX_MULTIPLICATION),
+            selectedScore = calculateScore(selectedDetails?.singleCoreMatrixMultiplicationMops ?: 0.0, BenchmarkName.MATRIX_MULTIPLICATION)
         ),
         BenchmarkComparisonItem(
             name = "Hash Computing",
             icon = Icons.Rounded.Lock,
-            userScore = userDetails?.hashComputingScore ?: 0.0,
-            selectedScore = selectedDetails?.hashComputingScore ?: 0.0
+            userScore = calculateScore(userDetails?.singleCoreHashComputingMops ?: 0.0, BenchmarkName.HASH_COMPUTING),
+            selectedScore = calculateScore(selectedDetails?.singleCoreHashComputingMops ?: 0.0, BenchmarkName.HASH_COMPUTING)
         ),
         BenchmarkComparisonItem(
             name = "String Sorting",
             icon = Icons.Rounded.SortByAlpha,
-            userScore = userDetails?.stringSortingScore ?: 0.0,
-            selectedScore = selectedDetails?.stringSortingScore ?: 0.0
+            userScore = calculateScore(userDetails?.singleCoreStringSortingMops ?: 0.0, BenchmarkName.STRING_SORTING),
+            selectedScore = calculateScore(selectedDetails?.singleCoreStringSortingMops ?: 0.0, BenchmarkName.STRING_SORTING)
         ),
         BenchmarkComparisonItem(
             name = "Ray Tracing",
             icon = Icons.Rounded.Lightbulb,
-            userScore = userDetails?.rayTracingScore ?: 0.0,
-            selectedScore = selectedDetails?.rayTracingScore ?: 0.0
+            userScore = calculateScore(userDetails?.singleCoreRayTracingMops ?: 0.0, BenchmarkName.RAY_TRACING),
+            selectedScore = calculateScore(selectedDetails?.singleCoreRayTracingMops ?: 0.0, BenchmarkName.RAY_TRACING)
         ),
         BenchmarkComparisonItem(
             name = "Compression",
             icon = Icons.Rounded.Compress,
-            userScore = userDetails?.compressionScore ?: 0.0,
-            selectedScore = selectedDetails?.compressionScore ?: 0.0
+            userScore = calculateScore(userDetails?.singleCoreCompressionMops ?: 0.0, BenchmarkName.COMPRESSION),
+            selectedScore = calculateScore(selectedDetails?.singleCoreCompressionMops ?: 0.0, BenchmarkName.COMPRESSION)
         ),
         BenchmarkComparisonItem(
             name = "Monte Carlo",
             icon = Icons.Rounded.Casino,
-            userScore = userDetails?.monteCarloScore ?: 0.0,
-            selectedScore = selectedDetails?.monteCarloScore ?: 0.0
+            userScore = calculateScore(userDetails?.singleCoreMonteCarloMops ?: 0.0, BenchmarkName.MONTE_CARLO),
+            selectedScore = calculateScore(selectedDetails?.singleCoreMonteCarloMops ?: 0.0, BenchmarkName.MONTE_CARLO)
         ),
         BenchmarkComparisonItem(
             name = "JSON Parsing",
             icon = Icons.Rounded.Code,
-            userScore = userDetails?.jsonParsingScore ?: 0.0,
-            selectedScore = selectedDetails?.jsonParsingScore ?: 0.0
+            userScore = calculateScore(userDetails?.singleCoreJsonParsingMops ?: 0.0, BenchmarkName.JSON_PARSING),
+            selectedScore = calculateScore(selectedDetails?.singleCoreJsonParsingMops ?: 0.0, BenchmarkName.JSON_PARSING)
         ),
         BenchmarkComparisonItem(
             name = "N-Queens",
             icon = Icons.Rounded.Dashboard,
-            userScore = userDetails?.nQueensScore ?: 0.0,
-            selectedScore = selectedDetails?.nQueensScore ?: 0.0
+            userScore = calculateScore(userDetails?.singleCoreNQueensMops ?: 0.0, BenchmarkName.N_QUEENS),
+            selectedScore = calculateScore(selectedDetails?.singleCoreNQueensMops ?: 0.0, BenchmarkName.N_QUEENS)
         )
     )
 }
@@ -682,71 +717,74 @@ private fun getMultiCoreBenchmarkItems(
     userDevice: RankingItem?,
     selectedDevice: RankingItem
 ): List<BenchmarkComparisonItem> {
-    // For now, return the same items but we'll need to store multi-core scores separately
-    // This is a placeholder - in the future, BenchmarkDetails should have separate single/multi scores
     val userDetails = userDevice?.benchmarkDetails
     val selectedDetails = selectedDevice.benchmarkDetails
+    
+    // Helper function to calculate score from Mops/s
+    fun calculateScore(mops: Double, benchmarkName: BenchmarkName): Double {
+        return mops * (SCORING_FACTORS[benchmarkName] ?: 0.0)
+    }
     
     return listOf(
         BenchmarkComparisonItem(
             name = "Prime Generation",
             icon = Icons.Rounded.Calculate,
-            userScore = userDetails?.primeNumberScore ?: 0.0,
-            selectedScore = selectedDetails?.primeNumberScore ?: 0.0
+            userScore = calculateScore(userDetails?.multiCorePrimeNumberMops ?: 0.0, BenchmarkName.PRIME_GENERATION),
+            selectedScore = calculateScore(selectedDetails?.multiCorePrimeNumberMops ?: 0.0, BenchmarkName.PRIME_GENERATION)
         ),
         BenchmarkComparisonItem(
             name = "Fibonacci",
             icon = Icons.Rounded.Functions,
-            userScore = userDetails?.fibonacciScore ?: 0.0,
-            selectedScore = selectedDetails?.fibonacciScore ?: 0.0
+            userScore = calculateScore(userDetails?.multiCoreFibonacciMops ?: 0.0, BenchmarkName.FIBONACCI_ITERATIVE),
+            selectedScore = calculateScore(selectedDetails?.multiCoreFibonacciMops ?: 0.0, BenchmarkName.FIBONACCI_ITERATIVE)
         ),
         BenchmarkComparisonItem(
             name = "Matrix Multiplication",
             icon = Icons.Rounded.GridOn,
-            userScore = userDetails?.matrixMultiplicationScore ?: 0.0,
-            selectedScore = selectedDetails?.matrixMultiplicationScore ?: 0.0
+            userScore = calculateScore(userDetails?.multiCoreMatrixMultiplicationMops ?: 0.0, BenchmarkName.MATRIX_MULTIPLICATION),
+            selectedScore = calculateScore(selectedDetails?.multiCoreMatrixMultiplicationMops ?: 0.0, BenchmarkName.MATRIX_MULTIPLICATION)
         ),
         BenchmarkComparisonItem(
             name = "Hash Computing",
             icon = Icons.Rounded.Lock,
-            userScore = userDetails?.hashComputingScore ?: 0.0,
-            selectedScore = selectedDetails?.hashComputingScore ?: 0.0
+            userScore = calculateScore(userDetails?.multiCoreHashComputingMops ?: 0.0, BenchmarkName.HASH_COMPUTING),
+            selectedScore = calculateScore(selectedDetails?.multiCoreHashComputingMops ?: 0.0, BenchmarkName.HASH_COMPUTING)
         ),
         BenchmarkComparisonItem(
             name = "String Sorting",
             icon = Icons.Rounded.SortByAlpha,
-            userScore = userDetails?.stringSortingScore ?: 0.0,
-            selectedScore = selectedDetails?.stringSortingScore ?: 0.0
+            userScore = calculateScore(userDetails?.multiCoreStringSortingMops ?: 0.0, BenchmarkName.STRING_SORTING),
+            selectedScore = calculateScore(selectedDetails?.multiCoreStringSortingMops ?: 0.0, BenchmarkName.STRING_SORTING)
         ),
         BenchmarkComparisonItem(
             name = "Ray Tracing",
             icon = Icons.Rounded.Lightbulb,
-            userScore = userDetails?.rayTracingScore ?: 0.0,
-            selectedScore = selectedDetails?.rayTracingScore ?: 0.0
+            userScore = calculateScore(userDetails?.multiCoreRayTracingMops ?: 0.0, BenchmarkName.RAY_TRACING),
+            selectedScore = calculateScore(selectedDetails?.multiCoreRayTracingMops ?: 0.0, BenchmarkName.RAY_TRACING)
         ),
         BenchmarkComparisonItem(
             name = "Compression",
             icon = Icons.Rounded.Compress,
-            userScore = userDetails?.compressionScore ?: 0.0,
-            selectedScore = selectedDetails?.compressionScore ?: 0.0
+            userScore = calculateScore(userDetails?.multiCoreCompressionMops ?: 0.0, BenchmarkName.COMPRESSION),
+            selectedScore = calculateScore(selectedDetails?.multiCoreCompressionMops ?: 0.0, BenchmarkName.COMPRESSION)
         ),
         BenchmarkComparisonItem(
             name = "Monte Carlo",
             icon = Icons.Rounded.Casino,
-            userScore = userDetails?.monteCarloScore ?: 0.0,
-            selectedScore = selectedDetails?.monteCarloScore ?: 0.0
+            userScore = calculateScore(userDetails?.multiCoreMonteCarloMops ?: 0.0, BenchmarkName.MONTE_CARLO),
+            selectedScore = calculateScore(selectedDetails?.multiCoreMonteCarloMops ?: 0.0, BenchmarkName.MONTE_CARLO)
         ),
         BenchmarkComparisonItem(
             name = "JSON Parsing",
             icon = Icons.Rounded.Code,
-            userScore = userDetails?.jsonParsingScore ?: 0.0,
-            selectedScore = selectedDetails?.jsonParsingScore ?: 0.0
+            userScore = calculateScore(userDetails?.multiCoreJsonParsingMops ?: 0.0, BenchmarkName.JSON_PARSING),
+            selectedScore = calculateScore(selectedDetails?.multiCoreJsonParsingMops ?: 0.0, BenchmarkName.JSON_PARSING)
         ),
         BenchmarkComparisonItem(
             name = "N-Queens",
             icon = Icons.Rounded.Dashboard,
-            userScore = userDetails?.nQueensScore ?: 0.0,
-            selectedScore = selectedDetails?.nQueensScore ?: 0.0
+            userScore = calculateScore(userDetails?.multiCoreNQueensMops ?: 0.0, BenchmarkName.N_QUEENS),
+            selectedScore = calculateScore(selectedDetails?.multiCoreNQueensMops ?: 0.0, BenchmarkName.N_QUEENS)
         )
     )
 }

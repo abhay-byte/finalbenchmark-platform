@@ -21,16 +21,28 @@ data class RankingItem(
 )
 
 data class BenchmarkDetails(
-        val primeNumberScore: Double = 0.0,
-        val fibonacciScore: Double = 0.0,
-        val matrixMultiplicationScore: Double = 0.0,
-        val hashComputingScore: Double = 0.0,
-        val stringSortingScore: Double = 0.0,
-        val rayTracingScore: Double = 0.0,
-        val compressionScore: Double = 0.0,
-        val monteCarloScore: Double = 0.0,
-        val jsonParsingScore: Double = 0.0,
-        val nQueensScore: Double = 0.0
+        // Single-Core Mops/s values
+        val singleCorePrimeNumberMops: Double = 0.0,
+        val singleCoreFibonacciMops: Double = 0.0,
+        val singleCoreMatrixMultiplicationMops: Double = 0.0,
+        val singleCoreHashComputingMops: Double = 0.0,
+        val singleCoreStringSortingMops: Double = 0.0,
+        val singleCoreRayTracingMops: Double = 0.0,
+        val singleCoreCompressionMops: Double = 0.0,
+        val singleCoreMonteCarloMops: Double = 0.0,
+        val singleCoreJsonParsingMops: Double = 0.0,
+        val singleCoreNQueensMops: Double = 0.0,
+        // Multi-Core Mops/s values
+        val multiCorePrimeNumberMops: Double = 0.0,
+        val multiCoreFibonacciMops: Double = 0.0,
+        val multiCoreMatrixMultiplicationMops: Double = 0.0,
+        val multiCoreHashComputingMops: Double = 0.0,
+        val multiCoreStringSortingMops: Double = 0.0,
+        val multiCoreRayTracingMops: Double = 0.0,
+        val multiCoreCompressionMops: Double = 0.0,
+        val multiCoreMonteCarloMops: Double = 0.0,
+        val multiCoreJsonParsingMops: Double = 0.0,
+        val multiCoreNQueensMops: Double = 0.0
 )
 
 sealed interface RankingScreenState {
@@ -56,16 +68,28 @@ class RankingViewModel(private val repository: HistoryRepository) : ViewModel() 
                             multiCore = 550,
                             isCurrentUser = false,
                             benchmarkDetails = BenchmarkDetails(
-                                    primeNumberScore = 11.08,
-                                    fibonacciScore = 19.82,
-                                    matrixMultiplicationScore = 15.13,
-                                    hashComputingScore = 10.88,
-                                    stringSortingScore = 10.01,
-                                    rayTracingScore = 13.99,
-                                    compressionScore = 11.55,
-                                    monteCarloScore = 9.89,
-                                    jsonParsingScore = 8.50,
-                                    nQueensScore = 16.37
+                                    // Single-Core Mops/s values
+                                    singleCorePrimeNumberMops = 3.08,
+                                    singleCoreFibonacciMops = 45.41,
+                                    singleCoreMatrixMultiplicationMops = 3866.91,
+                                    singleCoreHashComputingMops = 0.78,
+                                    singleCoreStringSortingMops = 125.01,
+                                    singleCoreRayTracingMops = 2.85,
+                                    singleCoreCompressionMops = 757.92,
+                                    singleCoreMonteCarloMops = 807.33,
+                                    singleCoreJsonParsingMops = 1.36,
+                                    singleCoreNQueensMops = 162.82,
+                                    // Multi-Core Mops/s values
+                                    multiCorePrimeNumberMops = 11.47,
+                                    multiCoreFibonacciMops = 161.84,
+                                    multiCoreMatrixMultiplicationMops = 15827.56,
+                                    multiCoreHashComputingMops = 5.07,
+                                    multiCoreStringSortingMops = 420.64,
+                                    multiCoreRayTracingMops = 15.90,
+                                    multiCoreCompressionMops = 2935.13,
+                                    multiCoreMonteCarloMops = 3784.61,
+                                    multiCoreJsonParsingMops = 4.59,
+                                    multiCoreNQueensMops = 737.63
                             )
                     )
             )
@@ -97,20 +121,48 @@ class RankingViewModel(private val repository: HistoryRepository) : ViewModel() 
                                     .maxByOrNull { it.benchmarkResult.normalizedScore }
 
                     if (highestCpuScore != null) {
-                        // Extract benchmark details from CPU test detail if available
-                        val details = highestCpuScore.cpuTestDetail?.let { cpuDetail ->
+                        // Parse detailed results JSON to extract separate single-core and multi-core Mops/s
+                        val details = try {
+                            val gson = com.google.gson.Gson()
+                            val detailedResultsJson = highestCpuScore.benchmarkResult.detailedResultsJson
+                            val benchmarkResults = gson.fromJson(
+                                detailedResultsJson,
+                                Array<com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkResult>::class.java
+                            ).toList()
+                            
+                            // Helper function to find Mops/s for a specific benchmark
+                            fun findMops(prefix: String, testName: String): Double {
+                                return benchmarkResults
+                                    .firstOrNull { it.name == "$prefix $testName" }
+                                    ?.opsPerSecond ?: 0.0
+                            }
+                            
                             BenchmarkDetails(
-                                primeNumberScore = cpuDetail.primeNumberScore,
-                                fibonacciScore = cpuDetail.fibonacciScore,
-                                matrixMultiplicationScore = cpuDetail.matrixMultiplicationScore,
-                                hashComputingScore = cpuDetail.hashComputingScore,
-                                stringSortingScore = cpuDetail.stringSortingScore,
-                                rayTracingScore = cpuDetail.rayTracingScore,
-                                compressionScore = cpuDetail.compressionScore,
-                                monteCarloScore = cpuDetail.monteCarloScore,
-                                jsonParsingScore = cpuDetail.jsonParsingScore,
-                                nQueensScore = cpuDetail.nQueensScore
+                                // Single-Core Mops/s values
+                                singleCorePrimeNumberMops = findMops("Single-Core", "Prime Generation"),
+                                singleCoreFibonacciMops = findMops("Single-Core", "Fibonacci Iterative"),
+                                singleCoreMatrixMultiplicationMops = findMops("Single-Core", "Matrix Multiplication"),
+                                singleCoreHashComputingMops = findMops("Single-Core", "Hash Computing"),
+                                singleCoreStringSortingMops = findMops("Single-Core", "String Sorting"),
+                                singleCoreRayTracingMops = findMops("Single-Core", "Ray Tracing"),
+                                singleCoreCompressionMops = findMops("Single-Core", "Compression"),
+                                singleCoreMonteCarloMops = findMops("Single-Core", "Monte Carlo π"),
+                                singleCoreJsonParsingMops = findMops("Single-Core", "JSON Parsing"),
+                                singleCoreNQueensMops = findMops("Single-Core", "N-Queens"),
+                                // Multi-Core Mops/s values
+                                multiCorePrimeNumberMops = findMops("Multi-Core", "Prime Generation"),
+                                multiCoreFibonacciMops = findMops("Multi-Core", "Fibonacci Iterative"),
+                                multiCoreMatrixMultiplicationMops = findMops("Multi-Core", "Matrix Multiplication"),
+                                multiCoreHashComputingMops = findMops("Multi-Core", "Hash Computing"),
+                                multiCoreStringSortingMops = findMops("Multi-Core", "String Sorting"),
+                                multiCoreRayTracingMops = findMops("Multi-Core", "Ray Tracing"),
+                                multiCoreCompressionMops = findMops("Multi-Core", "Compression"),
+                                multiCoreMonteCarloMops = findMops("Multi-Core", "Monte Carlo π"),
+                                multiCoreJsonParsingMops = findMops("Multi-Core", "JSON Parsing"),
+                                multiCoreNQueensMops = findMops("Multi-Core", "N-Queens")
                             )
+                        } catch (e: Exception) {
+                            null
                         }
                         
                         userScore =
