@@ -282,6 +282,47 @@ private fun ComparisonHeader(
                 .fillMaxWidth()
                 .padding(20.dp)
         ) {
+            // Percentage difference at top
+            val scoreDiff = (userDevice?.normalizedScore ?: 0) - selectedDevice.normalizedScore
+            val percentDiff = if (selectedDevice.normalizedScore > 0) {
+                (scoreDiff.toFloat() / selectedDevice.normalizedScore * 100).toInt()
+            } else 0
+            
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                val isAhead = scoreDiff > 0
+                val diffColor = if (isAhead) Color(0xFF4CAF50) else Color(0xFFE53935)
+                
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = diffColor.copy(alpha = 0.15f)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = if (isAhead) Icons.AutoMirrored.Rounded.TrendingUp else Icons.AutoMirrored.Rounded.TrendingDown,
+                            contentDescription = null,
+                            tint = diffColor,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = if (percentDiff >= 0) "+$percentDiff%" else "$percentDiff%",
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = diffColor
+                        )
+                    }
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -384,52 +425,6 @@ private fun ComparisonHeader(
                     )
                 }
             }
-            
-            // Difference indicator
-            val scoreDiff = (userDevice?.normalizedScore ?: 0) - selectedDevice.normalizedScore
-            val percentDiff = if (selectedDevice.normalizedScore > 0) {
-                (scoreDiff.toFloat() / selectedDevice.normalizedScore * 100).toInt()
-            } else 0
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                val isAhead = scoreDiff > 0
-                val diffColor = if (isAhead) Color(0xFF4CAF50) else Color(0xFFE53935)
-                
-                Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = diffColor.copy(alpha = 0.15f)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = if (isAhead) Icons.AutoMirrored.Rounded.TrendingUp else Icons.AutoMirrored.Rounded.TrendingDown,
-                            contentDescription = null,
-                            tint = diffColor,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = if (scoreDiff >= 0) "+$scoreDiff" else "$scoreDiff",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = diffColor
-                        )
-                        Text(
-                            text = " (${ if (percentDiff >= 0) "+$percentDiff" else "$percentDiff"}%)",
-                            fontSize = 14.sp,
-                            color = diffColor.copy(alpha = 0.8f)
-                        )
-                    }
-                }
-            }
         }
     }
 }
@@ -445,7 +440,6 @@ private fun MainScoreComparison(
         // Single-Core Score
         ScoreComparisonCard(
             title = "Single-Core Score",
-            icon = Icons.Rounded.LooksOne,
             userScore = userDevice?.singleCore ?: 0,
             selectedScore = selectedDevice.singleCore,
             userColor = MaterialTheme.colorScheme.primary,
@@ -455,7 +449,6 @@ private fun MainScoreComparison(
         // Multi-Core Score
         ScoreComparisonCard(
             title = "Multi-Core Score",
-            icon = Icons.Rounded.GridView,
             userScore = userDevice?.multiCore ?: 0,
             selectedScore = selectedDevice.multiCore,
             userColor = MaterialTheme.colorScheme.primary,
@@ -465,7 +458,6 @@ private fun MainScoreComparison(
         // Final Score
         ScoreComparisonCard(
             title = "Final Score",
-            icon = Icons.Rounded.Star,
             userScore = userDevice?.normalizedScore ?: 0,
             selectedScore = selectedDevice.normalizedScore,
             userColor = MaterialTheme.colorScheme.primary,
@@ -477,7 +469,6 @@ private fun MainScoreComparison(
 @Composable
 private fun ScoreComparisonCard(
     title: String,
-    icon: ImageVector,
     userScore: Int,
     selectedScore: Int,
     userColor: Color,
@@ -515,24 +506,17 @@ private fun ScoreComparisonCard(
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(bottom = 12.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 12.dp),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = icon,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = title,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                }
+                Text(
+                    text = title,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
                 
                 // Percentage difference chip
                 if (percentDiff != 0) {
