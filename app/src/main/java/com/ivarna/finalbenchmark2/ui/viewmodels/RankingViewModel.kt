@@ -51,10 +51,22 @@ class RankingViewModel(private val repository: HistoryRepository) : ViewModel() 
             listOf(
                     RankingItem(
                             name = "Snapdragon 8 Gen 3",
-                            normalizedScore = 365,
-                            singleCore = 115,
-                            multiCore = 500,
-                            isCurrentUser = false
+                            normalizedScore = 400,
+                            singleCore = 128,
+                            multiCore = 550,
+                            isCurrentUser = false,
+                            benchmarkDetails = BenchmarkDetails(
+                                    primeNumberScore = 11.08,
+                                    fibonacciScore = 19.82,
+                                    matrixMultiplicationScore = 15.13,
+                                    hashComputingScore = 10.88,
+                                    stringSortingScore = 10.01,
+                                    rayTracingScore = 13.99,
+                                    compressionScore = 11.55,
+                                    monteCarloScore = 9.89,
+                                    jsonParsingScore = 8.50,
+                                    nQueensScore = 16.37
+                            )
                     )
             )
 
