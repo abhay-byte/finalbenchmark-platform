@@ -147,19 +147,25 @@ object BenchmarkHelpers {
      * 
      * Uses segmented sieve approach for parallel processing:
      * 1. Find base primes up to √n using single-threaded sieve
-     * 2. Divide range [√n+1, n] into segments
-     * 3. Process each segment in parallel using base primes
+     * 2. Divide range [√n+1, n] into small segments of size √n
+     * 3. Process segments in parallel using base primes
      * 4. Combine results from all segments
      * 
      * PARALLELIZATION STRATEGY:
      * - Base primes (up to √n) computed single-threaded (small, fast)
-     * - Remaining range divided into equal segments for each thread
-     * - Each thread sieves its segment independently using base primes
+     * - Remaining range divided into SMALL segments (size √n, not range/numThreads)
+     * - Threads process segments from a queue (work-stealing pattern)
+     * - Each segment uses only O(√N) memory, preventing OOM
      * - No synchronization needed during sieving (embarrassingly parallel)
      * 
      * COMPLEXITY:
      * - Time: O(N log log N) with near-linear speedup on multiple cores
      * - Space: O(√N) per thread for segment + O(√N) for base primes
+     * 
+     * MEMORY SAFETY:
+     * - Segment size is √n, not (range/numThreads)
+     * - For n=900M: segment size = 30K, not 112M per thread
+     * - Prevents OutOfMemoryError on large ranges
      * 
      * @param n The upper limit (inclusive) for finding primes
      * @param numThreads Number of threads to use for parallel processing
@@ -194,7 +200,7 @@ object BenchmarkHelpers {
         val basePrimes = basePrimesArray.indices.filter { basePrimesArray[it] }
         val basePrimeCount = basePrimes.size
         
-        // Step 2: Divide remaining range into segments
+        // Step 2: Divide remaining range into SMALL segments
         val rangeStart = limit + 1
         val rangeSize = n - limit
         
@@ -203,40 +209,52 @@ object BenchmarkHelpers {
             return@coroutineScope basePrimeCount
         }
         
+        // CRITICAL: Use small segment size (√n) to prevent OOM
+        // NOT (rangeSize / numThreads) which can be huge
+        val segmentSize = limit
         
-        // Calculate segment size (distribute work evenly)
-        val segmentSize = (rangeSize + numThreads - 1) / numThreads
+        // Create list of segment ranges
+        val segments = mutableListOf<IntRange>()
+        var low = rangeStart
+        while (low <= n) {
+            val high = kotlin.math.min(low + segmentSize - 1, n)
+            segments.add(low..high)
+            low = high + 1
+        }
         
-        // Step 3: Process segments in parallel
-        val segmentCounts = (0 until numThreads).map { threadId ->
+        // Step 3: Process segments in parallel (work-stealing)
+        // Distribute segments across threads
+        val segmentCounts = segments.chunked((segments.size + numThreads - 1) / numThreads).map { segmentChunk ->
             async(dispatcher) {
-                val segStart = rangeStart + threadId * segmentSize
-                val segEnd = kotlin.math.min(segStart + segmentSize - 1, n)
+                var threadPrimeCount = 0
                 
-                if (segStart > n) {
-                    return@async 0
-                }
-                
-                // Create segment boolean array
-                val segmentLength = segEnd - segStart + 1
-                val isPrime = BooleanArray(segmentLength) { true }
-                
-                // Sieve this segment using base primes
-                for (prime in basePrimes) {
-                    // Find first multiple of prime in this segment
-                    var start = ((segStart + prime - 1) / prime) * prime
-                    if (start < segStart) start += prime
+                for (range in segmentChunk) {
+                    val segStart = range.first
+                    val segEnd = range.last
+                    val segmentLength = segEnd - segStart + 1
                     
-                    // Mark multiples as composite
-                    var i = start
-                    while (i <= segEnd) {
-                        isPrime[i - segStart] = false
-                        i += prime
+                    // Create segment array (small, safe)
+                    val isPrime = BooleanArray(segmentLength) { true }
+                    
+                    // Sieve this segment using base primes
+                    for (prime in basePrimes) {
+                        // Find first multiple of prime in this segment
+                        var start = ((segStart + prime - 1) / prime) * prime
+                        if (start < segStart) start += prime
+                        
+                        // Mark multiples as composite
+                        var i = start
+                        while (i <= segEnd) {
+                            isPrime[i - segStart] = false
+                            i += prime
+                        }
                     }
+                    
+                    // Count primes in this segment
+                    threadPrimeCount += isPrime.count { it }
                 }
                 
-                // Count primes in this segment
-                isPrime.count { it }
+                threadPrimeCount
             }
         }.awaitAll()
         
