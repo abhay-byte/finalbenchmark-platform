@@ -68,28 +68,28 @@ class RankingViewModel(private val repository: HistoryRepository) : ViewModel() 
                             multiCore = 550,
                             isCurrentUser = false,
                             benchmarkDetails = BenchmarkDetails(
-                                    // Single-Core Mops/s values
-                                    singleCorePrimeNumberMops = 3.08,
-                                    singleCoreFibonacciMops = 45.41,
-                                    singleCoreMatrixMultiplicationMops = 3866.91,
-                                    singleCoreHashComputingMops = 0.78,
-                                    singleCoreStringSortingMops = 125.01,
-                                    singleCoreRayTracingMops = 2.85,
-                                    singleCoreCompressionMops = 757.92,
-                                    singleCoreMonteCarloMops = 807.33,
-                                    singleCoreJsonParsingMops = 1.36,
-                                    singleCoreNQueensMops = 162.82,
-                                    // Multi-Core Mops/s values
-                                    multiCorePrimeNumberMops = 11.47,
-                                    multiCoreFibonacciMops = 161.84,
-                                    multiCoreMatrixMultiplicationMops = 15827.56,
-                                    multiCoreHashComputingMops = 5.07,
-                                    multiCoreStringSortingMops = 420.64,
-                                    multiCoreRayTracingMops = 15.90,
-                                    multiCoreCompressionMops = 2935.13,
-                                    multiCoreMonteCarloMops = 3784.61,
-                                    multiCoreJsonParsingMops = 4.59,
-                                    multiCoreNQueensMops = 737.63
+                                    // Single-Core ops/s values (converted from Mops/s)
+                                    singleCorePrimeNumberMops = 3_080_000.0,
+                                    singleCoreFibonacciMops = 45_410_000.0,
+                                    singleCoreMatrixMultiplicationMops = 3_866_910_000.0,
+                                    singleCoreHashComputingMops = 780_000.0,
+                                    singleCoreStringSortingMops = 125_010_000.0,
+                                    singleCoreRayTracingMops = 2_850_000.0,
+                                    singleCoreCompressionMops = 757_920_000.0,
+                                    singleCoreMonteCarloMops = 807_330_000.0,
+                                    singleCoreJsonParsingMops = 1_360_000.0,
+                                    singleCoreNQueensMops = 162_820_000.0,
+                                    // Multi-Core ops/s values (converted from Mops/s)
+                                    multiCorePrimeNumberMops = 11_470_000.0,
+                                    multiCoreFibonacciMops = 161_840_000.0,
+                                    multiCoreMatrixMultiplicationMops = 15_827_560_000.0,
+                                    multiCoreHashComputingMops = 5_070_000.0,
+                                    multiCoreStringSortingMops = 420_640_000.0,
+                                    multiCoreRayTracingMops = 15_900_000.0,
+                                    multiCoreCompressionMops = 2_935_130_000.0,
+                                    multiCoreMonteCarloMops = 3_784_610_000.0,
+                                    multiCoreJsonParsingMops = 4_590_000.0,
+                                    multiCoreNQueensMops = 737_630_000.0
                             )
                     )
             )

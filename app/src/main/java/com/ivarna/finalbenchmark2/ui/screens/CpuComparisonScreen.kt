@@ -60,8 +60,13 @@ fun CpuComparisonScreen(
     // Parse the selected device from JSON
     val selectedDevice = remember(selectedDeviceJson) {
         try {
-            Gson().fromJson(selectedDeviceJson, RankingItem::class.java)
+            val device = Gson().fromJson(selectedDeviceJson, RankingItem::class.java)
+            android.util.Log.d("CpuComparison", "Parsed device: ${device.name}")
+            android.util.Log.d("CpuComparison", "BenchmarkDetails: ${device.benchmarkDetails}")
+            android.util.Log.d("CpuComparison", "Single-core Prime Mops: ${device.benchmarkDetails?.singleCorePrimeNumberMops}")
+            device
         } catch (e: Exception) {
+            android.util.Log.e("CpuComparison", "Error parsing device JSON", e)
             null
         }
     }
