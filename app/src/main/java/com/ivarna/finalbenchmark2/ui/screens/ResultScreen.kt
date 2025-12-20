@@ -85,6 +85,14 @@ fun ResultScreen(
                                 val jsonObject = JSONObject(summaryJson)
                                 val detailedResults = mutableListOf<BenchmarkResult>()
 
+                                // Parse performance metrics JSON
+                                val performanceMetricsJson =
+                                        jsonObject.optString("performance_metrics", "{}")
+
+                                // Parse benchmark_id if available (for history items)
+                                val parsedBenchmarkId = jsonObject.optLong("benchmark_id", -1L)
+                                val actualBenchmarkId = if (parsedBenchmarkId > 0) parsedBenchmarkId else benchmarkId
+
                                 // Parse detailed results if available
                                 val detailedResultsArray =
                                         jsonObject.optJSONArray("detailed_results")
@@ -324,14 +332,36 @@ fun ResultScreen(
 
         // Delete benchmark function
         val deleteBenchmark: () -> Unit = {
-                coroutineScope.launch {
-                        // Delete from database if this is a saved benchmark
-                        benchmarkId?.let { id ->
-                                historyRepository?.let { repo ->
-                                        repo.deleteResultById(id)
+                // Get the benchmark ID from the summary (which includes parsed ID from JSON)
+                val idToDelete = summary?.let { s ->
+                        // Try to get ID from JSON first
+                        try {
+                                val jsonObject = JSONObject(summaryJson)
+                                val parsedId = jsonObject.optLong("benchmark_id", -1L)
+                                if (parsedId > 0) parsedId else benchmarkId
+                        } catch (e: Exception) {
+                                benchmarkId
+                        }
+                } ?: benchmarkId
+
+                if (idToDelete != null && idToDelete > 0 && historyRepository != null) {
+                        android.widget.Toast.makeText(context, "Deleting ID: $idToDelete...", android.widget.Toast.LENGTH_SHORT).show()
+                        coroutineScope.launch {
+                                try {
+                                        android.util.Log.d("ResultScreen", "Deleting benchmark with ID: $idToDelete")
+                                        historyRepository.deleteResultById(idToDelete)
+                                        android.util.Log.d("ResultScreen", "Benchmark deleted successfully")
+                                        android.widget.Toast.makeText(context, "Deleted successfully!", android.widget.Toast.LENGTH_SHORT).show()
+                                        onBackToHome()
+                                } catch (e: Exception) {
+                                        android.util.Log.e("ResultScreen", "Delete failed", e)
+                                        android.widget.Toast.makeText(context, "Delete failed: ${e.message}", android.widget.Toast.LENGTH_LONG).show()
                                 }
                         }
-                        // Always navigate back to home
+                } else {
+                        android.util.Log.d("ResultScreen", "Delete skipped - ID: $idToDelete, hasRepo: ${historyRepository != null}")
+                        android.widget.Toast.makeText(context, "Cannot delete: No ID or repository", android.widget.Toast.LENGTH_SHORT).show()
+                        // For fresh benchmarks without ID, just navigate back
                         onBackToHome()
                 }
         }
