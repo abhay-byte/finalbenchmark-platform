@@ -175,19 +175,27 @@ fun HistoryDetailScreen(
         // Function to delete benchmark
         val deleteBenchmark: () -> Unit = {
                 displayData?.let { data ->
+                        android.widget.Toast.makeText(context, "Deleting ID: ${data.id}...", android.widget.Toast.LENGTH_SHORT).show()
                         android.util.Log.d("HistoryDetailScreen", "Delete button clicked")
                         android.util.Log.d("HistoryDetailScreen", "displayData.id = ${data.id}")
                         android.util.Log.d("HistoryDetailScreen", "displayData.type = ${data.type}")
                         android.util.Log.d("HistoryDetailScreen", "displayData.timestamp = ${data.timestamp}")
                         // We need to launch the suspend function in a coroutine scope
                         scope.launch {
-                                android.util.Log.d("HistoryDetailScreen", "Deleting benchmark with ID: ${data.id}")
-                                historyRepository.deleteResultById(data.id)
-                                android.util.Log.d("HistoryDetailScreen", "Benchmark deleted successfully")
-                                onBackClick()
+                                try {
+                                        android.util.Log.d("HistoryDetailScreen", "Deleting benchmark with ID: ${data.id}")
+                                        historyRepository.deleteResultById(data.id)
+                                        android.util.Log.d("HistoryDetailScreen", "Benchmark deleted successfully")
+                                        android.widget.Toast.makeText(context, "Deleted successfully!", android.widget.Toast.LENGTH_SHORT).show()
+                                        onBackClick()
+                                } catch (e: Exception) {
+                                        android.util.Log.e("HistoryDetailScreen", "Delete failed", e)
+                                        android.widget.Toast.makeText(context, "Delete failed: ${e.message}", android.widget.Toast.LENGTH_LONG).show()
+                                }
                         }
                 } ?: run {
                         android.util.Log.e("HistoryDetailScreen", "Delete failed: displayData is null")
+                        android.widget.Toast.makeText(context, "Error: No data to delete", android.widget.Toast.LENGTH_SHORT).show()
                 }
         }
 
