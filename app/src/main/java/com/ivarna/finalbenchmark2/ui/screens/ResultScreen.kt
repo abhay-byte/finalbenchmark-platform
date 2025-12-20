@@ -345,22 +345,18 @@ fun ResultScreen(
                 } ?: benchmarkId
 
                 if (idToDelete != null && idToDelete > 0 && historyRepository != null) {
-                        android.widget.Toast.makeText(context, "Deleting ID: $idToDelete...", android.widget.Toast.LENGTH_SHORT).show()
                         coroutineScope.launch {
                                 try {
                                         android.util.Log.d("ResultScreen", "Deleting benchmark with ID: $idToDelete")
                                         historyRepository.deleteResultById(idToDelete)
                                         android.util.Log.d("ResultScreen", "Benchmark deleted successfully")
-                                        android.widget.Toast.makeText(context, "Deleted successfully!", android.widget.Toast.LENGTH_SHORT).show()
                                         onBackToHome()
                                 } catch (e: Exception) {
                                         android.util.Log.e("ResultScreen", "Delete failed", e)
-                                        android.widget.Toast.makeText(context, "Delete failed: ${e.message}", android.widget.Toast.LENGTH_LONG).show()
                                 }
                         }
                 } else {
                         android.util.Log.d("ResultScreen", "Delete skipped - ID: $idToDelete, hasRepo: ${historyRepository != null}")
-                        android.widget.Toast.makeText(context, "Cannot delete: No ID or repository", android.widget.Toast.LENGTH_SHORT).show()
                         // For fresh benchmarks without ID, just navigate back
                         onBackToHome()
                 }
