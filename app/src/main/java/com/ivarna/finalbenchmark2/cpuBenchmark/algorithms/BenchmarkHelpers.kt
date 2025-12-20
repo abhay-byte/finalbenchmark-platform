@@ -318,18 +318,18 @@ object BenchmarkHelpers {
         val b = Array(size) { DoubleArray(size) }
         val c = Array(size) { DoubleArray(size) }
         
-        // Create Random instance for generating values
-        val random = java.util.Random()
-        
         repeat(repetitions) { rep ->
-            // Reinitialize matrices with fresh random values each iteration
-            // This prevents result caching while avoiding allocation overhead
-            random.setSeed(System.nanoTime() + rep)
+            // DETERMINISTIC INITIALIZATION: Eliminates ALL RNG overhead
+            // Makes benchmark purely test FPU/matrix computation
+            // Pattern ensures no compiler optimizations (different values each iteration)
+            val offset = rep.toDouble()
             
             for (i in 0 until size) {
                 for (j in 0 until size) {
-                    a[i][j] = random.nextDouble()
-                    b[i][j] = random.nextDouble()
+                    // Deterministic pattern: varies with position and iteration
+                    // Normalized to [0, 1) range to match previous random distribution
+                    a[i][j] = ((i * size + j + offset) % 1000) / 1000.0
+                    b[i][j] = ((j * size + i + offset) % 1000) / 1000.0
                     c[i][j] = 0.0  // Clear result matrix
                 }
             }

@@ -28,7 +28,7 @@ class KotlinBenchmarkManager {
         val REFERENCE_MOPS = mapOf(
                 BenchmarkName.PRIME_GENERATION to 72_000_000.0,           // 72.0 Mops/s
                 BenchmarkName.FIBONACCI_ITERATIVE to 45_300_000.0,        // 45.3 Mops/s
-                BenchmarkName.MATRIX_MULTIPLICATION to 3_145_000_000.0,   // 3145.0 Mops/s
+                BenchmarkName.MATRIX_MULTIPLICATION to 4_887_000_000.0,   // 4887.0 Mops/s (deterministic init)
                 BenchmarkName.HASH_COMPUTING to 780_000.0,                // 0.78 Mops/s
                 BenchmarkName.STRING_SORTING to 124_600_000.0,            // 124.6 Mops/s
                 BenchmarkName.RAY_TRACING to 2_840_000.0,                 // 2.84 Mops/s
@@ -43,7 +43,7 @@ class KotlinBenchmarkManager {
                 // Target 20 / Performance (Mops/s)
                 BenchmarkName.PRIME_GENERATION to 1.7985e-6/12.5,        // 20 / 2.90e6 ops/s        
                 BenchmarkName.FIBONACCI_ITERATIVE to 4.365e-7,     // 20 / 22.91 Mops/s
-                BenchmarkName.MATRIX_MULTIPLICATION to 1.56465e-8/4,  // 20 / 639.13 Mops/s
+                BenchmarkName.MATRIX_MULTIPLICATION to 1.56465e-8/7.2,  // 20 / 639.13 Mops/s
                 BenchmarkName.HASH_COMPUTING to 2.778e-5/2,          // 20 / 0.36 Mops/s
                 BenchmarkName.STRING_SORTING to 1.602e-7/2,          // 20 / 62.42 Mops/s
                 BenchmarkName.RAY_TRACING to 4.902e-6,             // 20 / 2.04 Mops/s

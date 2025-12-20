@@ -12,7 +12,7 @@ This document lists known issues in the current FinalBenchmark2 CPU benchmark im
 | [No Output Validation](#2-no-output-validation) | 🔴 Critical | Open |
 | [Single Run Without Repeatability](#3-single-run-without-repeatability) | 🟡 Medium | By Design |
 | [Compressed Single-Core Variance](#4-compressed-single-core-variance) | 🟡 Medium | Under Analysis |
-| [Random Number Generation Overhead](#5-random-number-generation-overhead) | 🟡 Medium | Open |
+| [Random Number Generation Overhead](#5-random-number-generation-overhead) | 🟡 Medium | ✅ **Resolved** |
 | [Memory-Bound Benchmarks](#6-memory-bound-benchmarks) | 🟡 Medium | Open |
 | [Branch Predictor Sensitivity](#7-branch-predictor-sensitivity) | 🟢 Low | Open |
 

@@ -96,7 +96,7 @@ val ratio = sutMopsPerSecond / referenceMopsPerSecond
 |-----------|------------------|
 | Prime Generation | 72.0 |
 | Fibonacci | 45.3 |
-| Matrix Multiplication | 3145.0 |
+| Matrix Multiplication | 4887.0 |
 | Hash Computing | 0.78 |
 | String Sorting | 124.6 |
 | Ray Tracing | 2.84 |

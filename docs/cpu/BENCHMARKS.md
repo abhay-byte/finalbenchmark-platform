@@ -123,12 +123,15 @@ fun performMatrixMultiplication(size: Int, repetitions: Int): Long {
     val c = Array(size) { DoubleArray(size) }
     
     repeat(repetitions) { rep ->
-        // Initialize with deterministic values
-        random.setSeed(System.nanoTime() + rep)
+        // DETERMINISTIC INITIALIZATION: Eliminates RNG overhead
+        // Makes benchmark purely test FPU/matrix computation
+        val offset = rep.toDouble()
+        
         for (i in 0 until size) {
             for (j in 0 until size) {
-                a[i][j] = random.nextDouble()
-                b[i][j] = random.nextDouble()
+                // Deterministic pattern: varies with position and iteration
+                a[i][j] = ((i * size + j + offset) % 1000) / 1000.0
+                b[i][j] = ((j * size + i + offset) % 1000) / 1000.0
                 c[i][j] = 0.0
             }
         }
