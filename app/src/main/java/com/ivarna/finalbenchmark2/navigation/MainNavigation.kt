@@ -191,6 +191,12 @@ fun MainNavigation(
                                 // Fallback to original if decoding fails
                                 encodedSummaryJson
                             }
+                    val historyRepository =
+                            com.ivarna.finalbenchmark2.data.repository.HistoryRepository(
+                                    com.ivarna.finalbenchmark2.data.database.AppDatabase
+                                            .getDatabase(context)
+                                            .benchmarkDao()
+                            )
                     ResultScreen(
                             summaryJson = summaryJson,
                             onRunAgain = {
@@ -205,7 +211,8 @@ fun MainNavigation(
                                 // URL-encode the JSON to handle special characters properly
                                 val encodedJson = java.net.URLEncoder.encode(summaryJson, "UTF-8")
                                 navController.navigate("detailed-results/$encodedJson")
-                            }
+                            },
+                            historyRepository = historyRepository
                     )
                 }
                 composable("detailed-results/{summaryJson}") { backStackEntry ->
