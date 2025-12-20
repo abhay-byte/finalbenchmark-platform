@@ -7,3 +7,10 @@ Performance Improvements:
 Bug Fixes:
 - Fixed memory allocation bottleneck in matrix multiplication algorithm
 - Adjusted JSON parsing iterations for consistent test duration across device tiers
+- Fixed delete functionality for history benchmarks (now properly deletes from database)
+- Consolidated ResultScreen to handle both fresh and history benchmark results
+
+Code Quality:
+- Centralized SCORING_FACTORS to KotlinBenchmarkManager (single source of truth)
+- Removed duplicate HistoryDetailScreen (now uses ResultScreen for all results)
+- Refactored CpuComparisonScreen to use centralized scoring factors
