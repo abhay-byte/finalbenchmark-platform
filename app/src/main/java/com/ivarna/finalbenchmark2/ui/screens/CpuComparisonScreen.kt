@@ -28,25 +28,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.google.gson.Gson
 import com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkName
+import com.ivarna.finalbenchmark2.cpuBenchmark.KotlinBenchmarkManager
 import com.ivarna.finalbenchmark2.data.repository.HistoryRepository
 import com.ivarna.finalbenchmark2.ui.viewmodels.BenchmarkDetails
 import com.ivarna.finalbenchmark2.ui.viewmodels.RankingItem
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 
-// Scaling factors from KotlinBenchmarkManager
-private val SCORING_FACTORS = mapOf(
-    BenchmarkName.PRIME_GENERATION to 1.7985e-6*2,
-    BenchmarkName.FIBONACCI_ITERATIVE to 4.365e-7,
-    BenchmarkName.MATRIX_MULTIPLICATION to 1.56465e-8/4,
-    BenchmarkName.HASH_COMPUTING to 2.778e-5/2,
-    BenchmarkName.STRING_SORTING to 1.602e-7/2,
-    BenchmarkName.RAY_TRACING to 4.902e-6,
-    BenchmarkName.COMPRESSION to 1.5243e-8,
-    BenchmarkName.MONTE_CARLO to 0.6125e-6/50,
-    BenchmarkName.JSON_PARSING to 1.56e-6*4,
-    BenchmarkName.N_QUEENS to 2.011e-7/2
-)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -635,7 +623,7 @@ private fun getSingleCoreBenchmarkItems(
     
     // Helper function to calculate score from Mops/s
     fun calculateScore(mops: Double, benchmarkName: BenchmarkName): Double {
-        return mops * (SCORING_FACTORS[benchmarkName] ?: 0.0)
+        return mops * (KotlinBenchmarkManager.SCORING_FACTORS[benchmarkName] ?: 0.0)
     }
     
     return listOf(
@@ -711,7 +699,7 @@ private fun getMultiCoreBenchmarkItems(
     
     // Helper function to calculate score from Mops/s
     fun calculateScore(mops: Double, benchmarkName: BenchmarkName): Double {
-        return mops * (SCORING_FACTORS[benchmarkName] ?: 0.0)
+        return mops * (KotlinBenchmarkManager.SCORING_FACTORS[benchmarkName] ?: 0.0)
     }
     
     return listOf(
