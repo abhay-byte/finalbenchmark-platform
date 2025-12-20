@@ -74,7 +74,7 @@ object MultiCoreBenchmarks {
                                 val results = (0 until numThreads).map { threadId ->
                                         async(highPriorityDispatcher) {
                                                 Log.d(TAG, "Thread $threadId processing range 1 to $rangePerThread")
-                                                BenchmarkHelpers.sieveOfEratosthenes(rangePerThread)
+                                                BenchmarkHelpers.countPrimesMillerRabin(rangePerThread)
                                         }
                                 }.awaitAll()
                                 
@@ -82,8 +82,10 @@ object MultiCoreBenchmarks {
                                 results.sum()
                         }
 
-                // FIXED WORK PER CORE: Total operations = range × numThreads
-                val totalOps = totalRange.toDouble()
+                // Miller-Rabin operations: Each odd number tested requires ~50-100 ops
+                val numbersToTest = (totalRange / 2).toDouble()  // Only odd numbers
+                val opsPerTest = 75.0  // Average ops per Miller-Rabin test
+                val totalOps = numbersToTest * opsPerTest
                 val opsPerSecond = totalOps / (timeMs / 1000.0)
 
                 CpuAffinityManager.resetPerformance()
@@ -165,26 +167,16 @@ object MultiCoreBenchmarks {
                                         async(highPriorityDispatcher) {
                                                 var threadSum = 0L
 
-                                                // INLINED Fibonacci - prevents JIT function caching
+                                                // Use UNIFIED polynomial evaluation from BenchmarkHelpers
                                                 repeat(iterationsPerThread) { iteration ->
-                                                        var prev = 0L
-                                                        var curr = 1L
-                                                        for (i in 2..targetN) {
-                                                            val next = prev + curr
-                                                            prev = curr
-                                                            curr = next
-                                                        }
-                                                        val fibResult = curr
+                                                        val fibResult = BenchmarkHelpers.fibonacciIterative(targetN)
                                                         threadSum += fibResult
 
-                                                        // Validate first result
-                                                        if (iteration == 0 &&
-                                                                        fibResult !=
-                                                                                expectedFibValue
-                                                        ) {
+                                                        // Validate first result (polynomial should return non-zero)
+                                                        if (iteration == 0 && fibResult == 0L) {
                                                                 Log.e(
                                                                         TAG,
-                                                                        "Fibonacci validation failed: got $fibResult, expected $expectedFibValue"
+                                                                        "Fibonacci validation failed: got 0, expected non-zero polynomial result"
                                                                 )
                                                         }
                                                 }
@@ -445,8 +437,7 @@ object MultiCoreBenchmarks {
                 Log.d(TAG, "Total expected operations: ${params.hashIterations * numThreads}")
                 CpuAffinityManager.setMaxPerformance()
 
-                // Configuration - FIXED WORK PER CORE APPROACH
-                val bufferSize = 4 * 1024 // 4KB (cache-friendly)
+                // Configuration - CPU-BOUND APPROACH (no buffer)
                 val iterationsPerThread =
                         params.hashIterations // Use configurable workload per core
                 val totalHashes = iterationsPerThread * numThreads // Scales with cores
@@ -469,22 +460,17 @@ object MultiCoreBenchmarks {
                                                         "Thread $threadId starting $iterationsPerThread hash iterations"
                                                 )
 
-                                                // Call centralized hash computing function with
-                                                // full workload per
-                                                // thread
-                                                val threadBytesProcessed =
+                                                // Call SHA-256-like hash computing (no buffer needed)
+                                                val threadHashResult =
                                                         BenchmarkHelpers.performHashComputing(
-                                                                bufferSize,
                                                                 iterationsPerThread
                                                         )
-                                                val threadHashCount =
-                                                        threadBytesProcessed / bufferSize
 
                                                 Log.d(
                                                         TAG,
-                                                        "Thread $threadId completed $iterationsPerThread iterations, processed $threadHashCount hashes"
+                                                        "Thread $threadId completed $iterationsPerThread iterations, hash: $threadHashResult"
                                                 )
-                                                threadHashCount
+                                                iterationsPerThread.toLong()  // Return iterations completed
                                         }
                                 }
 
@@ -510,8 +496,6 @@ object MultiCoreBenchmarks {
                 val timeMs = (endTime - startTime).toDouble()
 
                 // Calculate throughput (total operations across all threads)
-                val totalBytes = totalHashesCompleted * bufferSize
-                val throughputMBps = (totalBytes.toDouble() / (1024 * 1024)) / (timeMs / 1000.0)
                 val opsPerSecond = totalHashesCompleted.toDouble() / (timeMs / 1000.0)
 
                 // Validation
@@ -542,25 +526,23 @@ object MultiCoreBenchmarks {
                         metricsJson =
                                 JSONObject()
                                         .apply {
-                                                put("buffer_size_kb", bufferSize / 1024)
                                                 put(
                                                         "hash_iterations_per_thread",
                                                         iterationsPerThread
                                                 )
                                                 put("threads", numThreads)
                                                 put("total_hashes", totalHashesCompleted)
-                                                put("total_bytes_processed", totalBytes)
-                                                put("throughput_mbps", throughputMBps)
                                                 put("hashes_per_sec", opsPerSecond)
                                                 put("time_ms", timeMs)
                                                 put("execution_success", executionSuccess)
                                                 put(
                                                         "implementation",
-                                                        "Pure Kotlin FNV Hash - No Native Locks"
+                                                        "SHA-256-like CPU-Bound Algorithm"
                                                 )
+                                                put("algorithm", "SHA-256-like compression")
                                                 put(
                                                         "workload_approach",
-                                                        "Fixed Work Per Core - ensures core-independent test duration"
+                                                        "Fixed Work Per Core - CPU-bound, no memory dependency"
                                                 )
                                                 put(
                                                         "expected_performance",

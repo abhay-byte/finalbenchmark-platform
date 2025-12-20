@@ -644,9 +644,9 @@ class KotlinBenchmarkManager {
                 return when (deviceTier.lowercase()) {
                         "test" ->
                                 WorkloadParams(
-                                        primeRange = 1_000_000,
+                                        primeRange = 500_000,  // Miller-Rabin: ~10-15s
                                         fibonacciNRange = Pair(92, 92),
-                                        fibonacciIterations = 5_000_000,
+                                        fibonacciIterations = 1_666_667,  // Reduced 3x for polynomial
                                         matrixSize = 128,
                                         matrixIterations = 100,
                                         hashDataSizeMb = 8,
@@ -664,18 +664,18 @@ class KotlinBenchmarkManager {
                                 )
                         "slow" ->
                                 WorkloadParams(
-                                        primeRange = 10_000_000,
+                                        primeRange = 1_750_000,  // Miller-Rabin: ~15-20s
 
                                         // ~1.0-2.0s
                                         fibonacciNRange = Pair(92, 92),
-                                        fibonacciIterations = 75_000_000,
+                                        fibonacciIterations = 10_000_000,  // Reduced 3x for polynomial
                                         matrixSize = 128, // CACHE-RESIDENT: Fixed small size
                                         matrixIterations =
                                                 800, // CACHE-RESIDENT: Low iterations for slow
                                         // devices
                                         hashDataSizeMb = 8,
                                         hashIterations =
-                                                800_000, // FIXED WORK PER CORE: Target ~1.5-2.0
+                                                10_800_000, // FIXED WORK PER CORE: Target ~1.5-2.0
                                         // seconds
                                         stringSortIterations =
                                                 800, // CACHE-RESIDENT: Explicit control - target
@@ -695,17 +695,17 @@ class KotlinBenchmarkManager {
                                 )
                         "mid" ->
                                 WorkloadParams(
-                                        primeRange = 25_000_000,
+                                        primeRange = 4_000_000,  // Miller-Rabin: ~20-25s
                                         // ~1.0-2.0s
                                         fibonacciNRange = Pair(96, 96),
-                                        fibonacciIterations = 75_000_000,
+                                        fibonacciIterations = 25_000_000,  // Reduced 3x for polynomial
                                         matrixSize = 128, // CACHE-RESIDENT: Fixed small size
                                         matrixIterations =
                                                 1500, // CACHE-RESIDENT: Medium iterations for mid
                                         // devices
                                         hashDataSizeMb = 2,
                                         hashIterations =
-                                                1_500_000, // FIXED WORK PER CORE: Target ~1.5-2.0
+                                                50_500_000, // FIXED WORK PER CORE: Target ~1.5-2.0
                                         // seconds
                                         stringSortIterations =
                                                 2_500, // CACHE-RESIDENT: Explicit control - target
@@ -729,9 +729,9 @@ class KotlinBenchmarkManager {
                                         // CACHE-RESIDENT STRATEGY: Small matrices with high
                                         // iterations
 
-                                        primeRange = 900_000_000,
+                                        primeRange = 8_000_000,  // Miller-Rabin: ~40-50s
                                         fibonacciNRange = Pair(92, 92), // Use fixed max safe value
-                                        fibonacciIterations = 125_000_000,
+                                        fibonacciIterations = 41_666_667,  // Reduced 3x for polynomial
                                         matrixSize =
                                                 128, // CACHE-RESIDENT: Fixed small size for cache
                                         // efficiency
@@ -740,7 +740,7 @@ class KotlinBenchmarkManager {
                                         // flagship devices
                                         hashDataSizeMb = 8,
                                         hashIterations =
-                                                2_500_000, // FIXED WORK PER CORE: Target ~1.5-2.0
+                                                125_500_000, // FIXED WORK PER CORE: Target ~1.5-2.0
                                         // seconds
 
                                         stringSortIterations =

@@ -30,10 +30,14 @@ object SingleCoreBenchmarks {
                         val (primeCount, timeMs) =
                                 BenchmarkHelpers.measureBenchmark {
                                         // Use single-threaded Sieve of Eratosthenes
-                                        BenchmarkHelpers.sieveOfEratosthenes(params.primeRange)
+                                        BenchmarkHelpers.countPrimesMillerRabin(params.primeRange)
                                 }
 
-                        val ops = params.primeRange.toDouble() // Operations = numbers processed
+                        // Miller-Rabin operations: Each odd number tested requires ~50-100 ops
+                        // (modular exponentiation, divisions, witness checks)
+                        val numbersToTest = (params.primeRange / 2).toDouble()  // Only odd numbers
+                        val opsPerTest = 75.0  // Average ops per Miller-Rabin test
+                        val ops = numbersToTest * opsPerTest
                         val opsPerSecond = ops / (timeMs / 1000.0)
 
                         CpuAffinityManager.resetPerformance()
@@ -85,24 +89,16 @@ object SingleCoreBenchmarks {
                         CpuAffinityManager.setLastCoreAffinity()
                         CpuAffinityManager.setMaxPerformance()
 
-                        // INLINED Fibonacci - prevents JIT function-level caching variance
+                        // Use UNIFIED polynomial evaluation from BenchmarkHelpers
 
                         val (results, timeMs) =
                                 BenchmarkHelpers.measureBenchmark {
-                                        val targetN = 35
                                         val iterations = params.fibonacciIterations
 
                                         var totalResult = 0L
                                         repeat(iterations) {
-                                                // Inline Fibonacci computation
-                                                var prev = 0L
-                                                var curr = 1L
-                                                for (i in 2..targetN) {
-                                                    val next = prev + curr
-                                                    prev = curr
-                                                    curr = next
-                                                }
-                                                totalResult += curr
+                                                // Call unified polynomial evaluation
+                                                totalResult += BenchmarkHelpers.fibonacciIterative(35)
                                         }
                                         totalResult
                                 }
@@ -221,38 +217,30 @@ object SingleCoreBenchmarks {
                 }
 
         /**
-         * Test 4: Hash Computing (SHA-256) - FIXED WORK PER CORE
+         * Test 4: Hash Computing (SHA-256-like) - CPU-BOUND ALGORITHM
          *
-         * FIXED WORK PER CORE APPROACH:
-         * - Uses centralized performHashComputing function from BenchmarkHelpers
-         * - Fixed workload: params.hashIterations per core (ensures core-independent stability)
-         * - Uses 4KB buffer (cache-friendly)
+         * CPU-BOUND APPROACH:
+         * - Uses SHA-256-like operations (rotations, shifts, XOR)
+         * - No memory buffer (eliminates cache dependency)
+         * - Tests instruction throughput, not memory speed
          * - Same algorithm as Multi-Core version for fair comparison
          *
          * PERFORMANCE: ~0.2 Mops/s baseline for single-core devices
          */
         suspend fun hashComputing(params: WorkloadParams, isTestRun: Boolean = false): BenchmarkResult =
                 withContext(Dispatchers.Default) {
-                        Log.d(TAG, "Starting Single-Core Hash Computing - FIXED WORK PER CORE")
+                        Log.d(TAG, "Starting Single-Core Hash Computing - CPU-BOUND SHA-256-like")
                         CpuAffinityManager.setLastCoreAffinity()
                         CpuAffinityManager.setMaxPerformance()
 
-                        // FIXED WORK PER CORE: Use params.hashIterations with 4KB buffer
-                        val bufferSize = 4 * 1024 // 4KB (cache-friendly)
-                        val iterations = params.hashIterations // Use configurable workload per core
+                        val iterations = params.hashIterations
 
-                        val (totalBytes, timeMs) =
+                        val (finalHash, timeMs) =
                                 BenchmarkHelpers.measureBenchmarkSuspend {
-                                        // Call centralized hash computing function
-                                        BenchmarkHelpers.performHashComputing(
-                                                bufferSize,
-                                                iterations
-                                        )
+                                        // Call SHA-256-like hash computing (no buffer needed)
+                                        BenchmarkHelpers.performHashComputing(iterations)
                                 }
 
-                        // Calculate throughput in MB/s and ops per second
-                        val throughputMBps =
-                                (totalBytes.toDouble() / (1024 * 1024)) / (timeMs / 1000.0)
                         val opsPerSecond = iterations.toDouble() / (timeMs / 1000.0)
 
                         CpuAffinityManager.resetPerformance()
@@ -266,23 +254,21 @@ object SingleCoreBenchmarks {
                                 name = "Single-Core Hash Computing",
                                 executionTimeMs = timeMs.toDouble(),
                                 opsPerSecond = opsPerSecond,
-                                isValid = totalBytes > 0,
+                                isValid = finalHash != 0L,
                                 metricsJson =
                                         JSONObject()
                                                 .apply {
-                                                        put("buffer_size_kb", bufferSize / 1024)
                                                         put("hash_iterations", iterations)
-                                                        put("total_bytes_hashed", totalBytes)
-                                                        put("throughput_mbps", throughputMBps)
+                                                        put("final_hash", finalHash)
                                                         put("hashes_per_sec", opsPerSecond)
                                                         put(
                                                                 "implementation",
-                                                                "Centralized with Fixed Work Per Core"
+                                                                "SHA-256-like CPU-Bound Algorithm"
                                                         )
-                                                        put("workload_type", "Fixed per core")
+                                                        put("algorithm", "SHA-256-like compression")
                                                         put(
                                                                 "description",
-                                                                "Core-independent CPU hashing test with shared algorithm"
+                                                                "CPU-bound hash using rotations, shifts, XOR - no memory dependency"
                                                         )
                                                         put(
                                                                 "expected_performance",

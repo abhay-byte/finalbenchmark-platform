@@ -40,9 +40,9 @@ data class BenchmarkConfig(
  * second execution times on flagship devices
  */
 data class WorkloadParams(
-        val primeRange: Int = 250000,
+        val primeRange: Int = 500_000,  // Increased for Miller-Rabin
         val fibonacciNRange: Pair<Int, Int> = Pair(30, 32),
-        val fibonacciIterations: Int = 1_000_000,
+        val fibonacciIterations: Int = 333_333,  // Reduced 3x for polynomial
         val matrixSize: Int = 128, // FIXED: Small size for cache-resident strategy
         val matrixIterations: Int = 200, // FIXED: Number of repetitions for cache-resident strategy
         val hashDataSizeMb: Int = 2,
