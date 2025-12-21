@@ -1041,9 +1041,17 @@ private fun RankingsTab(finalScore: Double, singleCoreScore: Double, multiCoreSc
                         listOf(
                                 RankingItem(
                                         name = "Snapdragon 8 Gen 3",
-                                        normalizedScore = 365,
-                                        singleCore = 115,
-                                        multiCore = 500,
+                                        normalizedScore = 313,
+                                        singleCore = 100,
+                                        multiCore = 420,
+                                        isCurrentUser = false,
+                                        tag = "Baseline"
+                                ),
+                                RankingItem(
+                                        name = "MediaTek Dimensity 8300",
+                                        normalizedScore = 229,
+                                        singleCore = 78,
+                                        multiCore = 308,
                                         isCurrentUser = false
                                 )
                         )
@@ -1564,12 +1572,33 @@ private fun RankingItemCard(item: RankingItem) {
 
                                 // Center: Name and Scores
                                 Column(modifier = Modifier.weight(1f)) {
-                                        Text(
-                                                text = item.name,
-                                                fontWeight = FontWeight.SemiBold,
-                                                fontSize = 14.sp,
-                                                color = MaterialTheme.colorScheme.onSurface
-                                        )
+                                        Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                        ) {
+                                                Text(
+                                                        text = item.name,
+                                                        fontWeight = FontWeight.SemiBold,
+                                                        fontSize = 14.sp,
+                                                        color = MaterialTheme.colorScheme.onSurface
+                                                )
+                                                // Display tag if present
+                                                item.tag?.let { tag ->
+                                                        Surface(
+                                                                color = MaterialTheme.colorScheme.tertiaryContainer,
+                                                                shape = RoundedCornerShape(4.dp),
+                                                                modifier = Modifier.padding(start = 4.dp)
+                                                        ) {
+                                                                Text(
+                                                                        text = tag,
+                                                                        fontSize = 9.sp,
+                                                                        fontWeight = FontWeight.Bold,
+                                                                        color = MaterialTheme.colorScheme.onTertiaryContainer,
+                                                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                                                )
+                                                        }
+                                                }
+                                        }
                                         Text(
                                                 text =
                                                         "Single: ${item.singleCore} | Multi: ${item.multiCore}",

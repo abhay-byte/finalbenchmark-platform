@@ -17,7 +17,8 @@ data class RankingItem(
         val singleCore: Int,
         val multiCore: Int,
         val isCurrentUser: Boolean = false,
-        val benchmarkDetails: BenchmarkDetails? = null
+        val benchmarkDetails: BenchmarkDetails? = null,
+        val tag: String? = null
 )
 
 data class BenchmarkDetails(
@@ -63,33 +64,65 @@ class RankingViewModel(private val repository: HistoryRepository) : ViewModel() 
             listOf(
                     RankingItem(
                             name = "Snapdragon 8 Gen 3",
-                            normalizedScore = 407,
-                            singleCore = 114,
-                            multiCore = 564,
+                            normalizedScore = 313,
+                            singleCore = 100,
+                            multiCore = 420,
+                            isCurrentUser = false,
+                            tag = "Baseline",
+                            benchmarkDetails = BenchmarkDetails(
+                                    // Single-Core Mops/s values
+                                    singleCorePrimeNumberMops = 749.24,
+                                    singleCoreFibonacciMops = 5.08,
+                                    singleCoreMatrixMultiplicationMops = 3866.91,
+                                    singleCoreHashComputingMops = 145.33,
+                                    singleCoreStringSortingMops = 128.87,
+                                    singleCoreRayTracingMops = 9.57,
+                                    singleCoreCompressionMops = 761.08,
+                                    singleCoreMonteCarloMops = 288.75,
+                                    singleCoreJsonParsingMops = 191777.09,
+                                    singleCoreNQueensMops = 162.15,
+                                    // Multi-Core Mops/s values
+                                    multiCorePrimeNumberMops = 3719.17,
+                                    multiCoreFibonacciMops = 12.47,
+                                    multiCoreMatrixMultiplicationMops = 14650.46,
+                                    multiCoreHashComputingMops = 868.06,
+                                    multiCoreStringSortingMops = 417.69,
+                                    multiCoreRayTracingMops = 34.00,
+                                    multiCoreCompressionMops = 3003.44,
+                                    multiCoreMonteCarloMops = 1677.13,
+                                    multiCoreJsonParsingMops = 911354.73,
+                                    multiCoreNQueensMops = 705.80
+                            )
+                    ),
+                    RankingItem(
+                            name = "MediaTek Dimensity 8300",
+                            normalizedScore = 229,
+                            singleCore = 78,
+                            multiCore = 308,
                             isCurrentUser = false,
                             benchmarkDetails = BenchmarkDetails(
                                     // Single-Core Mops/s values
-                                    singleCorePrimeNumberMops = 71_970_000.0,
-                                    singleCoreFibonacciMops = 30_230_000.0,
-                                    singleCoreMatrixMultiplicationMops = 3_148_880_000.0,
-                                    singleCoreHashComputingMops = 780_000.0,
-                                    singleCoreStringSortingMops = 126_620_000.0,
-                                    singleCoreRayTracingMops = 2_860_000.0,
-                                    singleCoreCompressionMops = 760_250_000.0,
-                                    singleCoreMonteCarloMops = 530_570_000.0,
-                                    singleCoreJsonParsingMops = 1_390_000.0,
-                                    singleCoreNQueensMops = 163_450_000.0,
+                                    singleCorePrimeNumberMops = 625.40,
+                                    singleCoreFibonacciMops = 2.88,
+                                    singleCoreMatrixMultiplicationMops = 3298.27,
+                                    singleCoreHashComputingMops = 144.73,
+                                    singleCoreStringSortingMops = 85.99,
+                                    singleCoreRayTracingMops = 6.54,
+                                    singleCoreCompressionMops = 599.36,
+                                    singleCoreMonteCarloMops = 287.48,
+                                    singleCoreJsonParsingMops = 179443.60,
+                                    singleCoreNQueensMops = 135.89,
                                     // Multi-Core Mops/s values
-                                    multiCorePrimeNumberMops = 403_700_000.0,
-                                    multiCoreFibonacciMops = 160_460_000.0,
-                                    multiCoreMatrixMultiplicationMops = 14_126_200_000.0,
-                                    multiCoreHashComputingMops = 5_090_000.0,
-                                    multiCoreStringSortingMops = 422_900_000.0,
-                                    multiCoreRayTracingMops = 15_950_000.0,
-                                    multiCoreCompressionMops = 2_959_990_000.0,
-                                    multiCoreMonteCarloMops = 3_865_080_000.0,
-                                    multiCoreJsonParsingMops = 4_920_000.0,
-                                    multiCoreNQueensMops = 743_230_000.0
+                                    multiCorePrimeNumberMops = 2737.43,
+                                    multiCoreFibonacciMops = 10.27,
+                                    multiCoreMatrixMultiplicationMops = 9338.83,
+                                    multiCoreHashComputingMops = 677.19,
+                                    multiCoreStringSortingMops = 326.97,
+                                    multiCoreRayTracingMops = 24.19,
+                                    multiCoreCompressionMops = 2025.99,
+                                    multiCoreMonteCarloMops = 1029.77,
+                                    multiCoreJsonParsingMops = 653679.47,
+                                    multiCoreNQueensMops = 547.86
                             )
                     )
             )
@@ -131,10 +164,12 @@ class RankingViewModel(private val repository: HistoryRepository) : ViewModel() 
                             ).toList()
                             
                             // Helper function to find Mops/s for a specific benchmark
+                            // Note: Database stores opsPerSecond, need to convert to Mops/s
                             fun findMops(prefix: String, testName: String): Double {
-                                return benchmarkResults
+                                val opsPerSecond = benchmarkResults
                                     .firstOrNull { it.name == "$prefix $testName" }
                                     ?.opsPerSecond ?: 0.0
+                                return opsPerSecond / 1_000_000.0  // Convert ops/s to Mops/s
                             }
                             
                             BenchmarkDetails(

@@ -48,10 +48,13 @@ fun CpuComparisonScreen(
     // Parse the selected device from JSON
     val selectedDevice = remember(selectedDeviceJson) {
         try {
+            android.util.Log.d("CpuComparison", "Raw JSON: $selectedDeviceJson")
             val device = Gson().fromJson(selectedDeviceJson, RankingItem::class.java)
             android.util.Log.d("CpuComparison", "Parsed device: ${device.name}")
             android.util.Log.d("CpuComparison", "BenchmarkDetails: ${device.benchmarkDetails}")
             android.util.Log.d("CpuComparison", "Single-core Prime Mops: ${device.benchmarkDetails?.singleCorePrimeNumberMops}")
+            android.util.Log.d("CpuComparison", "Single-core Fibonacci Mops: ${device.benchmarkDetails?.singleCoreFibonacciMops}")
+            android.util.Log.d("CpuComparison", "Multi-core Prime Mops: ${device.benchmarkDetails?.multiCorePrimeNumberMops}")
             device
         } catch (e: Exception) {
             android.util.Log.e("CpuComparison", "Error parsing device JSON", e)
@@ -82,10 +85,12 @@ fun CpuComparisonScreen(
                         ).toList()
                         
                         // Helper function to find Mops/s for a specific benchmark
+                        // Note: Database stores opsPerSecond, need to convert to Mops/s
                         fun findMops(prefix: String, testName: String): Double {
-                            return benchmarkResults
+                            val opsPerSecond = benchmarkResults
                                 .firstOrNull { it.name == "$prefix $testName" }
                                 ?.opsPerSecond ?: 0.0
+                            return opsPerSecond / 1_000_000.0  // Convert ops/s to Mops/s
                         }
                         
                         BenchmarkDetails(
@@ -622,8 +627,10 @@ private fun getSingleCoreBenchmarkItems(
     val selectedDetails = selectedDevice.benchmarkDetails
     
     // Helper function to calculate score from Mops/s
+    // Note: benchmarkDetails stores Mops/s, but SCORING_FACTORS expect ops/s
     fun calculateScore(mops: Double, benchmarkName: BenchmarkName): Double {
-        return mops * (KotlinBenchmarkManager.SCORING_FACTORS[benchmarkName] ?: 0.0)
+        val opsPerSecond = mops * 1_000_000.0  // Convert Mops/s to ops/s
+        return opsPerSecond * (KotlinBenchmarkManager.SCORING_FACTORS[benchmarkName] ?: 0.0)
     }
     
     return listOf(
@@ -698,8 +705,10 @@ private fun getMultiCoreBenchmarkItems(
     val selectedDetails = selectedDevice.benchmarkDetails
     
     // Helper function to calculate score from Mops/s
+    // Note: benchmarkDetails stores Mops/s, but SCORING_FACTORS expect ops/s
     fun calculateScore(mops: Double, benchmarkName: BenchmarkName): Double {
-        return mops * (KotlinBenchmarkManager.SCORING_FACTORS[benchmarkName] ?: 0.0)
+        val opsPerSecond = mops * 1_000_000.0  // Convert Mops/s to ops/s
+        return opsPerSecond * (KotlinBenchmarkManager.SCORING_FACTORS[benchmarkName] ?: 0.0)
     }
     
     return listOf(
