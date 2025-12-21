@@ -38,13 +38,13 @@ The same scaling factors are used for both single-core and multi-core:
 
 ```kotlin
 val SCORING_FACTORS = mapOf(
-    BenchmarkName.PRIME_GENERATION to 1.7985e-6/102.5,     // Pollard's Rho
+    BenchmarkName.PRIME_GENERATION to 1.7985e-6/132.6,     // Pollard's Rho
     BenchmarkName.FIBONACCI_ITERATIVE to 4.365e-7*5,       // Iterative
     BenchmarkName.MATRIX_MULTIPLICATION to 1.56465e-8/7.2, // Deterministic
     BenchmarkName.HASH_COMPUTING to 2.778e-5/384,          // Fixed
     BenchmarkName.STRING_SORTING to 1.602e-7/2,            // Cache-resident
     BenchmarkName.RAY_TRACING to 4.902e-6/4.2,             // Perlin Noise
-    BenchmarkName.COMPRESSION to 1.5243e-8*1.2,            // RLE
+    BenchmarkName.COMPRESSION to 1.5243e-8*0.92,           // RLE
     BenchmarkName.MONTE_CARLO to 0.6125e-6/20,             // Mandelbrot Set
     BenchmarkName.JSON_PARSING to 1.56e-6/28500,           // Binary format
     BenchmarkName.N_QUEENS to 2.011e-7/3.2                 // Backtracking
@@ -94,7 +94,7 @@ val ratio = sutMopsPerSecond / referenceMopsPerSecond
 
 | Benchmark | Reference Mops/s |
 |-----------|------------------|
-| Prime Generation | 571.43 (Pollard's Rho) |
+| Prime Generation | 757.43 (Pollard's Rho) |
 | Fibonacci | 4.56 |
 | Matrix Multiplication | 3876.44 |
 | Hash Computing | 138.37 |
