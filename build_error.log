@@ -1,0 +1,19 @@
+e: file:///home/abhay/repos/finalbenchmark-platform/app/src/main/java/com/ivarna/finalbenchmark2/ui/screens/ResultScreen.kt:509:54 None of the following candidates is applicable:
+fun Modifier.hazeChild(state: HazeState, shape: Shape, style: HazeStyle): Modifier
+fun Modifier.hazeChild(state: HazeState, style: HazeStyle = ..., block: (HazeChildScope.() -> Unit)? = ...): Modifier
+e: file:///home/abhay/repos/finalbenchmark-platform/app/src/main/java/com/ivarna/finalbenchmark2/ui/screens/ResultScreen.kt:588:50 Unresolved reference 'tabIndicatorOffset'.
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:compileDebugKotlin'.
+> A failure occurred while executing org.jetbrains.kotlin.compilerRunner.GradleCompilerRunnerWithWorkers$GradleKotlinCompilerWorkAction
+   > Compilation error. See log for more details
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to generate a Build Scan (powered by Develocity).
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 4s

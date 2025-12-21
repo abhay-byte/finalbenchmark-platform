@@ -18,7 +18,12 @@ import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.animation.core.*
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeChild
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
@@ -33,6 +38,7 @@ import com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkResult
 import com.ivarna.finalbenchmark2.cpuBenchmark.KotlinBenchmarkManager
 import com.ivarna.finalbenchmark2.ui.theme.FinalBenchmark2Theme
 import com.ivarna.finalbenchmark2.ui.theme.GruvboxDarkAccent
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import com.ivarna.finalbenchmark2.ui.viewmodels.RankingItem
 import com.ivarna.finalbenchmark2.utils.DeviceInfoCollector
 import com.ivarna.finalbenchmark2.utils.GpuInfoState
@@ -66,7 +72,8 @@ fun ResultScreen(
         onBackToHome: () -> Unit,
         onShowDetailedResults: (List<BenchmarkResult>) -> Unit = {},
         historyRepository: com.ivarna.finalbenchmark2.data.repository.HistoryRepository? = null,
-        benchmarkId: Long? = null
+        benchmarkId: Long? = null,
+        hazeState: dev.chrisbanes.haze.HazeState? = null
 ) {
         val context = LocalContext.current
         val coroutineScope = rememberCoroutineScope()
@@ -373,61 +380,90 @@ fun ResultScreen(
                 }
 
         FinalBenchmark2Theme {
+            // Animations for visual polish
+            val scoreAnim = remember { Animatable(0f) }
+            val fadeAnim = remember { Animatable(0f) }
+            
+            LaunchedEffect(Unit) {
+                launch { fadeAnim.animateTo(1f, animationSpec = tween(800)) }
+                launch {
+                    scoreAnim.animateTo(
+                        targetValue = summary.finalScore.toFloat(),
+                        animationSpec = tween(durationMillis = 1500, easing = FastOutSlowInEasing)
+                    )
+                }
+            }
+
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                MaterialTheme.colorScheme.background,
+                                MaterialTheme.colorScheme.surfaceContainerLowest
+                            )
+                        )
+                    )
+            ) {
+                // Ambient Glow
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(400.dp)
+                        .alpha(0.15f)
+                        .background(
+                            Brush.radialGradient(
+                                colors = listOf(MaterialTheme.colorScheme.primary, Color.Transparent),
+                                radius = 1000f
+                            )
+                        )
+                )
+
                 Scaffold(
-                        topBar = {
-                                TopAppBar(
-                                        title = {
-                                                Column {
-                                                        Text(
-                                                                text = "CPU Benchmark",
-                                                                fontSize = 20.sp,
-                                                                fontWeight = FontWeight.Bold
-                                                        )
-                                                        Text(
-                                                                text = formattedTimestamp,
-                                                                fontSize = 12.sp,
-                                                                color =
-                                                                        MaterialTheme.colorScheme
-                                                                                .onSurfaceVariant
-                                                        )
-                                                }
-                                        },
-                                        navigationIcon = {
-                                                IconButton(onClick = onBackToHome) {
-                                                        Icon(
-                                                                imageVector =
-                                                                        Icons.Default.ArrowBack,
-                                                                contentDescription = "Back to Home"
-                                                        )
-                                                }
-                                        },
-                                        actions = {
-                                                IconButton(onClick = { shareBenchmark() }) {
-                                                        Icon(
-                                                                imageVector = Icons.Rounded.Share,
-                                                                contentDescription = "Share"
-                                                        )
-                                                }
-                                                IconButton(
-                                                        onClick = {
-                                                                showDeleteDialog = true
-                                                        }
-                                                ) {
-                                                        Icon(
-                                                                imageVector = Icons.Rounded.Delete,
-                                                                contentDescription = "Delete"
-                                                        )
-                                                }
-                                        },
-                                        colors =
-                                                TopAppBarDefaults.topAppBarColors(
-                                                        containerColor =
-                                                                MaterialTheme.colorScheme.surface,
-                                                        titleContentColor =
-                                                                MaterialTheme.colorScheme.onSurface
-                                                )
-                                )
-                        }
+                    topBar = {
+                        CenterAlignedTopAppBar(
+                            title = {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(
+                                        "BENCHMARK RESULTS",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        letterSpacing = 2.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Text(
+                                        formattedTimestamp,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                    )
+                                }
+                            },
+                            navigationIcon = {
+                                IconButton(onClick = onBackToHome) {
+                                    Icon(Icons.Default.ArrowBack, "Back")
+                                }
+                            },
+                            actions = {
+                                IconButton(onClick = { showDeleteDialog = true }) {
+                                    Icon(Icons.Rounded.Delete, "Delete")
+                                }
+                                IconButton(onClick = { 
+                                    // Share logic inline or call helper
+                                    val sendIntent = Intent(Intent.ACTION_SEND).apply {
+                                        putExtra(Intent.EXTRA_TEXT, "Benchmarks Results: ${summary.finalScore}")
+                                        type = "text/plain"
+                                    }
+                                    context.startActivity(Intent.createChooser(sendIntent, "Share"))
+                                }) {
+                                    Icon(Icons.Rounded.Share, "Share")
+                                }
+                            },
+                            colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                                containerColor = Color.Transparent
+                            )
+                        )
+                    },
+                    containerColor = Color.Transparent
                 ) { paddingValues ->
                         // Delete confirmation dialog
                         if (showDeleteDialog) {
@@ -454,54 +490,145 @@ fun ResultScreen(
                                         }
                                 )
                         }
-                        Column(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
-                                // Tab Row
-                                TabRow(
-                                        selectedTabIndex = pagerState.currentPage,
-                                        containerColor = MaterialTheme.colorScheme.surface,
-                                        contentColor = MaterialTheme.colorScheme.primary
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(paddingValues),
+                        contentPadding = PaddingValues(bottom = 32.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        // Glassmorphic Summary Card (Hero Section)
+                        item {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp)
+                                    .alpha(fadeAnim.value)
+                                    .clip(RoundedCornerShape(32.dp))
+                                    .then(
+                                        if (hazeState != null) {
+                                            Modifier.hazeChild(state = hazeState)
+                                        } else {
+                                            Modifier.background(MaterialTheme.colorScheme.surface.copy(alpha = 0.5f))
+                                        }
+                                    )
+                                    .border(
+                                        1.dp,
+                                        MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
+                                        RoundedCornerShape(32.dp)
+                                    )
+                                    .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.05f))
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .padding(vertical = 42.dp, horizontal = 24.dp)
+                                        .fillMaxWidth(),
+                                    horizontalAlignment = Alignment.CenterHorizontally
                                 ) {
-                                        tabs.forEachIndexed { index, title ->
-                                                Tab(
-                                                        selected = pagerState.currentPage == index,
-                                                        onClick = {
-                                                                coroutineScope.launch {
-                                                                        pagerState
-                                                                                .animateScrollToPage(
-                                                                                        index
-                                                                                )
-                                                                }
-                                                        },
-                                                        text = {
-                                                                Text(
-                                                                        text = title,
-                                                                        maxLines = 1,
-                                                                        fontSize = 14.sp
-                                                                )
-                                                        }
-                                                )
-                                        }
-                                }
+                                    Text(
+                                        text = "TOTAL SCORE",
+                                        style = MaterialTheme.typography.labelLarge,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        letterSpacing = 4.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    
+                                    Spacer(modifier = Modifier.height(16.dp))
+                                    
+                                    // Score Counter
+                                    Text(
+                                        text = scoreAnim.value.toInt().toString(),
+                                        style = MaterialTheme.typography.displayLarge.copy(
+                                            fontSize = 86.sp,
+                                            fontWeight = FontWeight.Black,
+                                            letterSpacing = (-2).sp
+                                        ),
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
 
-                                // Pager Content
-                                HorizontalPager(
-                                        state = pagerState,
-                                        modifier = Modifier.weight(1f).fillMaxWidth()
-                                ) { page ->
-                                        when (page) {
-                                                0 -> SummaryTab(summary)
-                                                1 -> DetailedDataTab(summary)
-                                                2 ->
-                                                        RankingsTab(
-                                                                summary.finalScore,
-                                                                summary.singleCoreScore,
-                                                                summary.multiCoreScore
-                                                        )
-                                        }
+                                    Spacer(modifier = Modifier.height(32.dp))
+
+                                    // Sub-scores Row
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceEvenly,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        SubScoreItem(
+                                            label = "SINGLE-CORE",
+                                            score = summary.singleCoreScore.toInt(),
+                                            color = MaterialTheme.colorScheme.secondary
+                                        )
+                                        
+                                        Box(
+                                            modifier = Modifier
+                                                .height(40.dp)
+                                                .width(1.dp)
+                                                .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+                                        )
+                                        
+                                        SubScoreItem(
+                                            label = "MULTI-CORE",
+                                            score = summary.multiCoreScore.toInt(),
+                                            color = MaterialTheme.colorScheme.tertiary
+                                        )
+                                    }
                                 }
+                            }
                         }
+
+                        // Tab Row
+                        item {
+                            TabRow(
+                                selectedTabIndex = pagerState.currentPage,
+                                containerColor = Color.Transparent,
+                                contentColor = MaterialTheme.colorScheme.primary,
+                                divider = {},
+                                indicator = { tabPositions ->
+                                    TabRowDefaults.SecondaryIndicator(
+                                        Modifier.tabIndicatorOffset(tabPositions[pagerState.currentPage]),
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                            ) {
+                                tabs.forEachIndexed { index, title ->
+                                    Tab(
+                                        selected = pagerState.currentPage == index,
+                                        onClick = {
+                                            coroutineScope.launch {
+                                                pagerState.animateScrollToPage(index)
+                                            }
+                                        },
+                                        text = { Text(title) }
+                                    )
+                                }
+                            }
+                        }
+
+                        // Pager Content
+                        item {
+                            HorizontalPager(
+                                state = pagerState,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(800.dp), // Fixed height for pager
+                                verticalAlignment = Alignment.Top
+                            ) { page ->
+                                when (page) {
+                                    0 -> SummaryTab(summary) // Might duplicate? No, this is replacing the old Pager.
+                                    1 -> DetailedDataTab(summary)
+                                    2 -> RankingsTab(
+                                            summary.finalScore,
+                                            summary.singleCoreScore,
+                                            summary.multiCoreScore
+                                        )
+                                }
+                            }
+                        }
+                    }
                 }
         }
+    }
 }
 
 @Composable
@@ -1680,4 +1807,23 @@ fun ScoreItem(title: String, value: String) {
                         color = MaterialTheme.colorScheme.primary
                 )
         }
+}
+
+@Composable
+fun SubScoreItem(label: String, score: Int, color: Color) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 1.sp
+        )
+        Text(
+            text = score.toString(),
+            style = MaterialTheme.typography.headlineMedium,
+            color = color,
+            fontWeight = FontWeight.Bold
+        )
+    }
 }

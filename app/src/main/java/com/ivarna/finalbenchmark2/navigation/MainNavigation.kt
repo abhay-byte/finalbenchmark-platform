@@ -221,7 +221,8 @@ fun MainNavigation(
                                 val encodedJson = java.net.URLEncoder.encode(summaryJson, "UTF-8")
                                 navController.navigate("detailed-results/$encodedJson")
                             },
-                            historyRepository = historyRepository
+                            historyRepository = historyRepository,
+                            hazeState = hazeState
                     )
                 }
                 composable("detailed-results/{summaryJson}") { backStackEntry ->
