@@ -9,8 +9,17 @@ Bug Fixes:
 - Adjusted JSON parsing iterations for consistent test duration across device tiers
 - Fixed delete functionality for history benchmarks (now properly deletes from database)
 - Consolidated ResultScreen to handle both fresh and history benchmark results
+- Fixed CPU comparison screen to display scores in points instead of raw Mops/s
+- Resolved self-comparison issue showing incorrect huge values
 
 Code Quality:
 - Centralized SCORING_FACTORS to KotlinBenchmarkManager (single source of truth)
 - Removed duplicate HistoryDetailScreen (now uses ResultScreen for all results)
 - Refactored CpuComparisonScreen to use centralized scoring factors
+- Fixed data format conversions between ops/s and Mops/s across all comparison paths
+
+New Features:
+- Added "Baseline" tag to reference device (Snapdragon 8 Gen 3)
+- Updated ranking data with latest benchmark results
+- Added 2 new reference devices: Snapdragon 8s Gen 3 and MediaTek Dimensity 6300
+- Created comprehensive documentation for adding reference devices
