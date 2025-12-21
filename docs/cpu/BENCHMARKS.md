@@ -574,7 +574,7 @@ fun performJsonParsingWorkload(jsonData: String, iterations: Int): Long {
 | Parameter | Value |
 |-----------|-------|
 | `jsonDataSizeMb` | 1 MB |
-| `jsonParsingIterations` | 10,000 |
+| `jsonParsingIterations` | 2,500 |
 
 ### Cache Strategy
 
@@ -628,7 +628,7 @@ fun solveNQueens(n: Int): NQueensResult {
 
 | Parameter | Value |
 |-----------|-------|
-| `nqueensSize` | 15 |
+| `nqueensSize` | 16 |
 
 ### Known Solutions
 
