@@ -15,6 +15,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -37,6 +38,7 @@ import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.DisabledByDefault
 import androidx.compose.material.icons.rounded.ElectricBolt
+import androidx.compose.material.icons.rounded.Lightbulb
 import androidx.compose.material.icons.rounded.Memory
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Thermostat
@@ -48,8 +50,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
@@ -286,7 +290,7 @@ fun HomeScreen(
                                 Spacer(modifier = Modifier.height(16.dp))
 
                                 // =========================================================
-                                // CONSOLIDATED SYSTEM CARD
+                                // CONSOLIDATED SYSTEM CARD (Redesigned)
                                 // =========================================================
                                 if (isDataInitialized) {
                                         var isExpanded by remember { mutableStateOf(false) }
@@ -298,25 +302,33 @@ fun HomeScreen(
                                                                 .clickable {
                                                                         isExpanded = !isExpanded
                                                                 },
-                                                shape =
-                                                        RoundedCornerShape(
-                                                                24.dp
-                                                        ), // More modern rounded shape
+                                                shape = RoundedCornerShape(24.dp),
                                                 colors =
                                                         CardDefaults.cardColors(
-                                                                containerColor =
-                                                                        MaterialTheme.colorScheme
-                                                                                .surfaceContainer
+                                                                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
                                                         ),
                                                 elevation =
                                                         CardDefaults.cardElevation(
-                                                                defaultElevation = 2.dp
-                                                        )
+                                                                defaultElevation = 0.dp
+                                                        ),
+                                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
                                         ) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .background(
+                                                        brush = Brush.verticalGradient(
+                                                            colors = listOf(
+                                                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                                                                MaterialTheme.colorScheme.surface.copy(alpha = 0.5f)
+                                                            )
+                                                        )
+                                                    )
+                                            ) {
                                                 Column(
                                                         modifier =
                                                                 Modifier.fillMaxWidth()
-                                                                        .padding(16.dp)
+                                                                        .padding(20.dp) // Increased padding for premium feel
                                                 ) {
                                                         // --- SUMMARY ROW (Always Visible) ---
                                                         Row(
@@ -401,7 +413,7 @@ fun HomeScreen(
                                                                 Column(
                                                                         modifier =
                                                                                 Modifier.padding(
-                                                                                        top = 16.dp
+                                                                                        top = 20.dp // Increased spacing
                                                                                 )
                                                                 ) {
                                                                         HorizontalDivider(
@@ -411,12 +423,12 @@ fun HomeScreen(
                                                                                                 .outlineVariant
                                                                                                 .copy(
                                                                                                         alpha =
-                                                                                                                0.5f
+                                                                                                                0.3f // Softer divider
                                                                                                 ),
                                                                                 modifier =
                                                                                         Modifier.padding(
                                                                                                 bottom =
-                                                                                                        16.dp
+                                                                                                        20.dp
                                                                                         )
                                                                         )
 
@@ -470,19 +482,21 @@ fun HomeScreen(
                                                                         // Visualization
                                                                         Text(
                                                                                 text =
-                                                                                        "Core Utilization",
+                                                                                        "CORE UTILIZATION",
                                                                                 style =
                                                                                         MaterialTheme
                                                                                                 .typography
                                                                                                 .labelMedium,
+                                                                                fontWeight = FontWeight.Bold,
+                                                                                letterSpacing = 1.sp,
                                                                                 color =
                                                                                         MaterialTheme
                                                                                                 .colorScheme
-                                                                                                .onSurfaceVariant,
+                                                                                                .onSurfaceVariant.copy(alpha = 0.8f),
                                                                                 modifier =
                                                                                         Modifier.padding(
                                                                                                 bottom =
-                                                                                                        12.dp,
+                                                                                                        16.dp,
                                                                                                 start =
                                                                                                         4.dp
                                                                                         )
@@ -503,12 +517,12 @@ fun HomeScreen(
                                                                                 verticalArrangement =
                                                                                         Arrangement
                                                                                                 .spacedBy(
-                                                                                                        12.dp
+                                                                                                        16.dp
                                                                                                 ),
                                                                                 horizontalArrangement =
                                                                                         Arrangement
                                                                                                 .spacedBy(
-                                                                                                        8.dp
+                                                                                                        12.dp
                                                                                                 )
                                                                         ) {
                                                                                 items(
@@ -546,10 +560,11 @@ fun HomeScreen(
                                                                                                                 },
                                                                                                                 modifier =
                                                                                                                         Modifier.size(
-                                                                                                                                48.dp
+                                                                                                                                52.dp // Slightly larger
                                                                                                                         ),
                                                                                                                 strokeWidth =
                                                                                                                         4.dp,
+                                                                                                                strokeCap = StrokeCap.Round, // Rounded ends
                                                                                                                 color =
                                                                                                                         MaterialTheme
                                                                                                                                 .colorScheme
@@ -557,7 +572,7 @@ fun HomeScreen(
                                                                                                                 trackColor =
                                                                                                                         MaterialTheme
                                                                                                                                 .colorScheme
-                                                                                                                                .surfaceVariant
+                                                                                                                                .surfaceVariant.copy(alpha = 0.5f)
                                                                                                         )
                                                                                                         Text(
                                                                                                                 text =
@@ -565,23 +580,24 @@ fun HomeScreen(
                                                                                                                 style =
                                                                                                                         MaterialTheme
                                                                                                                                 .typography
-                                                                                                                                .labelSmall,
+                                                                                                                                .labelMedium,
                                                                                                                 fontWeight =
                                                                                                                         FontWeight
-                                                                                                                                .Bold
+                                                                                                                                .ExtraBold,
+                                                                                                                color = MaterialTheme.colorScheme.onSurface.copy(alpha=0.7f)
                                                                                                         )
                                                                                                 }
                                                                                                 Spacer(
                                                                                                         modifier =
                                                                                                                 Modifier.height(
-                                                                                                                        4.dp
+                                                                                                                        6.dp
                                                                                                                 )
                                                                                                 )
                                                                                                 Text(
                                                                                                         text =
-                                                                                                                "${currentFreq / 100} Mhz",
+                                                                                                                "${currentFreq / 100} MHz",
                                                                                                         fontSize =
-                                                                                                                9.sp,
+                                                                                                                10.sp,
                                                                                                         color =
                                                                                                                 MaterialTheme
                                                                                                                         .colorScheme
@@ -595,6 +611,7 @@ fun HomeScreen(
                                                                 }
                                                         }
                                                 }
+                                            }
                                         }
                                 }
                                 // =========================================================
@@ -729,66 +746,82 @@ fun HomeScreen(
                                 BenchmarkTipsCard()
 
                                 // Workload Selection Dropdown
+                                Text(
+                                        text = "BENCHMARK CONFIGURATION",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.padding(bottom = 8.dp, start = 4.dp)
+                                )
+
                                 ExposedDropdownMenuBox(
                                         expanded = isDropdownExpanded,
                                         onExpandedChange = {
                                                 isDropdownExpanded = !isDropdownExpanded
-                                        }
+                                        },
+                                        modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp)
                                 ) {
-                                        OutlinedTextField(
-                                                value = selectedWorkload,
-                                                onValueChange = {},
-                                                readOnly = true,
-                                                label = { Text("Workload Intensity") },
-                                                trailingIcon = {
-                                                        ExposedDropdownMenuDefaults.TrailingIcon(
-                                                                expanded = isDropdownExpanded
-                                                        )
-                                                },
-                                                modifier =
-                                                        Modifier.menuAnchor(
-                                                                        MenuAnchorType
-                                                                                .PrimaryNotEditable
-                                                                )
-                                                                .fillMaxWidth()
-                                                                .padding(vertical = 8.dp),
-                                                colors =
-                                                        OutlinedTextFieldDefaults.colors(
-                                                                focusedBorderColor =
-                                                                        MaterialTheme.colorScheme
-                                                                                .primary,
-                                                                unfocusedBorderColor =
-                                                                        MaterialTheme.colorScheme
-                                                                                .outline,
-                                                                focusedLabelColor =
-                                                                        MaterialTheme.colorScheme
-                                                                                .primary,
-                                                                unfocusedLabelColor =
-                                                                        MaterialTheme.colorScheme
-                                                                                .onSurfaceVariant,
-                                                                focusedTextColor =
-                                                                        MaterialTheme.colorScheme
-                                                                                .onSurface,
-                                                                unfocusedTextColor =
-                                                                        MaterialTheme.colorScheme
-                                                                                .onSurface
-                                                        )
-                                        )
+                                        // Custom Dropdown Trigger
+                                        Card(
+                                                modifier = Modifier
+                                                        .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                                                        .fillMaxWidth()
+                                                        .height(64.dp),
+                                                shape = RoundedCornerShape(16.dp),
+                                                colors = CardDefaults.cardColors(
+                                                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                                                ),
+                                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
+                                                elevation = CardDefaults.cardElevation(0.dp)
+                                        ) {
+                                            Row(
+                                                modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp),
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.SpaceBetween
+                                            ) {
+                                                Column {
+                                                    Text(
+                                                        text = "Workload Intensity",
+                                                        style = MaterialTheme.typography.labelSmall,
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                    )
+                                                    Text(
+                                                        text = selectedWorkload,
+                                                        style = MaterialTheme.typography.bodyLarge,
+                                                        fontWeight = FontWeight.SemiBold,
+                                                        color = MaterialTheme.colorScheme.onSurface
+                                                    )
+                                                }
+                                                Icon(
+                                                    imageVector = Icons.Rounded.ArrowDropDown,
+                                                    contentDescription = "Expand",
+                                                    modifier = Modifier.rotate(if (isDropdownExpanded) 180f else 0f),
+                                                    tint = MaterialTheme.colorScheme.primary
+                                                )
+                                            }
+                                        }
 
                                         ExposedDropdownMenu(
                                                 expanded = isDropdownExpanded,
-                                                onDismissRequest = { isDropdownExpanded = false }
+                                                onDismissRequest = { isDropdownExpanded = false },
+                                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                                shape = RoundedCornerShape(16.dp),
+                                                modifier = Modifier.padding(vertical = 8.dp)
                                         ) {
                                                 workloadOptions.forEach { option ->
                                                         DropdownMenuItem(
-                                                                text = { Text(option) },
+                                                                text = {
+                                                                    Text(
+                                                                        text = option,
+                                                                        style = MaterialTheme.typography.bodyMedium,
+                                                                        fontWeight = if (option == selectedWorkload) FontWeight.Bold else FontWeight.Normal
+                                                                    )
+                                                                },
                                                                 onClick = {
                                                                         selectedWorkload = option
                                                                         isDropdownExpanded = false
                                                                 },
-                                                                contentPadding =
-                                                                        ExposedDropdownMenuDefaults
-                                                                                .ItemContentPadding
+                                                                contentPadding = PaddingValues(horizontal = 20.dp, vertical = 4.dp)
                                                         )
                                                 }
                                         }
@@ -806,31 +839,57 @@ fun HomeScreen(
                                                 // Map UI workload to backend device tier
                                                 val deviceTier =
                                                         when (selectedWorkload) {
-                                                                "Low Accuracy - Fastest" -> "slow"
-                                                                "Mid Accuracy - Fast" -> "mid"
-                                                                "High Accuracy - Slow" -> "flagship"
+                                                                "Light (Quick)" -> "slow"
+                                                                "Standard (Balanced)" -> "mid"
+                                                                "Heavy (Stress Test)" -> "flagship"
                                                                 else -> "flagship" // fallback
                                                         }
 
                                                 onStartBenchmark(deviceTier)
                                         },
-                                        modifier =
-                                                Modifier.fillMaxWidth()
-                                                        .padding(vertical = 16.dp)
-                                                        .height(56.dp),
-                                        shape = RoundedCornerShape(12.dp)
+                                        modifier = Modifier
+                                                .fillMaxWidth()
+                                                .height(64.dp)
+                                                .shadow(
+                                                    elevation = 8.dp,
+                                                    shape = RoundedCornerShape(16.dp),
+                                                    spotColor = MaterialTheme.colorScheme.primary
+                                                ),
+                                        shape = RoundedCornerShape(16.dp),
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = Color.Transparent
+                                        ),
+                                        contentPadding = PaddingValues(0.dp) // Remove default padding
                                 ) {
-                                        Icon(
-                                                painterResource(id = R.drawable.mobile_24),
-                                                contentDescription = null
-                                        ) // Generic icon
-                                        Spacer(modifier = Modifier.width(8.dp))
-                                        Text(
-                                                text = "START BENCHMARK",
-                                                fontSize = 16.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                letterSpacing = 1.sp
-                                        )
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .background(
+                                                brush = Brush.horizontalGradient(
+                                                    colors = listOf(
+                                                        MaterialTheme.colorScheme.primary,
+                                                        MaterialTheme.colorScheme.tertiary
+                                                    )
+                                                )
+                                            ),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Icon(
+                                                    painterResource(id = R.drawable.mobile_24),
+                                                    contentDescription = null,
+                                                    tint = MaterialTheme.colorScheme.onPrimary
+                                            )
+                                            Spacer(modifier = Modifier.width(12.dp))
+                                            Text(
+                                                    text = "START BENCHMARK",
+                                                    fontSize = 18.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    letterSpacing = 1.sp,
+                                                    color = MaterialTheme.colorScheme.onPrimary
+                                            )
+                                        }
+                                    }
                                 }
 
                                 Text(
@@ -915,11 +974,24 @@ fun PerformanceOptimizationsCard(
                 shape = RoundedCornerShape(24.dp),
                 colors =
                         CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceContainer
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
                         ),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
         ) {
-                Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(
+                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                                MaterialTheme.colorScheme.surface.copy(alpha = 0.5f)
+                            )
+                        )
+                    )
+            ) {
+                Column(modifier = Modifier.fillMaxWidth().padding(20.dp)) {
                         // Header Row
                         Row(
                                 modifier = Modifier.fillMaxWidth(),
@@ -927,9 +999,10 @@ fun PerformanceOptimizationsCard(
                                 verticalAlignment = Alignment.CenterVertically
                         ) {
                                 Text(
-                                        text = "Performance Optimizations",
+                                        text = "PERFORMANCE OPTIMIZATIONS",
                                         style = MaterialTheme.typography.titleMedium,
                                         fontWeight = FontWeight.Bold,
+                                        letterSpacing = 0.5.sp,
                                         color = MaterialTheme.colorScheme.primary
                                 )
 
@@ -949,15 +1022,19 @@ fun PerformanceOptimizationsCard(
                                                         .count { it }
                                         val totalOptimizations = 8
 
-                                        Text(
+                                        // Badge for count
+                                        Surface(
+                                            color = if (activeCount > 0) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.errorContainer,
+                                            shape = RoundedCornerShape(12.dp)
+                                        ) {
+                                            Text(
                                                 text = "$activeCount/$totalOptimizations",
-                                                color =
-                                                        if (activeCount > 0)
-                                                                MaterialTheme.colorScheme.primary
-                                                        else MaterialTheme.colorScheme.error,
-                                                fontWeight = FontWeight.SemiBold,
-                                                fontSize = 14.sp
-                                        )
+                                                color = if (activeCount > 0) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onErrorContainer,
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 12.sp,
+                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                            )
+                                        }
 
                                         Spacer(modifier = Modifier.width(8.dp))
 
@@ -980,11 +1057,11 @@ fun PerformanceOptimizationsCard(
                                 enter = expandVertically(animationSpec = tween(300)) + fadeIn(),
                                 exit = shrinkVertically(animationSpec = tween(300)) + fadeOut()
                         ) {
-                                Column(modifier = Modifier.padding(top = 16.dp)) {
+                                Column(modifier = Modifier.padding(top = 20.dp)) {
                                         HorizontalDivider(
                                                 color =
                                                         MaterialTheme.colorScheme.outlineVariant
-                                                                .copy(alpha = 0.5f),
+                                                                .copy(alpha = 0.3f),
                                                 modifier = Modifier.padding(bottom = 16.dp)
                                         )
 
@@ -1122,6 +1199,7 @@ fun PerformanceOptimizationsCard(
                                 }
                         }
                 }
+            }
         }
 }
 
@@ -1232,23 +1310,54 @@ fun BenchmarkTipsCard() {
                 shape = RoundedCornerShape(24.dp),
                 colors =
                         CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceContainer
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
                         ),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
         ) {
-                Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(
+                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                                MaterialTheme.colorScheme.surface.copy(alpha = 0.5f)
+                            )
+                        )
+                    )
+            ) {
+                Column(modifier = Modifier.fillMaxWidth().padding(20.dp)) {
                         // Header Row
                         Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                         ) {
-                                Text(
-                                        text = "Benchmark Tips",
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.primary
-                                )
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(32.dp)
+                                            .clip(CircleShape)
+                                            .background(MaterialTheme.colorScheme.primaryContainer),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Rounded.Lightbulb,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Text(
+                                            text = "BENCHMARK TIPS",
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            letterSpacing = 0.5.sp,
+                                            color = MaterialTheme.colorScheme.primary
+                                    )
+                                }
 
                                 Icon(
                                         imageVector = Icons.Rounded.ArrowDropDown,
@@ -1266,11 +1375,11 @@ fun BenchmarkTipsCard() {
                                 enter = expandVertically(animationSpec = tween(300)) + fadeIn(),
                                 exit = shrinkVertically(animationSpec = tween(300)) + fadeOut()
                         ) {
-                                Column(modifier = Modifier.padding(top = 16.dp)) {
+                                Column(modifier = Modifier.padding(top = 20.dp)) {
                                         HorizontalDivider(
                                                 color =
                                                         MaterialTheme.colorScheme.outlineVariant
-                                                                .copy(alpha = 0.5f),
+                                                                .copy(alpha = 0.3f),
                                                 modifier = Modifier.padding(bottom = 16.dp)
                                         )
 
@@ -1308,6 +1417,7 @@ fun BenchmarkTipsCard() {
                                 }
                         }
                 }
+            }
         }
 }
 
