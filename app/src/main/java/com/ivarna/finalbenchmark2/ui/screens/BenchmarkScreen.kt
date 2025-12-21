@@ -449,7 +449,7 @@ fun WheelSpacerDot() {
         modifier = Modifier
             .fillMaxWidth()
             .height(24.dp)
-            .padding(start = 24.dp), // Align with list content start padding
+            .padding(start = 2.dp), // Touch left edge
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
@@ -574,37 +574,43 @@ fun TimelineTestRow(test: TestState) {
 
         Spacer(modifier = Modifier.width(16.dp))
 
-        // Text
-        Text(
-            text = test.name,
-            style = MaterialTheme.typography.bodyLarge,
-            color = if (isRunning) 
-                        MaterialTheme.colorScheme.primary.copy(alpha = textAlpha) 
-                    else if (isCompleted) 
-                        MaterialTheme.colorScheme.onBackground 
-                    else 
-                        MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
-            fontWeight = if (isRunning) FontWeight.ExtraBold else if (isCompleted) FontWeight.Medium else FontWeight.Normal,
+        // Text and Time grouped together
+        Row(
             modifier = Modifier
                 .weight(1f)
                 .then(
                     if (isRunning) {
-                        Modifier
-                            .scale(scale)
-                            // "Elevated looks" via shadow or just scale/color impact
-                            // Actual elevation on Text is weird, scale + brightness (alpha) works better for "pop"
+                        Modifier.scale(scale)
                     } else Modifier
-                )
-        )
-
-        // Duration or Score
-        if (test.timeText.isNotEmpty()) {
+                ),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             Text(
-                text = test.timeText,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
-                fontFamily = MaterialTheme.typography.labelSmall.fontFamily // maintain consistency
+                text = test.name,
+                style = MaterialTheme.typography.bodyLarge,
+                color = if (isRunning) 
+                            MaterialTheme.colorScheme.primary.copy(alpha = textAlpha) 
+                        else if (isCompleted) 
+                            MaterialTheme.colorScheme.onBackground 
+                        else 
+                            MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
+                fontWeight = if (isRunning) FontWeight.ExtraBold else if (isCompleted) FontWeight.Medium else FontWeight.Normal,
+                maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f, fill = false) // Don't force fill, take what's needed for name
             )
+
+            // Duration or Score next to title
+            if (test.timeText.isNotEmpty()) {
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(
+                    text = test.timeText,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (isRunning) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+                    fontFamily = MaterialTheme.typography.labelSmall.fontFamily,
+                    fontWeight = FontWeight.Bold
+                )
+            }
         }
     }
 }
