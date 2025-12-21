@@ -18,6 +18,7 @@ import com.ivarna.finalbenchmark2.utils.OnboardingPreferences
 import com.ivarna.finalbenchmark2.utils.RootAccessManager
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import androidx.compose.ui.graphics.Brush
 
 sealed interface RootUiState {
         object Checking : RootUiState
@@ -57,7 +58,18 @@ fun RootCheckScreen(
                 }
         }
 
-        Box(modifier = modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+        Box(
+            modifier = modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            MaterialTheme.colorScheme.surface,
+                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.15f)
+                        )
+                    )
+                )
+        ) {
                 Column(
                         modifier = Modifier.fillMaxSize().padding(24.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
@@ -80,19 +92,11 @@ fun RootCheckScreen(
                                                         MaterialTheme.colorScheme.error
                                         }
 
-                                Card(
+                                com.ivarna.finalbenchmark2.ui.components.GlassCard(
                                         modifier = Modifier.size(100.dp),
                                         shape = RoundedCornerShape(50.dp),
-                                        colors =
-                                                CardDefaults.cardColors(
-                                                        containerColor =
-                                                                MaterialTheme.colorScheme
-                                                                        .primaryContainer.copy(
-                                                                        alpha = 0.8f
-                                                                )
-                                                ),
-                                        elevation =
-                                                CardDefaults.cardElevation(defaultElevation = 12.dp)
+                                        containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
+                                        borderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
                                 ) {
                                         Box(
                                                 contentAlignment = Alignment.Center,
@@ -150,23 +154,9 @@ fun RootCheckScreen(
                                 Spacer(modifier = Modifier.height(24.dp))
 
                                 // Status Information Card
-                                Card(
+                                com.ivarna.finalbenchmark2.ui.components.GlassCard(
                                         modifier = Modifier.fillMaxWidth(),
-                                        shape = RoundedCornerShape(20.dp),
-                                        colors =
-                                                CardDefaults.cardColors(
-                                                        containerColor =
-                                                                MaterialTheme.colorScheme.surface
-                                                ),
-                                        border =
-                                                androidx.compose.foundation.BorderStroke(
-                                                        1.dp,
-                                                        MaterialTheme.colorScheme.outline.copy(
-                                                                alpha = 0.1f
-                                                        )
-                                                ),
-                                        elevation =
-                                                CardDefaults.cardElevation(defaultElevation = 4.dp)
+                                        shape = RoundedCornerShape(20.dp)
                                 ) {
                                         Column(modifier = Modifier.padding(20.dp)) {
                                                 val statusText =
@@ -182,9 +172,7 @@ fun RootCheckScreen(
                                                 Text(
                                                         text = statusText,
                                                         style = MaterialTheme.typography.bodyLarge,
-                                                        color =
-                                                                MaterialTheme.colorScheme
-                                                                        .onSurfaceVariant,
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                                                         textAlign = TextAlign.Start
                                                 )
                                         }
@@ -193,94 +181,44 @@ fun RootCheckScreen(
                                 // Root Warning Card - shown when root is granted
                                 if (rootUiState is RootUiState.Granted) {
                                         Spacer(modifier = Modifier.height(16.dp))
-                                        Card(
+                                        com.ivarna.finalbenchmark2.ui.components.GlassCard(
                                                 modifier = Modifier.fillMaxWidth(),
                                                 shape = RoundedCornerShape(20.dp),
-                                                colors =
-                                                        CardDefaults.cardColors(
-                                                                containerColor =
-                                                                        Color(0xFFFF9800)
-                                                                                .copy(alpha = 0.1f)
-                                                        ),
-                                                border =
-                                                        androidx.compose.foundation.BorderStroke(
-                                                                2.dp,
-                                                                Color(0xFFFF9800)
-                                                        ),
-                                                elevation =
-                                                        CardDefaults.cardElevation(
-                                                                defaultElevation = 4.dp
-                                                        )
+                                                containerColor = Color(0xFFFF9800).copy(alpha = 0.1f),
+                                                borderColor = Color(0xFFFF9800).copy(alpha = 0.5f)
                                         ) {
                                                 Column(modifier = Modifier.padding(20.dp)) {
-                                                        Row(
-                                                                verticalAlignment =
-                                                                        Alignment.CenterVertically
-                                                        ) {
+                                                        Row(verticalAlignment = Alignment.CenterVertically) {
                                                                 Icon(
-                                                                        imageVector =
-                                                                                Icons.Rounded
-                                                                                        .Security,
-                                                                        contentDescription =
-                                                                                "Warning",
-                                                                        tint =
-                                                                                MaterialTheme
-                                                                                        .colorScheme
-                                                                                        .error,
-                                                                        modifier =
-                                                                                Modifier.size(24.dp)
+                                                                        imageVector = Icons.Rounded.Security,
+                                                                        contentDescription = "Warning",
+                                                                        tint = MaterialTheme.colorScheme.error,
+                                                                        modifier = Modifier.size(24.dp)
                                                                 )
-                                                                Spacer(
-                                                                        modifier =
-                                                                                Modifier.width(
-                                                                                        12.dp
-                                                                                )
-                                                                )
+                                                                Spacer(modifier = Modifier.width(12.dp))
                                                                 Text(
-                                                                        text =
-                                                                                "⚠️ Root Access Warning",
-                                                                        style =
-                                                                                MaterialTheme
-                                                                                        .typography
-                                                                                        .titleMedium
-                                                                                        .copy(
-                                                                                                fontWeight =
-                                                                                                        FontWeight
-                                                                                                                .Bold
-                                                                                        ),
-                                                                        color =
-                                                                                MaterialTheme
-                                                                                        .colorScheme
-                                                                                        .error
+                                                                        text = "⚠️ Root Access Warning",
+                                                                        style = MaterialTheme.typography.titleMedium.copy(
+                                                                                fontWeight = FontWeight.Bold
+                                                                        ),
+                                                                        color = MaterialTheme.colorScheme.error
                                                                 )
                                                         }
 
                                                         Spacer(modifier = Modifier.height(12.dp))
 
                                                         Text(
-                                                                text =
-                                                                        "Running benchmarks with root access will push your device to extreme limits. Your device may run significantly hotter than normal, which could potentially cause hardware damage.",
-                                                                style =
-                                                                        MaterialTheme.typography
-                                                                                .bodyMedium,
-                                                                color =
-                                                                        MaterialTheme.colorScheme
-                                                                                .onSurface,
+                                                                text = "Running benchmarks with root access will push your device to extreme limits. Your device may run significantly hotter than normal, which could potentially cause hardware damage.",
+                                                                style = MaterialTheme.typography.bodyMedium,
+                                                                color = MaterialTheme.colorScheme.onSurface,
                                                                 textAlign = TextAlign.Start
                                                         )
 
                                                         Spacer(modifier = Modifier.height(8.dp))
 
                                                         Text(
-                                                                text =
-                                                                        "⚠️ We are NOT responsible for any damage that may occur to your device during or after benchmarking with root access enabled.",
-                                                                style =
-                                                                        MaterialTheme.typography
-                                                                                .bodyMedium.copy(
-                                                                                fontWeight =
-                                                                                        FontWeight
-                                                                                                .SemiBold
-                                                                        ),
+                                                                text = "⚠️ We are NOT responsible for any damage that may occur to your device during or after benchmarking with root access enabled.",
+                                                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
                                                                 color = Color(0xFFFF6B00),
                                                                 textAlign = TextAlign.Start
                                                         )

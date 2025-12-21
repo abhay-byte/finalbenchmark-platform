@@ -48,7 +48,9 @@ import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.border
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
@@ -147,19 +149,48 @@ fun HomeScreen(
         }
 
         FinalBenchmark2Theme {
-                Box(modifier = Modifier.fillMaxSize()) {
-                        // Main scrollable content
-                        Column(
-                                modifier =
-                                        Modifier.fillMaxSize()
-                                                .verticalScroll(rememberScrollState())
-                                                .padding(24.dp)
-                                                .padding(
-                                                        top = 60.dp
-                                                ), // Add top padding for floating button
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.Center
+                Box(
+                    modifier = Modifier.fillMaxSize()
+                        .background(MaterialTheme.colorScheme.background)
+                        .background(
+                            Brush.radialGradient(
+                                colors = listOf(
+                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.05f),
+                                    Color.Transparent
+                                ),
+                                center = Offset(0f, 0f),
+                                radius = 1000f
+                            )
+                        )
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(
+                                    MaterialTheme.colorScheme.background,
+                                    MaterialTheme.colorScheme.surfaceContainerLowest
+                                )
+                            )
+                        )
+                ) {
+                        // Entrance Animation
+                        var isVisible by remember { mutableStateOf(false) }
+                        LaunchedEffect(Unit) { isVisible = true }
+                        
+                        AnimatedVisibility(
+                            visible = isVisible,
+                            enter = fadeIn(animationSpec = tween(500)) + slideInHorizontally(animationSpec = tween(500)) { fullWidth -> fullWidth / 3 } + expandVertically(animationSpec = tween(500))
                         ) {
+                            // Main scrollable content
+                            Column(
+                                    modifier =
+                                            Modifier.fillMaxSize()
+                                                    .verticalScroll(rememberScrollState())
+                                                    .padding(24.dp)
+                                                    .padding(
+                                                            top = 60.dp
+                                                    ), // Add top padding for floating button
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.Center
+                            ) {
                                 // Swipeable section: High Score Card OR Logo/Title/Description
                                 val density = LocalDensity.current
                                 val swipeThreshold = with(density) { 100.dp.toPx() }
@@ -168,7 +199,7 @@ fun HomeScreen(
                                 Box(
                                         modifier = Modifier
                                                 .fillMaxWidth()
-                                                .heightIn(min = 280.dp) // Fixed minimum height
+                                                // Removed fixed height to allow wrapping
                                                 .pointerInput(Unit) {
                                                         detectHorizontalDragGestures { _, dragAmount ->
                                                                 if (abs(dragAmount) > swipeThreshold / 10) {
@@ -193,7 +224,7 @@ fun HomeScreen(
                                                 if (showScore && highestScoreEntity != null) {
                                                         // High Score Card View
                                                         Column(
-                                                                modifier = Modifier.fillMaxWidth(),
+                                                                modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
                                                                 horizontalAlignment = Alignment.CenterHorizontally
                                                         ) {
                                                                 HighScoreCard(
@@ -206,7 +237,7 @@ fun HomeScreen(
                                                 } else {
                                                         // Logo/Title/Description
                                                         Column(
-                                                                modifier = Modifier.fillMaxWidth(),
+                                                                modifier = Modifier.fillMaxWidth().padding(16.dp),
                                                                 horizontalAlignment = Alignment.CenterHorizontally
                                                         ) {
                                                                 // App logo
@@ -343,10 +374,10 @@ fun HomeScreen(
                                                 .padding(bottom = 16.dp),
                                             shape = RoundedCornerShape(24.dp),
                                             colors = CardDefaults.cardColors(
-                                                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                                                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.15f)
                                             ),
                                             elevation = CardDefaults.cardElevation(0.dp),
-                                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+                                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f))
                                         ) {
                                             Column(modifier = Modifier.padding(20.dp)) {
                                                 Text(
@@ -584,7 +615,7 @@ fun HomeScreen(
                                                 colors = CardDefaults.cardColors(
                                                         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.6f) // Distinct background
                                                 ),
-                                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
+                                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f)),
                                                 elevation = CardDefaults.cardElevation(0.dp)
                                         ) {
                                             Row(
@@ -715,6 +746,7 @@ fun HomeScreen(
                                         modifier = Modifier.padding(top = 8.dp)
                                 )
                         }
+                    } // Close AnimatedVisibility
 
                         // Floating Settings Icon in Top Right Corner
                         IconButton(
@@ -788,10 +820,10 @@ fun PerformanceOptimizationsCard(
                 shape = RoundedCornerShape(24.dp),
                 colors =
                         CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.15f)
                         ),
                 elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f))
         ) {
             Box(
                 modifier = Modifier
@@ -1422,30 +1454,41 @@ fun HighScoreCard(
         Card(
                 modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 8.dp),
+                        .padding(vertical = 4.dp),
                 shape = RoundedCornerShape(24.dp), // Slightly more rounded for premium feel
                 colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f) // Subtle glass-like feel
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.15f) // Subtle glass-like feel
                 ),
                 elevation = CardDefaults.cardElevation(defaultElevation = 0.dp), // Flat for cleaner look
-                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f))
         ) {
                 Box(
                         modifier = Modifier
-                                .fillMaxWidth()
+                                .fillMaxWidth() // Fill width only
+                                .background(
+                                        brush = Brush.radialGradient(
+                                            colors = listOf(
+                                                MaterialTheme.colorScheme.primary.copy(alpha = 0.05f),
+                                                Color.Transparent
+                                            ),
+                                            center = Offset(0f, 0f),
+                                            radius = 500f
+                                        )
+                                )
                                 .background(
                                         brush = Brush.verticalGradient(
                                                 colors = listOf(
-                                                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-                                                        MaterialTheme.colorScheme.surface.copy(alpha = 0.5f)
+                                                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.1f),
+                                                        MaterialTheme.colorScheme.surface.copy(alpha = 0.05f)
                                                 )
                                         )
                                 )
                 ) {
                         Column(
                                 modifier = Modifier
-                                        .padding(20.dp)
-                                        .fillMaxWidth()
+                                        .padding(24.dp)
+                                        .fillMaxWidth(),
+                                verticalArrangement = Arrangement.SpaceBetween
                         ) {
                                 // Header: Label and Date
                                 Row(

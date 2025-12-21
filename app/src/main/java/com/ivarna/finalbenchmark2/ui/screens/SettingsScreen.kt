@@ -6,8 +6,10 @@ import android.net.Uri
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.appcompat.app.AppCompatDelegate
+import androidx.compose.animation.*
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -151,512 +153,401 @@ fun SettingsScreen(
                 }
         }
 
+        // Entrance Animation
+        var isVisible by remember { mutableStateOf(false) }
+        LaunchedEffect(Unit) { isVisible = true }
+
         FinalBenchmark2Theme {
-                Scaffold(
-                        topBar = {
-                                CenterAlignedTopAppBar(
-                                        title = {
-                                                Text(
-                                                        "Settings",
-                                                        style =
-                                                                MaterialTheme.typography
-                                                                        .headlineSmall,
-                                                        color = MaterialTheme.colorScheme.onSurface
-                                                )
-                                        },
-                                        navigationIcon = {
-                                                IconButton(onClick = onBackClick) {
-                                                        Icon(
-                                                                imageVector =
-                                                                        Icons.Rounded.ArrowBack,
-                                                                contentDescription = "Back",
-                                                                tint =
-                                                                        MaterialTheme.colorScheme
-                                                                                .onSurfaceVariant
-                                                        )
-                                                }
-                                        },
-                                        colors =
-                                                TopAppBarDefaults.centerAlignedTopAppBarColors(
-                                                        containerColor = Color.Transparent
-                                                )
+                Box(
+                    modifier = Modifier.fillMaxSize()
+                        .background(MaterialTheme.colorScheme.background)
+                        .background(
+                            androidx.compose.ui.graphics.Brush.radialGradient(
+                                colors = listOf(
+                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.05f),
+                                    Color.Transparent
+                                ),
+                                center = androidx.compose.ui.geometry.Offset(0f, 0f),
+                                radius = 1000f
+                            )
+                        )
+                        .background(
+                            androidx.compose.ui.graphics.Brush.verticalGradient(
+                                colors = listOf(
+                                    MaterialTheme.colorScheme.background,
+                                    MaterialTheme.colorScheme.surfaceContainerLowest
                                 )
-                        }
-                ) { innerPadding ->
-                        Surface(
-                                modifier = Modifier.fillMaxSize(),
-                                color = MaterialTheme.colorScheme.background
-                        ) {
-                                val scrollState = rememberScrollState()
-
-                                Column(
-                                        modifier =
-                                                Modifier.fillMaxSize()
-                                                        .padding(innerPadding)
-                                                        .padding(
-                                                                start = 16.dp,
-                                                                end = 16.dp,
-                                                                bottom = 16.dp
-                                                        ) // Standard 16dp spacing
-                                                        .verticalScroll(scrollState)
-                                ) {
-
-                                        // Root Access Card (at the top)
-                                        Card(
-                                                modifier = Modifier.fillMaxWidth(),
-                                                elevation =
-                                                        CardDefaults.cardElevation(
-                                                                defaultElevation = 4.dp
-                                                        )
-                                        ) {
-                                                Column(
-                                                        modifier =
-                                                                Modifier.fillMaxWidth()
-                                                                        .padding(16.dp)
-                                                ) {
-                                                        Row(
-                                                                modifier = Modifier.fillMaxWidth(),
-                                                                horizontalArrangement =
-                                                                        Arrangement.SpaceBetween,
-                                                                verticalAlignment =
-                                                                        Alignment.CenterVertically
-                                                        ) {
-                                                                Column(
-                                                                        modifier =
-                                                                                Modifier.weight(1f)
-                                                                ) {
-                                                                        Text(
-                                                                                text =
-                                                                                        "Use Root Access",
-                                                                                fontSize = 16.sp,
-                                                                                fontWeight =
-                                                                                        FontWeight
-                                                                                                .Medium,
-                                                                                color =
-                                                                                        MaterialTheme
-                                                                                                .colorScheme
-                                                                                                .onSurface
-                                                                        )
-
-                                                                        Text(
-                                                                                text =
-                                                                                        if (isDeviceRooted
-                                                                                        ) {
-                                                                                                if (canExecuteRoot
-                                                                                                )
-                                                                                                        "Root access available and working"
-                                                                                                else
-                                                                                                        "Root access available but not working"
-                                                                                        } else {
-                                                                                                "No root access detected"
-                                                                                        },
-                                                                                fontSize = 14.sp,
-                                                                                color =
-                                                                                        if (isDeviceRooted &&
-                                                                                                        canExecuteRoot
-                                                                                        )
-                                                                                                MaterialTheme
-                                                                                                        .colorScheme
-                                                                                                        .primary
-                                                                                        else
-                                                                                                MaterialTheme
-                                                                                                        .colorScheme
-                                                                                                        .error,
-                                                                                modifier =
-                                                                                        Modifier.padding(
-                                                                                                top =
-                                                                                                        4.dp
-                                                                                        )
-                                                                        )
-                                                                }
-
-                                                                Switch(
-                                                                        checked = useRootAccess,
-                                                                        onCheckedChange = {
-                                                                                onRootAccessChange(
-                                                                                        it
-                                                                                )
-                                                                        },
-                                                                        enabled =
-                                                                                !isRootCheckLoading &&
-                                                                                        isDeviceRooted // Only enable if not loading
-                                                                        // and device is rooted
-                                                                        )
-                                                        }
-                                                }
-                                        }
-
-                                        Spacer(modifier = Modifier.height(16.dp))
-
-                                        // Theme Settings Card
-                                        Card(
-                                                modifier = Modifier.fillMaxWidth(),
-                                                elevation =
-                                                        CardDefaults.cardElevation(
-                                                                defaultElevation = 4.dp
-                                                        )
-                                        ) {
-                                                Column(
-                                                        modifier =
-                                                                Modifier.fillMaxWidth()
-                                                                        .padding(16.dp)
-                                                ) {
-                                                        Text(
-                                                                text = "Theme Settings",
-                                                                fontSize = 18.sp,
-                                                                fontWeight = FontWeight.Bold,
-                                                                color =
-                                                                        MaterialTheme.colorScheme
-                                                                                .primary,
-                                                                modifier =
-                                                                        Modifier.padding(
-                                                                                bottom = 12.dp
-                                                                        )
-                                                        )
-
-                                                        // Theme Selection
-                                                        Text(
-                                                                text = "App Theme",
-                                                                fontSize = 16.sp,
-                                                                fontWeight = FontWeight.Medium,
-                                                                color =
-                                                                        MaterialTheme.colorScheme
-                                                                                .onSurface,
-                                                                modifier =
-                                                                        Modifier.padding(
-                                                                                bottom = 8.dp
-                                                                        )
-                                                        )
-
-                                                        var expanded by remember {
-                                                                mutableStateOf(false)
-                                                        }
-
-                                                        ExposedDropdownMenuBox(
-                                                                expanded = expanded,
-                                                                onExpandedChange = {
-                                                                        expanded = !expanded
-                                                                }
-                                                        ) {
-                                                                TextField(
-                                                                        modifier =
-                                                                                Modifier.fillMaxWidth()
-                                                                                        .menuAnchor(
-                                                                                                MenuAnchorType
-                                                                                                        .PrimaryNotEditable
-                                                                                        ),
-                                                                        value =
-                                                                                themes[
-                                                                                        selectedThemeIndex],
-                                                                        onValueChange = {},
-                                                                        readOnly = true,
-                                                                        label = {
-                                                                                Text("Select Theme")
-                                                                        },
-                                                                        trailingIcon = {
-                                                                                Icon(
-                                                                                        imageVector =
-                                                                                                Icons.Default
-                                                                                                        .ArrowDropDown,
-                                                                                        contentDescription =
-                                                                                                "Dropdown arrow"
-                                                                                )
-                                                                        }
-                                                                )
-
-                                                                ExposedDropdownMenu(
-                                                                        expanded = expanded,
-                                                                        onDismissRequest = {
-                                                                                expanded = false
-                                                                        }
-                                                                ) {
-                                                                        themes.forEachIndexed {
-                                                                                index,
-                                                                                theme ->
-                                                                                DropdownMenuItem(
-                                                                                        text = {
-                                                                                                Text(
-                                                                                                        theme
-                                                                                                )
-                                                                                        },
-                                                                                        onClick = {
-                                                                                                onThemeChange(
-                                                                                                        index
-                                                                                                )
-                                                                                                selectedThemeIndex =
-                                                                                                        index
-                                                                                                expanded =
-                                                                                                        false
-                                                                                        }
-                                                                                )
-                                                                        }
-                                                                }
-                                                        }
-
-                                                        Text(
-                                                                text =
-                                                                        "Theme will apply to the entire application",
-                                                                fontSize = 14.sp,
-                                                                color =
-                                                                        MaterialTheme.colorScheme
-                                                                                .onSurfaceVariant,
-                                                                modifier =
-                                                                        Modifier.padding(top = 8.dp)
-                                                        )
-                                                }
-                                        }
-
-                                        // Power Consumption Multiplier Settings Card
-                                        val powerConsumptionPrefs = remember {
-                                                PowerConsumptionPreferences(context)
-                                        }
-                                        var selectedMultiplier by remember {
-                                                mutableStateOf(
-                                                        powerConsumptionPrefs.getMultiplier()
-                                                )
-                                        }
-
-                                        Card(
-                                                modifier =
-                                                        Modifier.fillMaxWidth()
-                                                                .padding(top = 16.dp),
-                                                elevation =
-                                                        CardDefaults.cardElevation(
-                                                                defaultElevation = 4.dp
-                                                        )
-                                        ) {
-                                                Column(
-                                                        modifier =
-                                                                Modifier.fillMaxWidth()
-                                                                        .padding(16.dp)
-                                                ) {
-                                                        Text(
-                                                                text = "Power Consumption Settings",
-                                                                fontSize = 18.sp,
-                                                                fontWeight = FontWeight.Bold,
-                                                                color =
-                                                                        MaterialTheme.colorScheme
-                                                                                .primary,
-                                                                modifier =
-                                                                        Modifier.padding(
-                                                                                bottom = 12.dp
-                                                                        )
-                                                        )
-
-                                                        // Multiplier Selection
-                                                        Text(
-                                                                text = "Power Multiplier",
-                                                                fontSize = 16.sp,
-                                                                fontWeight = FontWeight.Medium,
-                                                                color =
-                                                                        MaterialTheme.colorScheme
-                                                                                .onSurface,
-                                                                modifier =
-                                                                        Modifier.padding(
-                                                                                bottom = 8.dp
-                                                                        )
-                                                        )
-
-                                                        val multipliers =
-                                                                listOf(0.01f, 0.1f, 1.0f, 10f, 100f)
-                                                        val multiplierLabels =
-                                                                listOf(
-                                                                        "0.01x",
-                                                                        "0.1x",
-                                                                        "1x",
-                                                                        "10x",
-                                                                        "100x"
-                                                                )
-
-                                                        var expanded by remember {
-                                                                mutableStateOf(false)
-                                                        }
-
-                                                        ExposedDropdownMenuBox(
-                                                                expanded = expanded,
-                                                                onExpandedChange = {
-                                                                        expanded = !expanded
-                                                                }
-                                                        ) {
-                                                                TextField(
-                                                                        modifier =
-                                                                                Modifier.fillMaxWidth()
-                                                                                        .menuAnchor(
-                                                                                                MenuAnchorType
-                                                                                                        .PrimaryNotEditable
-                                                                                        ),
-                                                                        value =
-                                                                                "Current: ${String.format("%.2f", selectedMultiplier)}x",
-                                                                        onValueChange = {},
-                                                                        readOnly = true,
-                                                                        label = {
-                                                                                Text(
-                                                                                        "Select Multiplier"
-                                                                                )
-                                                                        },
-                                                                        trailingIcon = {
-                                                                                Icon(
-                                                                                        imageVector =
-                                                                                                Icons.Default
-                                                                                                        .ArrowDropDown,
-                                                                                        contentDescription =
-                                                                                                "Dropdown arrow"
-                                                                                )
-                                                                        }
-                                                                )
-
-                                                                ExposedDropdownMenu(
-                                                                        expanded = expanded,
-                                                                        onDismissRequest = {
-                                                                                expanded = false
-                                                                        }
-                                                                ) {
-                                                                        multipliers
-                                                                                .forEachIndexed {
-                                                                                        index,
-                                                                                        multiplier
-                                                                                        ->
-                                                                                        DropdownMenuItem(
-                                                                                                text = {
-                                                                                                        Text(
-                                                                                                                multiplierLabels[
-                                                                                                                        index]
-                                                                                                        )
-                                                                                                },
-                                                                                                onClick = {
-                                                                                                        powerConsumptionPrefs
-                                                                                                                .setMultiplier(
-                                                                                                                        multiplier
-                                                                                                                )
-                                                                                                        selectedMultiplier =
-                                                                                                                multiplier
-                                                                                                        expanded =
-                                                                                                                false
-                                                                                                }
-                                                                                        )
-                                                                                }
-                                                                }
-                                                        }
-
-                                                        Text(
-                                                                text =
-                                                                        "Adjust power consumption readings by this multiplier",
-                                                                fontSize = 14.sp,
-                                                                color =
-                                                                        MaterialTheme.colorScheme
-                                                                                .onSurfaceVariant,
-                                                                modifier =
-                                                                        Modifier.padding(top = 8.dp)
-                                                        )
-                                                }
-                                        }
-
-                                        // Onboarding Settings Card
-                                        val onboardingPreferences = remember {
-                                                OnboardingPreferences(context)
-                                        }
-
-                                        Card(
-                                                modifier =
-                                                        Modifier.fillMaxWidth()
-                                                                .padding(top = 16.dp),
-                                                elevation =
-                                                        CardDefaults.cardElevation(
-                                                                defaultElevation = 4.dp
-                                                        )
-                                        ) {
-                                                Column(
-                                                        modifier =
-                                                                Modifier.fillMaxWidth()
-                                                                        .padding(16.dp)
-                                                ) {
-                                                        Text(
-                                                                text = "App Tour & Setup",
-                                                                fontSize = 18.sp,
-                                                                fontWeight = FontWeight.Bold,
-                                                                color =
-                                                                        MaterialTheme.colorScheme
-                                                                                .primary,
-                                                                modifier =
-                                                                        Modifier.padding(
-                                                                                bottom = 12.dp
-                                                                        )
-                                                        )
-
-                                                        Text(
-                                                                text =
-                                                                        "Revisit the welcome guide to verify root access, customize themes, and calibrate power settings.",
-                                                                fontSize = 14.sp,
-                                                                color =
-                                                                        MaterialTheme.colorScheme
-                                                                                .onSurfaceVariant,
-                                                                modifier =
-                                                                        Modifier.padding(
-                                                                                bottom = 16.dp
-                                                                        ),
-                                                                lineHeight = 18.sp
-                                                        )
-
-                                                        Button(
-                                                                onClick = {
-                                                                        // Navigate directly to
-                                                                        // onboarding screens
-                                                                        // without resetting
-                                                                        // app
-                                                                        onNavigateToOnboarding()
-                                                                },
-                                                                modifier = Modifier.fillMaxWidth(),
-                                                                colors =
-                                                                        ButtonDefaults.buttonColors(
-                                                                                containerColor =
-                                                                                        MaterialTheme
-                                                                                                .colorScheme
-                                                                                                .primary
-                                                                        )
-                                                        ) {
-                                                                Icon(
-                                                                        imageVector =
-                                                                                Icons.Rounded
-                                                                                        .RocketLaunch,
-                                                                        contentDescription = null,
-                                                                        modifier =
-                                                                                Modifier.size(18.dp)
-                                                                )
-                                                                Spacer(
-                                                                        modifier =
-                                                                                Modifier.width(8.dp)
-                                                                )
-                                                                Text(
-                                                                        text = "Restart Onboarding",
-                                                                        style =
-                                                                                MaterialTheme
-                                                                                        .typography
-                                                                                        .titleMedium
-                                                                )
-                                                        }
-                                                }
-                                        }
-
-                                        // Horizontal line separator
-                                        Spacer(modifier = Modifier.height(16.dp))
-                                        Box(
-                                                modifier =
-                                                        Modifier.fillMaxWidth()
-                                                                .height(2.dp)
-                                                                .background(
-                                                                        MaterialTheme.colorScheme
-                                                                                .onSurfaceVariant
-                                                                                .copy(alpha = 0.3f)
-                                                                )
+                            )
+                        )
+                ) {
+                    Scaffold(
+                        containerColor = Color.Transparent,
+                        topBar = {
+                            CenterAlignedTopAppBar(
+                                title = {
+                                    Text(
+                                        "Settings",
+                                        style = MaterialTheme.typography.headlineSmall,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                },
+                                navigationIcon = {
+                                    IconButton(onClick = onBackClick) {
+                                        Icon(
+                                            imageVector = Icons.Rounded.ArrowBack,
+                                            contentDescription = "Back",
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
-                                        Spacer(modifier = Modifier.height(16.dp))
-
-                                        // About Section
-                                        AboutSection()
-                                }
+                                    }
+                                },
+                                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                                    containerColor = MaterialTheme.colorScheme.background.copy(alpha = 0.5f)
+                                ),
+                                modifier = Modifier.background(
+                                    MaterialTheme.colorScheme.background.copy(alpha = 0.5f)
+                                )
+                            )
                         }
+                    ) { innerPadding ->
+                        AnimatedVisibility(
+                            visible = isVisible,
+                            enter = androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(500)) + androidx.compose.animation.slideInVertically(androidx.compose.animation.core.tween(500)) { 100 }
+                        ) {
+                            val scrollState = rememberScrollState()
+
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(innerPadding)
+                                    .padding(horizontal = 16.dp, vertical = 16.dp)
+                                    .verticalScroll(scrollState),
+                                verticalArrangement = Arrangement.spacedBy(16.dp)
+                            ) {
+
+                                // Root Access Card
+                                GlassSettingCard {
+                                    Column(modifier = Modifier.padding(20.dp)) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Column(modifier = Modifier.weight(1f)) {
+                                                Text(
+                                                    text = "Use Root Access",
+                                                    fontSize = 16.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = MaterialTheme.colorScheme.onSurface
+                                                )
+
+                                                Text(
+                                                    text = if (isDeviceRooted) {
+                                                        if (canExecuteRoot) "Root access available and working"
+                                                        else "Root access available but not working"
+                                                    } else {
+                                                        "No root access detected"
+                                                    },
+                                                    fontSize = 13.sp,
+                                                    color = if (isDeviceRooted && canExecuteRoot)
+                                                        MaterialTheme.colorScheme.primary
+                                                    else
+                                                        MaterialTheme.colorScheme.error,
+                                                    modifier = Modifier.padding(top = 4.dp)
+                                                )
+                                            }
+
+                                            Switch(
+                                                checked = useRootAccess,
+                                                onCheckedChange = { onRootAccessChange(it) },
+                                                enabled = !isRootCheckLoading && isDeviceRooted,
+                                                colors = SwitchDefaults.colors(
+                                                    checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                                                    checkedTrackColor = MaterialTheme.colorScheme.primary,
+                                                    uncheckedThumbColor = MaterialTheme.colorScheme.outline,
+                                                    uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant
+                                                )
+                                            )
+                                        }
+                                    }
+                                }
+
+                                // Theme Settings Card
+                                GlassSettingCard {
+                                    Column(modifier = Modifier.padding(20.dp)) {
+                                        Text(
+                                            text = "Theme Settings",
+                                            fontSize = 18.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.padding(bottom = 12.dp)
+                                        )
+
+                                        Text(
+                                            text = "App Theme",
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.Medium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.padding(bottom = 8.dp)
+                                        )
+
+                                        var expanded by remember { mutableStateOf(false) }
+
+                                        ExposedDropdownMenuBox(
+                                            expanded = expanded,
+                                            onExpandedChange = { expanded = !expanded }
+                                        ) {
+                                            OutlinedTextField(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .menuAnchor(MenuAnchorType.PrimaryNotEditable),
+                                                value = themes[selectedThemeIndex],
+                                                onValueChange = {},
+                                                readOnly = true,
+                                                trailingIcon = {
+                                                    Icon(
+                                                        imageVector = Icons.Default.ArrowDropDown,
+                                                        contentDescription = "Dropdown arrow"
+                                                    )
+                                                },
+                                                shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+                                                colors = OutlinedTextFieldDefaults.colors(
+                                                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                                    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
+                                                )
+                                            )
+
+                                            ExposedDropdownMenu(
+                                                expanded = expanded,
+                                                onDismissRequest = { expanded = false },
+                                                modifier = Modifier
+                                                    .background(
+                                                        MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.95f),
+                                                        androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
+                                                    )
+                                                    .border(
+                                                        1.dp,
+                                                        MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f),
+                                                        androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
+                                                    )
+                                            ) {
+                                                themes.forEachIndexed { index, theme ->
+                                                    DropdownMenuItem(
+                                                        text = { Text(theme) },
+                                                        onClick = {
+                                                            onThemeChange(index)
+                                                            selectedThemeIndex = index
+                                                            expanded = false
+                                                        }
+                                                    )
+                                                }
+                                            }
+                                        }
+
+                                        Text(
+                                            text = "Theme will apply to the entire application",
+                                            fontSize = 12.sp,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                            modifier = Modifier.padding(top = 8.dp)
+                                        )
+                                    }
+                                }
+
+                                // Power Consumption Multiplier Settings Card
+                                val powerConsumptionPrefs = remember { PowerConsumptionPreferences(context) }
+                                var selectedMultiplier by remember { mutableStateOf(powerConsumptionPrefs.getMultiplier()) }
+
+                                GlassSettingCard {
+                                    Column(modifier = Modifier.padding(20.dp)) {
+                                        Text(
+                                            text = "Power Consumption Settings",
+                                            fontSize = 18.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.padding(bottom = 12.dp)
+                                        )
+
+                                        Text(
+                                            text = "Power Multiplier",
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.Medium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.padding(bottom = 8.dp)
+                                        )
+
+                                        val multipliers = listOf(0.01f, 0.1f, 1.0f, 10f, 100f)
+                                        val multiplierLabels = listOf("0.01x", "0.1x", "1x", "10x", "100x")
+                                        var expanded by remember { mutableStateOf(false) }
+
+                                        ExposedDropdownMenuBox(
+                                            expanded = expanded,
+                                            onExpandedChange = { expanded = !expanded }
+                                        ) {
+                                            OutlinedTextField(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .menuAnchor(MenuAnchorType.PrimaryNotEditable),
+                                                value = "Current: ${String.format("%.2f", selectedMultiplier)}x",
+                                                onValueChange = {},
+                                                readOnly = true,
+                                                trailingIcon = {
+                                                    Icon(
+                                                        imageVector = Icons.Default.ArrowDropDown,
+                                                        contentDescription = "Dropdown arrow"
+                                                    )
+                                                },
+                                                shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+                                                colors = OutlinedTextFieldDefaults.colors(
+                                                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                                    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
+                                                )
+                                            )
+
+                                            ExposedDropdownMenu(
+                                                expanded = expanded,
+                                                onDismissRequest = { expanded = false },
+                                                modifier = Modifier
+                                                    .background(
+                                                        MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.95f),
+                                                        androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
+                                                    )
+                                                    .border(
+                                                        1.dp,
+                                                        MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f),
+                                                        androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
+                                                    )
+                                            ) {
+                                                multipliers.forEachIndexed { index, multiplier ->
+                                                    DropdownMenuItem(
+                                                        text = { Text(multiplierLabels[index]) },
+                                                        onClick = {
+                                                            powerConsumptionPrefs.setMultiplier(multiplier)
+                                                            selectedMultiplier = multiplier
+                                                            expanded = false
+                                                        }
+                                                    )
+                                                }
+                                            }
+                                        }
+
+                                        Text(
+                                            text = "Adjust power consumption readings by this multiplier",
+                                            fontSize = 12.sp,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                            modifier = Modifier.padding(top = 8.dp)
+                                        )
+                                    }
+                                }
+
+                                // Onboarding Settings Card
+                                GlassSettingCard {
+                                    Column(modifier = Modifier.padding(20.dp)) {
+                                        Text(
+                                            text = "App Tour & Setup",
+                                            fontSize = 18.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.padding(bottom = 12.dp)
+                                        )
+
+                                        Text(
+                                            text = "Revisit the welcome guide to verify root access, customize themes, and calibrate power settings.",
+                                            fontSize = 14.sp,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.padding(bottom = 20.dp),
+                                            lineHeight = 20.sp
+                                        )
+
+                                        Button(
+                                            onClick = { onNavigateToOnboarding() },
+                                            modifier = Modifier.fillMaxWidth().height(50.dp),
+                                            colors = ButtonDefaults.buttonColors(
+                                                containerColor = MaterialTheme.colorScheme.primary
+                                            ),
+                                            shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Rounded.RocketLaunch,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Text(
+                                                text = "Restart Onboarding",
+                                                style = MaterialTheme.typography.titleMedium,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
+                                    }
+                                }
+
+                                // Horizontal line separator
+                                androidx.compose.material3.HorizontalDivider(
+                                    modifier = Modifier.padding(vertical = 8.dp),
+                                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
+                                )
+
+                                // About Section
+                                AboutSection()
+                            }
+                        }
+                    }
                 }
         }
+}
+
+@Composable
+fun GlassSettingCard(
+    modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null,
+    content: @Composable () -> Unit
+) {
+    val shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp)
+    val colors = CardDefaults.cardColors(
+        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.15f)
+    )
+    val border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f))
+    val elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+
+    if (onClick != null) {
+        Card(
+            onClick = onClick,
+            modifier = modifier.fillMaxWidth(),
+            shape = shape,
+            colors = colors,
+            elevation = elevation,
+            border = border
+        ) {
+            GlassCardContent(content)
+        }
+    } else {
+        Card(
+            modifier = modifier.fillMaxWidth(),
+            shape = shape,
+            colors = colors,
+            elevation = elevation,
+            border = border
+        ) {
+            GlassCardContent(content)
+        }
+    }
+}
+
+@Composable
+private fun GlassCardContent(content: @Composable () -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(
+                brush = androidx.compose.ui.graphics.Brush.verticalGradient(
+                    colors = listOf(
+                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.1f),
+                        MaterialTheme.colorScheme.surface.copy(alpha = 0.05f)
+                    )
+                )
+            )
+    ) {
+        content()
+    }
 }
 
 // Helper function to open URLs
@@ -674,16 +565,13 @@ fun AboutSection() {
         val context = LocalContext.current
 
         Column(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
                 // Card 1: App Info (FinalBenchmark 2 with logo_2.png and circular dark background)
-                Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
-                ) {
+                GlassSettingCard {
                         Column(
-                                modifier = Modifier.fillMaxWidth().padding(20.dp),
+                                modifier = Modifier.fillMaxWidth().padding(24.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                                 // Circular dark background with logo
@@ -702,26 +590,26 @@ fun AboutSection() {
                                         )
                                 }
 
-                                Spacer(modifier = Modifier.height(12.dp))
+                                Spacer(modifier = Modifier.height(16.dp))
 
                                 Text(
                                         text = "Final Benchmark 2",
-                                        fontSize = 20.sp,
+                                        fontSize = 22.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = MaterialTheme.colorScheme.onSurface,
                                         textAlign = TextAlign.Center
                                 )
 
-                                Spacer(modifier = Modifier.height(8.dp))
+                                Spacer(modifier = Modifier.height(12.dp))
 
                                 Row(
                                         horizontalArrangement = Arrangement.Center,
                                         verticalAlignment = Alignment.CenterVertically
                                 ) {
                                         Text(
-                                                text = "v0.3",
+                                                text = "v0.5", // Updated Version
                                                 fontSize = 16.sp,
-                                                fontWeight = FontWeight.Medium,
+                                                fontWeight = FontWeight.Bold,
                                                 color = MaterialTheme.colorScheme.primary,
                                                 textAlign = TextAlign.Center
                                         )
@@ -734,14 +622,14 @@ fun AboutSection() {
                                                 textAlign = TextAlign.Center
                                         )
                                         Text(
-                                                text = "2025-12-16",
+                                                text = "Dec 22, 2025", // Updated Date
                                                 fontSize = 16.sp,
                                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                                 textAlign = TextAlign.Center
                                         )
                                 }
 
-                                Spacer(modifier = Modifier.height(12.dp))
+                                Spacer(modifier = Modifier.height(16.dp))
 
                                 Text(
                                         text = "Made with ❤️ in Kotlin",
@@ -754,11 +642,8 @@ fun AboutSection() {
                 }
 
                 // Card 2: Special Thanks
-                Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
-                ) {
-                        Column(modifier = Modifier.fillMaxWidth().padding(20.dp)) {
+                GlassSettingCard {
+                        Column(modifier = Modifier.fillMaxWidth().padding(24.dp)) {
                                 Text(
                                         text = "Special Thanks",
                                         fontSize = 18.sp,
@@ -828,162 +713,155 @@ fun AboutSection() {
                 }
 
                 // Card 4: My Abhay Raj Card (with me.png)
-                Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
-                        onClick = { openUrl(context, "https://github.com/abhay-byte") }
-                ) {
-                        Column(modifier = Modifier.fillMaxWidth().padding(20.dp)) {
-                                Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                        // Profile Picture using me.png
-                                        Box(
-                                                modifier =
-                                                        Modifier.size(80.dp)
-                                                                .clip(CircleShape)
-                                                                .background(
-                                                                        MaterialTheme.colorScheme
-                                                                                .primary
-                                                                ),
-                                                contentAlignment = Alignment.Center
-                                        ) {
-                                                Image(
-                                                        painter =
-                                                                painterResource(id = R.drawable.me),
-                                                        contentDescription =
-                                                                "Abhay Raj Profile Picture",
-                                                        modifier = Modifier.size(80.dp),
-                                                        contentScale = ContentScale.Crop
-                                                )
-                                        }
+GlassSettingCard(
+    onClick = { openUrl(context, "https://github.com/abhay-byte") }
+) {
+    Column(modifier = Modifier.fillMaxWidth().padding(20.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Profile Picture using me.png
+            Box(
+                modifier =
+                    Modifier.size(80.dp)
+                        .clip(CircleShape)
+                        .background(
+                            MaterialTheme.colorScheme
+                                .primary
+                        ),
+                contentAlignment = Alignment.Center
+            ) {
+                Image(
+                    painter =
+                        painterResource(id = R.drawable.me),
+                    contentDescription =
+                        "Abhay Raj Profile Picture",
+                    modifier = Modifier.size(80.dp),
+                    contentScale = ContentScale.Crop
+                )
+            }
 
-                                        Spacer(modifier = Modifier.width(20.dp))
+            Spacer(modifier = Modifier.width(20.dp))
 
-                                        Column(modifier = Modifier.weight(1f)) {
-                                                Text(
-                                                        text = "Abhay Raj",
-                                                        fontSize = 22.sp,
-                                                        fontWeight = FontWeight.Bold,
-                                                        color = MaterialTheme.colorScheme.onSurface
-                                                )
-                                                Text(
-                                                        text = "@abhay-byte",
-                                                        fontSize = 16.sp,
-                                                        color = MaterialTheme.colorScheme.primary,
-                                                        fontWeight = FontWeight.Medium,
-                                                        modifier = Modifier.padding(top = 4.dp)
-                                                )
-                                                Text(
-                                                        text =
-                                                                "Passionate about building software, exploring hardware, and all things Linux.",
-                                                        fontSize = 14.sp,
-                                                        color =
-                                                                MaterialTheme.colorScheme
-                                                                        .onSurfaceVariant,
-                                                        modifier = Modifier.padding(top = 8.dp),
-                                                        lineHeight = 18.sp
-                                                )
-                                        }
-                                }
-                        }
-                }
-
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Abhay Raj",
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = "@abhay-byte",
+                    fontSize = 16.sp,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+                Text(
+                    text =
+                        "Passionate about building software, exploring hardware, and all things Linux.",
+                    fontSize = 14.sp,
+                    color =
+                        MaterialTheme.colorScheme
+                            .onSurfaceVariant,
+                    modifier = Modifier.padding(top = 8.dp),
+                    lineHeight = 18.sp
+                )
+            }
+        }
+    }
+}
                 // Card 5: Connect With Me (with proper social media icons)
-                Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
-                ) {
-                        Column(modifier = Modifier.fillMaxWidth().padding(20.dp)) {
-                                Text(
-                                        text = "Connect With Me",
-                                        fontSize = 18.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.padding(bottom = 16.dp)
-                                )
+// Card 5: Connect With Me (with proper social media icons)
+GlassSettingCard {
+    Column(modifier = Modifier.fillMaxWidth().padding(20.dp)) {
+        Text(
+            text = "Connect With Me",
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
 
-                                val socialLinks =
-                                        listOf(
-                                                SocialLink(
-                                                        "GitHub",
-                                                        "https://github.com/abhay-byte",
-                                                        R.drawable.github_icon,
-                                                        "View my repositories and projects"
-                                                ),
-                                                SocialLink(
-                                                        "LinkedIn",
-                                                        "https://www.linkedin.com/in/abhay-byte/",
-                                                        R.drawable.linkedin_icon,
-                                                        "Let's connect professionally"
-                                                ),
-                                                SocialLink(
-                                                        "Portfolio",
-                                                        "https://abhayraj-porfolio.web.app/",
-                                                        R.drawable.ic_portfolio,
-                                                        "Check out my work"
-                                                ),
-                                                SocialLink(
-                                                        "Instagram",
-                                                        "https://www.instagram.com/abhayrajx/",
-                                                        R.drawable.ic_instagram,
-                                                        "Follow my journey"
-                                                ),
-                                                SocialLink(
-                                                        "X (Twitter)",
-                                                        "https://x.com/arch_deve",
-                                                        R.drawable.ic_twitter_x,
-                                                        "Stay updated with me"
-                                                )
-                                        )
+        val socialLinks =
+            listOf(
+                SocialLink(
+                    "GitHub",
+                    "https://github.com/abhay-byte",
+                    R.drawable.github_icon,
+                    "View my repositories and projects"
+                ),
+                SocialLink(
+                    "LinkedIn",
+                    "https://www.linkedin.com/in/abhay-byte/",
+                    R.drawable.linkedin_icon,
+                    "Let's connect professionally"
+                ),
+                SocialLink(
+                    "Portfolio",
+                    "https://abhayraj-porfolio.web.app/",
+                    R.drawable.ic_portfolio,
+                    "Check out my work"
+                ),
+                SocialLink(
+                    "Instagram",
+                    "https://www.instagram.com/abhayrajx/",
+                    R.drawable.ic_instagram,
+                    "Follow my journey"
+                ),
+                SocialLink(
+                    "X (Twitter)",
+                    "https://x.com/arch_deve",
+                    R.drawable.ic_twitter_x,
+                    "Stay updated with me"
+                )
+            )
 
-                                socialLinks.forEach { link ->
-                                        Row(
-                                                modifier =
-                                                        Modifier.fillMaxWidth()
-                                                                .padding(vertical = 8.dp)
-                                                                .clickable {
-                                                                        openUrl(context, link.url)
-                                                                },
-                                                verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                                Icon(
-                                                        painter =
-                                                                painterResource(id = link.iconRes),
-                                                        contentDescription = link.name,
-                                                        tint = MaterialTheme.colorScheme.primary,
-                                                        modifier = Modifier.size(24.dp)
-                                                )
+        socialLinks.forEach { link ->
+            Row(
+                modifier =
+                    Modifier.fillMaxWidth()
+                        .padding(vertical = 8.dp)
+                        .clickable {
+                            openUrl(context, link.url)
+                        },
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    painter =
+                        painterResource(id = link.iconRes),
+                    contentDescription = link.name,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
+                )
 
-                                                Spacer(modifier = Modifier.width(16.dp))
+                Spacer(modifier = Modifier.width(16.dp))
 
-                                                Column(modifier = Modifier.weight(1f)) {
-                                                        Text(
-                                                                text = link.name,
-                                                                fontSize = 16.sp,
-                                                                fontWeight = FontWeight.Medium,
-                                                                color =
-                                                                        MaterialTheme.colorScheme
-                                                                                .onSurface
-                                                        )
-                                                        Text(
-                                                                text = link.description,
-                                                                fontSize = 12.sp,
-                                                                color =
-                                                                        MaterialTheme.colorScheme
-                                                                                .onSurfaceVariant
-                                                        )
-                                                }
-                                        }
-                                }
-                        }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = link.name,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Medium,
+                        color =
+                            MaterialTheme.colorScheme
+                                .onSurface
+                    )
+                    Text(
+                        text = link.description,
+                        fontSize = 12.sp,
+                        color =
+                            MaterialTheme.colorScheme
+                                .onSurfaceVariant
+                    )
                 }
+            }
+        }
+    }
+}
 
                 // Card 6: GitHub Star (with GitHub logo)
-                Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+                GlassSettingCard(
                         onClick = {
                                 openUrl(
                                         context,

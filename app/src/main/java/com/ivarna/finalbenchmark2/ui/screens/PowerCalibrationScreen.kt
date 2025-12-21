@@ -33,6 +33,10 @@ fun PowerCalibrationScreen(
     var currentPowerInfo by remember { mutableStateOf(powerUtils.getPowerConsumptionInfo()) }
     val scope = rememberCoroutineScope()
 
+    var isLoading by remember { mutableStateOf(false) }
+    var statusMessage by remember { mutableStateOf("") }
+    var hasCalibrated by remember { mutableStateOf(false) }
+
     // Save multiplier immediately when changed and update power reading
     LaunchedEffect(selectedMultiplier) {
         powerPreferences.setMultiplier(selectedMultiplier)
@@ -40,8 +44,19 @@ fun PowerCalibrationScreen(
         currentPowerInfo = powerUtils.getPowerConsumptionInfo()
     }
 
-    // Update power readings every second
+    // Auto-calibration on first load
     LaunchedEffect(Unit) {
+        if (!hasCalibrated) {
+            isLoading = true
+            statusMessage = "Calibrating power sensor..."
+            val calibratedMultiplier = powerPreferences.autoSelectMultiplier { progress ->
+                statusMessage = progress
+            }
+            selectedMultiplier = calibratedMultiplier
+            isLoading = false
+            hasCalibrated = true
+        }
+
         while (true) {
             delay(1000)
             currentPowerInfo = powerUtils.getPowerConsumptionInfo()
@@ -52,26 +67,33 @@ fun PowerCalibrationScreen(
     val multiplierOptions =
             listOf("0.01x" to 0.01f, "0.1x" to 0.1f, "1.0x" to 1.0f, "10x" to 10f, "100x" to 100f)
 
-    Box(modifier = modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(
+                androidx.compose.ui.graphics.Brush.verticalGradient(
+                    colors = listOf(
+                        MaterialTheme.colorScheme.surface,
+                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.15f)
+                    )
+                )
+            )
+    ) {
         Column(
                 modifier = Modifier.fillMaxSize().padding(24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.SpaceBetween
         ) {
+            Spacer(modifier = Modifier.height(32.dp))
+            
             // Header Section
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 // Icon Container
-                Card(
-                        modifier = Modifier.size(100.dp),
-                        shape = RoundedCornerShape(50.dp),
-                        colors =
-                                CardDefaults.cardColors(
-                                        containerColor =
-                                                MaterialTheme.colorScheme.primaryContainer.copy(
-                                                        alpha = 0.8f
-                                                )
-                                ),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 12.dp)
+                com.ivarna.finalbenchmark2.ui.components.GlassCard(
+                    modifier = Modifier.size(100.dp),
+                    shape = RoundedCornerShape(50.dp),
+                    containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
+                    borderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
                 ) {
                     Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
                         Icon(
@@ -271,8 +293,28 @@ fun PowerCalibrationScreen(
                 )
             }
 
-            // Action Button - Simple style
-            Button(
+            if (isLoading) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 32.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        CircularProgressIndicator(
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            text = statusMessage,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+            } else {
+                // Action Button - Simple style
+                Button(
                     onClick = {
                         scope.launch {
                             // Save the selected multiplier
@@ -285,19 +327,18 @@ fun PowerCalibrationScreen(
                         onNextClicked()
                     },
                     modifier = Modifier.fillMaxWidth().height(56.dp),
-                    colors =
-                            ButtonDefaults.buttonColors(
-                                    containerColor = MaterialTheme.colorScheme.primary
-                            ),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary
+                    ),
                     shape = RoundedCornerShape(16.dp)
-            ) {
-                Text(
+                ) {
+                    Text(
                         text = "Finish Setup",
-                        style =
-                                MaterialTheme.typography.titleMedium.copy(
-                                        fontWeight = FontWeight.SemiBold
-                                )
-                )
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    )
+                }
             }
         }
     }

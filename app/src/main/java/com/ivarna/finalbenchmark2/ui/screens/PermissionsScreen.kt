@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.ivarna.finalbenchmark2.utils.OnboardingPreferences
+import androidx.compose.ui.graphics.Brush
 
 sealed interface PermissionUiState {
     object Checking : PermissionUiState
@@ -67,7 +68,18 @@ fun PermissionsScreen(
         }
     }
 
-    Box(modifier = modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(
+                        MaterialTheme.colorScheme.surface,
+                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.15f)
+                    )
+                )
+            )
+    ) {
         Column(
                 modifier = Modifier.fillMaxSize().padding(24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -80,17 +92,11 @@ fun PermissionsScreen(
                     modifier = Modifier.weight(1f)
             ) {
                 // Icon Container
-                Card(
-                        modifier = Modifier.size(100.dp),
-                        shape = RoundedCornerShape(50.dp),
-                        colors =
-                                CardDefaults.cardColors(
-                                        containerColor =
-                                                MaterialTheme.colorScheme.primaryContainer.copy(
-                                                        alpha = 0.8f
-                                                )
-                                ),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 12.dp)
+                com.ivarna.finalbenchmark2.ui.components.GlassCard(
+                    modifier = Modifier.size(100.dp),
+                    shape = RoundedCornerShape(50.dp),
+                    containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
+                    borderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
                 ) {
                     Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
                         Icon(
@@ -130,19 +136,9 @@ fun PermissionsScreen(
                 Spacer(modifier = Modifier.height(32.dp))
 
                 // Explanation Card
-                Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(20.dp),
-                        colors =
-                                CardDefaults.cardColors(
-                                        containerColor = MaterialTheme.colorScheme.surface
-                                ),
-                        border =
-                                androidx.compose.foundation.BorderStroke(
-                                        1.dp,
-                                        MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)
-                                ),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                com.ivarna.finalbenchmark2.ui.components.GlassCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(20.dp)
                 ) {
                     Column(modifier = Modifier.padding(20.dp)) {
                         Text(

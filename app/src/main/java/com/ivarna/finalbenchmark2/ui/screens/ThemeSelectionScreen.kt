@@ -222,17 +222,11 @@ fun ThemeSelectionScreen(
                 // Header Section
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     // Icon Container
-                    Card(
+                    com.ivarna.finalbenchmark2.ui.components.GlassCard(
                             modifier = Modifier.size(100.dp),
                             shape = CircleShape,
-                            colors =
-                                    CardDefaults.cardColors(
-                                            containerColor =
-                                                    MaterialTheme.colorScheme.primaryContainer.copy(
-                                                            alpha = 0.8f
-                                                    )
-                                    ),
-                            elevation = CardDefaults.cardElevation(defaultElevation = 12.dp)
+                            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
+                            borderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
                     ) {
                         Box(
                                 contentAlignment = Alignment.Center,
