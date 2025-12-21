@@ -46,7 +46,7 @@ val SCORING_FACTORS = mapOf(
     BenchmarkName.RAY_TRACING to 4.902e-6/4.2,             // Perlin Noise
     BenchmarkName.COMPRESSION to 1.5243e-8*1.2,            // RLE
     BenchmarkName.MONTE_CARLO to 0.6125e-6/24,             // Mandelbrot Set
-    BenchmarkName.JSON_PARSING to 1.56e-6/14250,           // Binary format
+    BenchmarkName.JSON_PARSING to 1.56e-6/7125,            // Binary format
     BenchmarkName.N_QUEENS to 2.011e-7/3.2                 // Backtracking
 )
 ```
@@ -101,8 +101,8 @@ val ratio = sutMopsPerSecond / referenceMopsPerSecond
 | String Sorting | 125.20 |
 | Ray Tracing | 8.82 (Perlin Noise) |
 | Compression | 758.88 |
-| Monte Carlo | 229.46 (Mandelbrot Set) |
-| JSON Parsing | 91503.80 |
+| Monte Carlo | 280.46 (Mandelbrot Set) |
+| JSON Parsing | 188503.80 |
 | N-Queens | 166.79 |
 
 ### Step 3: Calculate Geometric Mean
