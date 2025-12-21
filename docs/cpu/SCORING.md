@@ -38,16 +38,16 @@ The same scaling factors are used for both single-core and multi-core:
 
 ```kotlin
 val SCORING_FACTORS = mapOf(
-    BenchmarkName.PRIME_GENERATION to 1.7985e-6/12.5,      // ~1.44e-7
-    BenchmarkName.FIBONACCI_ITERATIVE to 4.365e-7,         // ~4.37e-7
-    BenchmarkName.MATRIX_MULTIPLICATION to 1.56465e-8/4,   // ~3.91e-9
-    BenchmarkName.HASH_COMPUTING to 2.778e-5/2,            // ~1.39e-5
-    BenchmarkName.STRING_SORTING to 1.602e-7/2,            // ~8.01e-8
-    BenchmarkName.RAY_TRACING to 4.902e-6,                 // ~4.90e-6
-    BenchmarkName.COMPRESSION to 1.5243e-8,                // ~1.52e-8
-    BenchmarkName.MONTE_CARLO to 0.6125e-6/50,             // ~1.23e-8
-    BenchmarkName.JSON_PARSING to 1.56e-6*4,               // ~6.24e-6
-    BenchmarkName.N_QUEENS to 2.011e-7/2                   // ~1.01e-7
+    BenchmarkName.PRIME_GENERATION to 1.7985e-6/102.5,     // Pollard's Rho
+    BenchmarkName.FIBONACCI_ITERATIVE to 4.365e-7*5,       // Iterative
+    BenchmarkName.MATRIX_MULTIPLICATION to 1.56465e-8/7.2, // Deterministic
+    BenchmarkName.HASH_COMPUTING to 2.778e-5/384,          // Fixed
+    BenchmarkName.STRING_SORTING to 1.602e-7/2,            // Cache-resident
+    BenchmarkName.RAY_TRACING to 4.902e-6/4.2,             // Perlin Noise
+    BenchmarkName.COMPRESSION to 1.5243e-8*1.2,            // RLE
+    BenchmarkName.MONTE_CARLO to 0.6125e-6/24,             // Mandelbrot Set
+    BenchmarkName.JSON_PARSING to 1.56e-6/14250,           // Binary format
+    BenchmarkName.N_QUEENS to 2.011e-7/3.2                 // Backtracking
 )
 ```
 
@@ -94,16 +94,16 @@ val ratio = sutMopsPerSecond / referenceMopsPerSecond
 
 | Benchmark | Reference Mops/s |
 |-----------|------------------|
-| Prime Generation | 72.0 |
-| Fibonacci | 45.3 |
-| Matrix Multiplication | 4887.0 |
-| Hash Computing | 0.78 |
-| String Sorting | 124.6 |
-| Ray Tracing | 2.84 |
-| Compression | 750.3 |
-| Monte Carlo | 514.5 |
-| JSON Parsing | 1.33 |
-| N-Queens | 160.5 |
+| Prime Generation | 571.43 (Pollard's Rho) |
+| Fibonacci | 4.56 |
+| Matrix Multiplication | 3876.44 |
+| Hash Computing | 138.37 |
+| String Sorting | 125.20 |
+| Ray Tracing | 8.82 (Perlin Noise) |
+| Compression | 758.88 |
+| Monte Carlo | 229.46 (Mandelbrot Set) |
+| JSON Parsing | 91503.80 |
+| N-Queens | 166.79 |
 
 ### Step 3: Calculate Geometric Mean
 

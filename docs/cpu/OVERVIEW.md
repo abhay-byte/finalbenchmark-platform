@@ -19,15 +19,15 @@ FinalBenchmark2 CPU Suite is an Android benchmarking tool that measures CPU perf
 
 | # | Benchmark | Type | What It Tests |
 |---|-----------|------|---------------|
-| 1 | Prime Generation | Integer | Sieve of Eratosthenes algorithm |
+| 1 | Prime Generation | Integer | Pollard's Rho factorization (GCD + cycle detection) |
 | 2 | Fibonacci Iterative | Integer | Pure ALU arithmetic throughput |
 | 3 | Matrix Multiplication | Floating-Point | FMA operations, cache efficiency |
 | 4 | Hash Computing | Integer | FNV-1a hash algorithm |
 | 5 | String Sorting | Integer | Comparison-based sorting |
-| 6 | Ray Tracing | Floating-Point | 3D graphics mathematics |
+| 6 | Ray Tracing | Floating-Point | Perlin Noise 3D generation (gradient interpolation) |
 | 7 | Compression | Integer | RLE compression algorithm |
-| 8 | Monte Carlo π | Floating-Point | Leibniz formula for π |
-| 9 | JSON Parsing | Integer | JSON object traversal |
+| 8 | Monte Carlo π | Floating-Point | Mandelbrot Set iteration (fractal mathematics) |
+| 9 | JSON Parsing | Integer | Binary format parsing |
 | 10 | N-Queens | Integer | Backtracking algorithm |
 
 ---
