@@ -1,14 +1,20 @@
 package com.ivarna.finalbenchmark2.ui.screens
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -30,6 +36,7 @@ import androidx.compose.material.icons.rounded.ElectricBolt
 import androidx.compose.material.icons.rounded.Memory
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Thermostat
+import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material3.*
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.runtime.*
@@ -37,28 +44,38 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ivarna.finalbenchmark2.R
+import com.ivarna.finalbenchmark2.data.repository.HistoryRepository
 import com.ivarna.finalbenchmark2.ui.theme.FinalBenchmark2Theme
 import com.ivarna.finalbenchmark2.ui.theme.LocalThemeMode
 import com.ivarna.finalbenchmark2.ui.theme.ThemeMode
 import com.ivarna.finalbenchmark2.ui.viewmodels.PerformanceOptimizationStatus
+import com.ivarna.finalbenchmark2.ui.viewmodels.RankingItem
 import com.ivarna.finalbenchmark2.utils.CpuUtilizationUtils
 import com.ivarna.finalbenchmark2.utils.PowerUtils
 import com.ivarna.finalbenchmark2.utils.TemperatureUtils
 import kotlinx.coroutines.delay
+import kotlin.math.abs
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(onStartBenchmark: (String) -> Unit, onNavigateToSettings: () -> Unit = {}) {
+fun HomeScreen(
+        onStartBenchmark: (String) -> Unit,
+        onNavigateToSettings: () -> Unit = {},
+        historyRepository: HistoryRepository? = null
+) {
 
         // --- State Holders for Data ---
         val context = LocalContext.current
@@ -86,6 +103,19 @@ fun HomeScreen(onStartBenchmark: (String) -> Unit, onNavigateToSettings: () -> U
         val workloadOptions = listOf("Low Accuracy - Fastest", "Mid Accuracy - Fast", "High Accuracy - Slow")
         var selectedWorkload by remember { mutableStateOf("High Accuracy - Slow") }
         var isDropdownExpanded by remember { mutableStateOf(false) }
+
+        // Swipe state for high score card
+        var showHighScoreCard by remember { mutableStateOf(true) }
+        var highestScore by remember { mutableStateOf<Double?>(null) }
+
+        // Load highest score from database
+        LaunchedEffect(historyRepository) {
+                if (historyRepository != null) {
+                        historyRepository.getAllResults().collect { results ->
+                                highestScore = results.maxOfOrNull { it.benchmarkResult.normalizedScore }
+                        }
+                }
+        }
 
         // Single LaunchedEffect to manage data polling loops
         LaunchedEffect(Unit) {
@@ -119,67 +149,132 @@ fun HomeScreen(onStartBenchmark: (String) -> Unit, onNavigateToSettings: () -> U
                                 horizontalAlignment = Alignment.CenterHorizontally,
                                 verticalArrangement = Arrangement.Center
                         ) {
+                                // Swipeable section: High Score Card OR Logo/Title/Description
+                                val density = LocalDensity.current
+                                val swipeThreshold = with(density) { 100.dp.toPx() }
 
-                                // App logo
-                                val currentTheme by LocalThemeMode.current
-                                val isLightTheme =
-                                        MaterialTheme.colorScheme.background.luminance() > 0.5f
-                                val logoBackgroundColor =
-                                        when (currentTheme) {
-                                                ThemeMode.SKY_BREEZE, ThemeMode.LAVENDER_DREAM -> {
-                                                        // Use a darker background for these
-                                                        // specific light themes
-                                                        MaterialTheme.colorScheme.surfaceVariant
-                                                }
-                                                else -> {
-                                                        if (isLightTheme)
-                                                                MaterialTheme.colorScheme
-                                                                        .surfaceVariant
-                                                        else Color.Transparent
-                                                }
-                                        }
-
-                                // Logo with dark grey circular background (matching welcome page)
+                                // Use Box with fixed height to prevent resizing during animation
                                 Box(
-                                        modifier = Modifier.size(120.dp),
+                                        modifier = Modifier
+                                                .fillMaxWidth()
+                                                .heightIn(min = 280.dp) // Fixed minimum height
+                                                .pointerInput(Unit) {
+                                                        detectHorizontalDragGestures { _, dragAmount ->
+                                                                if (abs(dragAmount) > swipeThreshold / 10) {
+                                                                        if (dragAmount < 0) {
+                                                                                // Left swipe - show high score card
+                                                                                if (highestScore != null) {
+                                                                                        showHighScoreCard = true
+                                                                                }
+                                                                        } else {
+                                                                                // Right swipe - show logo/title/description
+                                                                                showHighScoreCard = false
+                                                                        }
+                                                                }
+                                                        }
+                                                },
                                         contentAlignment = Alignment.Center
                                 ) {
-                                        // Dark grey circular background
-                                        Box(
-                                                modifier =
-                                                        Modifier.size(110.dp)
-                                                                .clip(CircleShape)
-                                                                .background(Color(0xFF2A2A2A))
-                                        )
-                                        // Logo on top
-                                        Image(
-                                                painter = painterResource(id = R.drawable.logo_2),
-                                                contentDescription = "Logo",
-                                                modifier = Modifier.size(90.dp)
-                                        )
+                                        AnimatedContent(
+                                                targetState = showHighScoreCard && highestScore != null,
+                                                label = "swipe_animation"
+                                        ) { showScore ->
+                                                if (showScore) {
+                                                        // High Score Card
+                                                        Column(
+                                                                modifier = Modifier.fillMaxWidth(),
+                                                                horizontalAlignment = Alignment.CenterHorizontally
+                                                        ) {
+                                                                HighScoreCard(
+                                                                        score = highestScore ?: 0.0,
+                                                                        historyRepository = historyRepository
+                                                                )
+                                                        }
+                                                } else {
+                                                        // Logo/Title/Description
+                                                        Column(
+                                                                modifier = Modifier.fillMaxWidth(),
+                                                                horizontalAlignment = Alignment.CenterHorizontally
+                                                        ) {
+                                                                // App logo
+                                                                Box(
+                                                                        modifier = Modifier.size(120.dp),
+                                                                        contentAlignment = Alignment.Center
+                                                                ) {
+                                                                        Box(
+                                                                                modifier = Modifier
+                                                                                        .size(110.dp)
+                                                                                        .clip(CircleShape)
+                                                                                        .background(Color(0xFF2A2A2A))
+                                                                        )
+                                                                        Image(
+                                                                                painter = painterResource(id = R.drawable.logo_2),
+                                                                                contentDescription = "Logo",
+                                                                                modifier = Modifier.size(90.dp)
+                                                                        )
+                                                                }
+
+                                                                Spacer(modifier = Modifier.height(16.dp))
+
+                                                                Text(
+                                                                        text = "FinalBenchmark2",
+                                                                        fontSize = 32.sp,
+                                                                        fontWeight = FontWeight.Bold,
+                                                                        color = MaterialTheme.colorScheme.primary,
+                                                                        textAlign = TextAlign.Center,
+                                                                        modifier = Modifier.padding(bottom = 16.dp)
+                                                                )
+
+                                                                Text(
+                                                                        text = "A comprehensive benchmarking application that tests your device's performance across multiple components.",
+                                                                        fontSize = 16.sp,
+                                                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                                        textAlign = TextAlign.Center,
+                                                                        modifier = Modifier.padding(bottom = 16.dp)
+                                                                )
+                                                        }
+                                                }
+                                        }
                                 }
 
-                                Spacer(
-                                        modifier = Modifier.height(16.dp)
-                                ) // Add spacing between logo and title
+                                // Dot Navigation Indicators (only show if high score exists)
+                                if (highestScore != null) {
+                                        Spacer(modifier = Modifier.height(12.dp))
+                                        Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.Center,
+                                                verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                                // Dot for App Info (left)
+                                                Box(
+                                                        modifier = Modifier
+                                                                .size(8.dp)
+                                                                .clip(CircleShape)
+                                                                .background(
+                                                                        if (!showHighScoreCard) MaterialTheme.colorScheme.primary
+                                                                        else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+                                                                )
+                                                )
+                                                Spacer(modifier = Modifier.width(8.dp))
+                                                // Dot for High Score (right)
+                                                Box(
+                                                        modifier = Modifier
+                                                                .size(8.dp)
+                                                                .clip(CircleShape)
+                                                                .background(
+                                                                        if (showHighScoreCard) MaterialTheme.colorScheme.primary
+                                                                        else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+                                                                )
+                                                )
+                                        }
+                                }
 
-                                Text(
-                                        text = "FinalBenchmark2",
-                                        fontSize = 32.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.primary,
-                                        textAlign = TextAlign.Center,
-                                        modifier = Modifier.padding(bottom = 16.dp)
-                                )
+                                Spacer(modifier = Modifier.height(16.dp))
 
-                                Text(
-                                        text =
-                                                "A comprehensive benchmarking application that tests your device's performance across multiple components.",
-                                        fontSize = 16.sp,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        textAlign = TextAlign.Center,
-                                        modifier = Modifier.padding(bottom = 16.dp)
-                                )
+                                // ROM Compatibility Warning Card (moved here, below swipeable section)
+                                RomCompatibilityWarningCard()
+
+                                Spacer(modifier = Modifier.height(16.dp))
 
                                 // =========================================================
                                 // CONSOLIDATED SYSTEM CARD
@@ -1246,6 +1341,218 @@ fun TipRow(number: String, title: String, description: String) {
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                }
+        }
+}
+
+// Track if ROM warning animation has been shown (persists across navigations)
+private var romWarningAnimationShown = false
+
+// ROM Compatibility Warning Card
+@Composable
+fun RomCompatibilityWarningCard() {
+        var isVisible by remember { mutableStateOf(romWarningAnimationShown) }
+
+        LaunchedEffect(Unit) {
+                if (!romWarningAnimationShown) {
+                        delay(300)
+                        isVisible = true
+                        romWarningAnimationShown = true
+                } else {
+                        isVisible = true
+                }
+        }
+
+        AnimatedVisibility(
+                visible = isVisible,
+                enter = fadeIn(animationSpec = tween(600)) + expandVertically(),
+                exit = fadeOut() + shrinkVertically()
+        ) {
+                Card(
+                        modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 8.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant
+                        ),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {
+                        Row(
+                                modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                                // Warning Icon
+                                Icon(
+                                        imageVector = Icons.Rounded.Warning,
+                                        contentDescription = "Warning",
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(28.dp)
+                                )
+
+                                // Warning Text
+                                Column(
+                                        modifier = Modifier.weight(1f)
+                                ) {
+                                        Text(
+                                                text = "ROM Compatibility",
+                                                fontSize = 14.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text(
+                                                text = "Works well: AOSP, CUSTOM, HYPEROS, HELLOUI, ZUI. Known issues: OxygenOS, RealmeUI, ColorOS.",
+                                                fontSize = 12.sp,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                                lineHeight = 16.sp
+                                        )
+                                }
+                        }
+                }
+        }
+}
+
+// High Score Card
+@Composable
+fun HighScoreCard(
+        score: Double,
+        historyRepository: HistoryRepository?
+) {
+        var beatsPercentage by remember { mutableStateOf(0) }
+
+        // Calculate percentage beaten using same logic as ResultScreen
+        LaunchedEffect(score, historyRepository) {
+                if (historyRepository != null && score > 0) {
+                        // Get hardcoded reference devices from RankingViewModel
+                        val hardcodedReferenceDevices = listOf(
+                                RankingItem(
+                                        name = "Snapdragon 8 Gen 3",
+                                        normalizedScore = 313,
+                                        singleCore = 100,
+                                        multiCore = 420
+                                ),
+                                RankingItem(
+                                        name = "MediaTek Dimensity 8300",
+                                        normalizedScore = 229,
+                                        singleCore = 78,
+                                        multiCore = 308
+                                ),
+                                RankingItem(
+                                        name = "Snapdragon 8s Gen 3",
+                                        normalizedScore = 241,
+                                        singleCore = 87,
+                                        multiCore = 324
+                                ),
+                                RankingItem(
+                                        name = "MediaTek Dimensity 6300",
+                                        normalizedScore = 107,
+                                        singleCore = 50,
+                                        multiCore = 137
+                                )
+                        )
+
+                        val userScore = RankingItem(
+                                name = "Your Device",
+                                normalizedScore = score.toInt(),
+                                singleCore = 0,
+                                multiCore = 0,
+                                isCurrentUser = true
+                        )
+
+                        val allDevices = hardcodedReferenceDevices + userScore
+                        val rankedItems = allDevices.sortedByDescending { it.normalizedScore }
+                                .mapIndexed { index, item -> item.copy(rank = index + 1) }
+
+                        val userRank = rankedItems.indexOfFirst { it.isCurrentUser }
+                        val totalDevices = rankedItems.size
+                        val devicesBeaten = totalDevices - userRank - 1
+                        beatsPercentage = if (totalDevices > 1) {
+                                (devicesBeaten.toFloat() / (totalDevices - 1) * 100).toInt()
+                        } else {
+                                100
+                        }
+                }
+        }
+
+        Card(
+                modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        ) {
+                Box(
+                        modifier = Modifier
+                                .fillMaxWidth()
+                                .background(
+                                        brush = Brush.horizontalGradient(
+                                                colors = listOf(
+                                                        MaterialTheme.colorScheme.primaryContainer,
+                                                        MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.6f)
+                                                )
+                                        )
+                                )
+                                .padding(20.dp)
+                ) {
+                        Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                                // Left: App Icon
+                                Box(
+                                        modifier = Modifier.size(70.dp),
+                                        contentAlignment = Alignment.Center
+                                ) {
+                                        Box(
+                                                modifier = Modifier
+                                                        .size(65.dp)
+                                                        .clip(CircleShape)
+                                                        .background(Color(0xFF2A2A2A))
+                                        )
+                                        Image(
+                                                painter = painterResource(id = R.drawable.logo_2),
+                                                contentDescription = "App Logo",
+                                                modifier = Modifier.size(50.dp)
+                                        )
+                                }
+
+                                Spacer(modifier = Modifier.width(16.dp))
+
+                                // Right: Score and Percentage
+                                Column(
+                                        modifier = Modifier.weight(1f),
+                                        horizontalAlignment = Alignment.End
+                                ) {
+                                        Text(
+                                                text = "Highest Score",
+                                                fontSize = 12.sp,
+                                                fontWeight = FontWeight.Medium,
+                                                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                                        )
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text(
+                                                text = score.toInt().toString(),
+                                                fontSize = 36.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                                        )
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text(
+                                                text = "Beats $beatsPercentage% of devices",
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Medium,
+                                                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                                        )
+                                }
+                        }
                 }
         }
 }

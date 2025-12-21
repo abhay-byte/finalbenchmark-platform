@@ -13,10 +13,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.compose.rememberNavController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
-import androidx.navigation.compose.rememberNavController
+import com.ivarna.finalbenchmark2.data.database.AppDatabase
+import com.ivarna.finalbenchmark2.data.repository.HistoryRepository
 import com.ivarna.finalbenchmark2.ui.screens.*
 import com.ivarna.finalbenchmark2.ui.screens.DetailedResultScreen
 import com.ivarna.finalbenchmark2.ui.viewmodels.RootStatus
@@ -102,11 +104,17 @@ fun MainNavigation(
                 }
 
                 composable("home") {
+                    val historyRepository = remember {
+                        HistoryRepository(
+                            AppDatabase.getDatabase(context).benchmarkDao()
+                        )
+                    }
                     HomeScreen(
                             onStartBenchmark = { preset ->
                                 navController.navigate("benchmark/$preset")
                             },
-                            onNavigateToSettings = { navController.navigate("settings") }
+                            onNavigateToSettings = { navController.navigate("settings") },
+                            historyRepository = historyRepository
                     )
                 }
                 composable("device") { DeviceScreen() }
