@@ -1,25 +1,15 @@
-v0.5
+CPU Benchmark Improvements:
+• Updated reference Mops values based on Snapdragon 8 Gen 3 results
+• Adjusted scoring factors for Monte Carlo and JSON Parsing benchmarks
+• Systematized workload tier configurations (mid=0.5×flagship, slow=0.25×mid, test=0.1×slow)
+• Increased test workload parameters for better JIT warm-up
 
-Performance Improvements:
-- Optimized matrix multiplication for better multicore scaling (350% → 750% CPU utilization)
-- Added thermal stabilization delays between benchmarks to prevent throttling
+Documentation Updates:
+• Fixed algorithm documentation for Fibonacci (Polynomial Evaluation) and Hash Computing (SHA-256-like)
+• Updated all workload parameters in BENCHMARKS.md to match code
+• Verified and corrected all reference Mops values and scoring factors in SCORING.md
+• Updated OVERVIEW.md with new algorithm descriptions
 
 Bug Fixes:
-- Fixed memory allocation bottleneck in matrix multiplication algorithm
-- Adjusted JSON parsing iterations for consistent test duration across device tiers
-- Fixed delete functionality for history benchmarks (now properly deletes from database)
-- Consolidated ResultScreen to handle both fresh and history benchmark results
-- Fixed CPU comparison screen to display scores in points instead of raw Mops/s
-- Resolved self-comparison issue showing incorrect huge values
-
-Code Quality:
-- Centralized SCORING_FACTORS to KotlinBenchmarkManager (single source of truth)
-- Removed duplicate HistoryDetailScreen (now uses ResultScreen for all results)
-- Refactored CpuComparisonScreen to use centralized scoring factors
-- Fixed data format conversions between ops/s and Mops/s across all comparison paths
-
-New Features:
-- Added "Baseline" tag to reference device (Snapdragon 8 Gen 3)
-- Updated ranking data with latest benchmark results
-- Added 2 new reference devices: Snapdragon 8s Gen 3 and MediaTek Dimensity 6300
-- Created comprehensive documentation for adding reference devices
+• Fixed Prime Generation documentation to match actual Pollard's Rho implementation
+• Corrected workload parameter inconsistencies across documentation files
