@@ -1,5 +1,6 @@
 package com.ivarna.finalbenchmark2.ui.screens
 
+import android.content.Context
 import android.content.Intent
 import android.util.Log
 import androidx.compose.foundation.background
@@ -10,16 +11,21 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.Share
+import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.animation.*
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.clickable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.scale
@@ -32,6 +38,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.material.icons.rounded.*
 import com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkName
 import com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkResult
 import com.ivarna.finalbenchmark2.cpuBenchmark.KotlinBenchmarkManager
@@ -47,6 +56,7 @@ import java.text.SimpleDateFormat
 import java.util.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.delay
 import org.json.JSONObject
 
 data class BenchmarkSummary(
@@ -396,6 +406,17 @@ fun ResultScreen(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.background)
+                    .background(
+                        Brush.radialGradient(
+                            colors = listOf(
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.05f),
+                                Color.Transparent
+                            ),
+                            center = Offset(0f, 0f),
+                            radius = 1000f
+                        )
+                    )
                     .background(
                         Brush.verticalGradient(
                             colors = listOf(
@@ -405,130 +426,226 @@ fun ResultScreen(
                         )
                     )
             ) {
-                Scaffold(
-                    topBar = {
-                        CenterAlignedTopAppBar(
-                            title = {
-                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Text(
-                                        "BENCHMARK RESULTS",
-                                        style = MaterialTheme.typography.labelMedium,
-                                        letterSpacing = 2.sp,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                    Text(
-                                        formattedTimestamp,
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                                    )
-                                }
-                            },
-                            navigationIcon = {
-                                IconButton(onClick = onBackToHome) {
-                                    Icon(Icons.Default.ArrowBack, "Back")
-                                }
-                            },
-                            actions = {
-                                IconButton(onClick = { showDeleteDialog = true }) {
-                                    Icon(Icons.Rounded.Delete, "Delete")
-                                }
-                                IconButton(onClick = { 
-                                    // Share logic inline or call helper
-                                    val sendIntent = Intent(Intent.ACTION_SEND).apply {
-                                        putExtra(Intent.EXTRA_TEXT, "Benchmarks Results: ${summary.finalScore}")
-                                        type = "text/plain"
-                                    }
-                                    context.startActivity(Intent.createChooser(sendIntent, "Share"))
-                                }) {
-                                    Icon(Icons.Rounded.Share, "Share")
-                                }
-                            },
-                            colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                                containerColor = Color.Transparent
-                            )
-                        )
-                    },
-                    containerColor = Color.Transparent
-                ) { paddingValues ->
-                        // Delete confirmation dialog
-                        if (showDeleteDialog) {
-                                AlertDialog(
-                                        onDismissRequest = { showDeleteDialog = false },
-                                        title = { Text("Delete Benchmark") },
-                                        text = {
-                                                Text(
-                                                        "Are you sure you want to delete this benchmark? This action cannot be undone."
-                                                )
-                                        },
-                                        confirmButton = {
-                                                TextButton(
-                                                        onClick = {
-                                                                deleteBenchmark()
-                                                                showDeleteDialog = false
-                                                        }
-                                                ) { Text("Delete") }
-                                        },
-                                        dismissButton = {
-                                                TextButton(onClick = { showDeleteDialog = false }) {
-                                                        Text("Cancel")
-                                                }
-                                        }
-                                )
-                        }
-                    LazyColumn(
+                Column(
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    // Glassmorphic Top Bar
+                    Card(
                         modifier = Modifier
-                            .fillMaxSize()
-                            .padding(paddingValues),
-                        contentPadding = PaddingValues(bottom = 32.dp),
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                            .padding(top = 16.dp),
+                        shape = RoundedCornerShape(24.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.15f)
+                        ),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f))
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(
+                                    brush = Brush.verticalGradient(
+                                        colors = listOf(
+                                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.1f),
+                                            MaterialTheme.colorScheme.surface.copy(alpha = 0.05f)
+                                        )
+                                    )
+                                )
+                                .padding(vertical = 12.dp, horizontal = 12.dp)
+                        ) {
+                            // Back Button
+                            IconButton(
+                                onClick = onBackToHome,
+                                modifier = Modifier
+                                    .align(Alignment.CenterStart)
+                                    .size(40.dp)
+                                    .background(
+                                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                                        CircleShape
+                                    )
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.ArrowBack,
+                                    contentDescription = "Back",
+                                    tint = MaterialTheme.colorScheme.onSurface,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                            
+                            // Title & Timestamp
+                            Column(
+                                modifier = Modifier.align(Alignment.Center),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(
+                                    "BENCHMARK RESULTS",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    letterSpacing = 2.sp,
+                                    fontWeight = FontWeight.Black,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                Text(
+                                    formattedTimestamp,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                )
+                            }
+                            
+                            // Action buttons
+                            Row(
+                                modifier = Modifier.align(Alignment.CenterEnd)
+                            ) {
+                                IconButton(
+                                    onClick = { showDeleteDialog = true },
+                                    modifier = Modifier
+                                        .size(40.dp)
+                                        .background(
+                                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                                            CircleShape
+                                        )
+                                ) {
+                                    Icon(
+                                        Icons.Rounded.Delete,
+                                        "Delete",
+                                        tint = MaterialTheme.colorScheme.onSurface,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(8.dp))
+                                IconButton(
+                                    onClick = { 
+                                        val shareText = formatBenchmarkShareData(context, summary)
+                                        val sendIntent = Intent(Intent.ACTION_SEND).apply {
+                                            putExtra(Intent.EXTRA_TEXT, shareText)
+                                            type = "text/plain"
+                                        }
+                                        context.startActivity(Intent.createChooser(sendIntent, "Share Benchmark Results"))
+                                    },
+                                    modifier = Modifier
+                                        .size(40.dp)
+                                        .background(
+                                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                                            CircleShape
+                                        )
+                                ) {
+                                    Icon(
+                                        Icons.Rounded.Share,
+                                        "Share",
+                                        tint = MaterialTheme.colorScheme.onSurface,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    // Delete confirmation dialog
+                    if (showDeleteDialog) {
+                        AlertDialog(
+                            onDismissRequest = { showDeleteDialog = false },
+                            title = { Text("Delete Benchmark") },
+                            text = {
+                                Text(
+                                    "Are you sure you want to delete this benchmark? This action cannot be undone."
+                                )
+                            },
+                            confirmButton = {
+                                TextButton(
+                                    onClick = {
+                                        deleteBenchmark()
+                                        showDeleteDialog = false
+                                    }
+                                ) { Text("Delete") }
+                            },
+                            dismissButton = {
+                                TextButton(onClick = { showDeleteDialog = false }) {
+                                    Text("Cancel")
+                                }
+                            }
+                        )
+                    }
+
+
+                    Column(
+                        modifier = Modifier.fillMaxSize(),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-
-                        // Tab Row
-                        item {
-                            TabRow(
-                                selectedTabIndex = pagerState.currentPage,
-                                containerColor = Color.Transparent,
-                                contentColor = MaterialTheme.colorScheme.primary,
-                                divider = {},
-                                indicator = { tabPositions ->
-                                    TabRowDefaults.SecondaryIndicator(
-                                        Modifier.tabIndicatorOffset(tabPositions[pagerState.currentPage]),
-                                        color = MaterialTheme.colorScheme.primary
+                        // Tab Row with Glassmorphism
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                            shape = RoundedCornerShape(20.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                            ),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(
+                                        brush = Brush.verticalGradient(
+                                            colors = listOf(
+                                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                                                MaterialTheme.colorScheme.surface.copy(alpha = 0.1f)
+                                            )
+                                        )
                                     )
-                                }
                             ) {
-                                tabs.forEachIndexed { index, title ->
-                                    Tab(
-                                        selected = pagerState.currentPage == index,
-                                        onClick = {
-                                            coroutineScope.launch {
-                                                pagerState.animateScrollToPage(index)
+                                TabRow(
+                                    selectedTabIndex = pagerState.currentPage,
+                                    containerColor = Color.Transparent,
+                                    contentColor = MaterialTheme.colorScheme.primary,
+                                    divider = {},
+                                    indicator = { tabPositions ->
+                                        TabRowDefaults.SecondaryIndicator(
+                                            Modifier.tabIndicatorOffset(tabPositions[pagerState.currentPage]),
+                                            color = MaterialTheme.colorScheme.primary,
+                                            height = 2.dp
+                                        )
+                                    }
+                                ) {
+                                    tabs.forEachIndexed { index, title ->
+                                        Tab(
+                                            selected = pagerState.currentPage == index,
+                                            onClick = {
+                                                coroutineScope.launch {
+                                                    pagerState.animateScrollToPage(index)
+                                                }
+                                            },
+                                            text = { 
+                                                Text(
+                                                    text = title,
+                                                    fontWeight = if (pagerState.currentPage == index) FontWeight.Bold else FontWeight.Medium,
+                                                    fontSize = 16.sp
+                                                ) 
                                             }
-                                        },
-                                        text = { Text(title) }
-                                    )
+                                        )
+                                    }
                                 }
                             }
                         }
 
                         // Pager Content
-                        item {
-                            HorizontalPager(
-                                state = pagerState,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(800.dp), // Fixed height for pager
-                                verticalAlignment = Alignment.Top
-                            ) { page ->
-                                when (page) {
-                                    0 -> SummaryTab(summary)
-                                    1 -> DetailedDataTab(summary)
-                                    2 -> RankingsTab(
-                                            summary.finalScore,
-                                            summary.singleCoreScore,
-                                            summary.multiCoreScore
-                                        )
-                                }
+                        HorizontalPager(
+                            state = pagerState,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(1f),
+                            verticalAlignment = Alignment.Top
+                        ) { page ->
+                            when (page) {
+                                0 -> SummaryTab(summary)
+                                1 -> DetailedDataTab(summary)
+                                2 -> RankingsTab(
+                                        summary.finalScore,
+                                        summary.singleCoreScore,
+                                        summary.multiCoreScore
+                                    )
                             }
                         }
                     }
@@ -543,340 +660,346 @@ fun SummaryTab(summary: BenchmarkSummary) {
                 modifier = Modifier.fillMaxSize().padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-                // Final Score Card - Glassmorphic
+                // Final Score - Large Glassmorphic Card
                 item {
-                        Card(
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(24.dp),
+                        var targetScore by remember { mutableStateOf(0f) }
+                        LaunchedEffect(Unit) {
+                            targetScore = summary.finalScore.toFloat()
+                        }
+                        val animatedScore by animateFloatAsState(
+                            targetValue = targetScore,
+                            animationSpec = tween(durationMillis = 2000, easing = FastOutSlowInEasing)
+                        )
+                        
+                        AnimatedEntranceContainer(index = 0) {
+                            Card(
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+                                shape = RoundedCornerShape(32.dp),
                                 colors = CardDefaults.cardColors(
-                                        containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+                                        containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.12f)
                                 ),
                                 elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
-                        ) {
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.25f))
+                            ) {
                                 Box(
                                         modifier = Modifier
                                                 .fillMaxWidth()
                                                 .background(
-                                                        brush = Brush.verticalGradient(
+                                                        brush = Brush.radialGradient(
                                                                 colors = listOf(
-                                                                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
-                                                                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
-                                                                )
+                                                                        MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                                                                        MaterialTheme.colorScheme.surface.copy(alpha = 0.02f)
+                                                                ),
+                                                                center = Offset(0.5f, 0f),
+                                                                radius = 600f
                                                         )
                                                 )
                                 ) {
                                         Column(
-                                                modifier = Modifier.fillMaxWidth().padding(24.dp),
+                                                modifier = Modifier.fillMaxWidth().padding(vertical = 40.dp, horizontal = 24.dp),
                                                 horizontalAlignment = Alignment.CenterHorizontally
                                         ) {
                                                 Text(
-                                                        text = "Final Score",
-                                                        fontSize = 18.sp,
-                                                        fontWeight = FontWeight.Medium,
-                                                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                                                        text = "TOTAL BENCHMARK SCORE",
+                                                        style = MaterialTheme.typography.labelSmall,
+                                                        fontWeight = FontWeight.Black,
+                                                        letterSpacing = 2.sp,
+                                                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
                                                 )
-                                                Spacer(modifier = Modifier.height(8.dp))
+                                                Spacer(modifier = Modifier.height(16.dp))
                                                 Text(
-                                                        text = String.format("%.2f", summary.finalScore),
-                                                        fontSize = 48.sp,
-                                                        fontWeight = FontWeight.Bold,
-                                                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                                                        text = String.format("%.0f", animatedScore),
+                                                        style = MaterialTheme.typography.displayLarge,
+                                                        fontWeight = FontWeight.Black,
+                                                        color = MaterialTheme.colorScheme.primary,
+                                                        letterSpacing = (-2).sp
+                                                )
+                                                Text(
+                                                        text = "PERFORMANCE POINTS",
+                                                        style = MaterialTheme.typography.labelSmall,
+                                                        fontWeight = FontWeight.Black,
+                                                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                                                        letterSpacing = 1.sp
                                                 )
                                         }
                                 }
+                            }
                         }
                 }
 
-                // Single-Core and Multi-Core Scores - Glassmorphic
+                // Single-Core and Multi-Core Scores
                 item {
-                        Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                                // Single-Core Score
-                                Card(
-                                        modifier = Modifier.weight(1f),
-                                        shape = RoundedCornerShape(20.dp),
-                                        colors = CardDefaults.cardColors(
-                                                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                                        ),
-                                        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-                                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
-                                ) {
-                                        Box(
-                                                modifier = Modifier
-                                                        .fillMaxWidth()
-                                                        .background(
-                                                                brush = Brush.verticalGradient(
-                                                                        colors = listOf(
-                                                                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-                                                                                MaterialTheme.colorScheme.surface.copy(alpha = 0.5f)
-                                                                        )
-                                                                )
-                                                        )
-                                        ) {
-                                                Column(
-                                                        modifier = Modifier.fillMaxWidth().padding(16.dp),
-                                                        horizontalAlignment = Alignment.CenterHorizontally
-                                                ) {
-                                                        Text(
-                                                                text = "Single-Core",
-                                                                fontSize = 14.sp,
-                                                                fontWeight = FontWeight.Medium,
-                                                                color =
-                                                                        MaterialTheme.colorScheme
-                                                                                .onSurfaceVariant
-                                                        )
-                                                        Spacer(modifier = Modifier.height(8.dp))
-                                                        Text(
-                                                                text =
-                                                                        String.format(
-                                                                                "%.2f",
-                                                                                summary.singleCoreScore
-                                                                        ),
-                                                                fontSize = 24.sp,
-                                                                fontWeight = FontWeight.Bold,
-                                                                color = MaterialTheme.colorScheme.primary
-                                                        )
-                                                }
-                                        }
-                                }
+                        var targetSingle by remember { mutableStateOf(0f) }
+                        var targetMulti by remember { mutableStateOf(0f) }
+                        LaunchedEffect(Unit) {
+                            targetSingle = summary.singleCoreScore.toFloat()
+                            targetMulti = summary.multiCoreScore.toFloat()
+                        }
+                        val animatedSingle by animateFloatAsState(
+                            targetValue = targetSingle,
+                            animationSpec = tween(durationMillis = 1500, delayMillis = 200, easing = FastOutSlowInEasing)
+                        )
+                        val animatedMulti by animateFloatAsState(
+                            targetValue = targetMulti,
+                            animationSpec = tween(durationMillis = 1500, delayMillis = 400, easing = FastOutSlowInEasing)
+                        )
 
-                                // Multi-Core Score
-                                Card(
-                                        modifier = Modifier.weight(1f),
-                                        shape = RoundedCornerShape(20.dp),
-                                        colors = CardDefaults.cardColors(
-                                                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                                        ),
-                                        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-                                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
-                                ) {
-                                        Box(
-                                                modifier = Modifier
-                                                        .fillMaxWidth()
-                                                        .background(
-                                                                brush = Brush.verticalGradient(
-                                                                        colors = listOf(
-                                                                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-                                                                                MaterialTheme.colorScheme.surface.copy(alpha = 0.5f)
-                                                                        )
-                                                                )
-                                                        )
-                                        ) {
-                                                Column(
-                                                        modifier = Modifier.fillMaxWidth().padding(16.dp),
-                                                        horizontalAlignment = Alignment.CenterHorizontally
-                                                ) {
-                                                        Text(
-                                                                text = "Multi-Core",
-                                                                fontSize = 14.sp,
-                                                                fontWeight = FontWeight.Medium,
-                                                                color =
-                                                                        MaterialTheme.colorScheme
-                                                                                .onSurfaceVariant
-                                                        )
-                                                        Spacer(modifier = Modifier.height(8.dp))
-                                                        Text(
-                                                                text =
-                                                                        String.format(
-                                                                                "%.2f",
-                                                                                summary.multiCoreScore
-                                                                        ),
-                                                                fontSize = 24.sp,
-                                                                fontWeight = FontWeight.Bold,
-                                                                color = MaterialTheme.colorScheme.primary
-                                                        )
-                                                }
-                                        }
-                                }
+                        AnimatedEntranceContainer(index = 1) {
+                            Row(
+                                    modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                            ) {
+                                    // Single-Core Score
+                                    Card(
+                                            modifier = Modifier.weight(1f),
+                                            shape = RoundedCornerShape(28.dp),
+                                            colors = CardDefaults.cardColors(
+                                                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.15f)
+                                            ),
+                                            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
+                                    ) {
+                                            Box(
+                                                    modifier = Modifier
+                                                            .fillMaxWidth()
+                                                            .background(
+                                                                    brush = Brush.verticalGradient(
+                                                                            colors = listOf(
+                                                                                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.12f),
+                                                                                    MaterialTheme.colorScheme.surface.copy(alpha = 0.02f)
+                                                                            )
+                                                                    )
+                                                            )
+                                            ) {
+                                                    Column(
+                                                            modifier = Modifier.fillMaxWidth().padding(24.dp),
+                                                            horizontalAlignment = Alignment.CenterHorizontally
+                                                    ) {
+                                                            Text(
+                                                                    text = "SINGLE-CORE",
+                                                                    style = MaterialTheme.typography.labelSmall,
+                                                                    fontWeight = FontWeight.Black,
+                                                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                                                    letterSpacing = 1.sp
+                                                            )
+                                                            Spacer(modifier = Modifier.height(10.dp))
+                                                            Text(
+                                                                    text = String.format("%.0f", animatedSingle),
+                                                                    style = MaterialTheme.typography.headlineMedium,
+                                                                    fontWeight = FontWeight.Black,
+                                                                    color = MaterialTheme.colorScheme.onSurface,
+                                                                    letterSpacing = (-1).sp
+                                                            )
+                                                    }
+                                            }
+                                    }
+
+                                    // Multi-Core Score
+                                    Card(
+                                            modifier = Modifier.weight(1f),
+                                            shape = RoundedCornerShape(28.dp),
+                                            colors = CardDefaults.cardColors(
+                                                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.15f)
+                                            ),
+                                            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
+                                    ) {
+                                            Box(
+                                                    modifier = Modifier
+                                                            .fillMaxWidth()
+                                                            .background(
+                                                                    brush = Brush.verticalGradient(
+                                                                            colors = listOf(
+                                                                                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.12f),
+                                                                                    MaterialTheme.colorScheme.surface.copy(alpha = 0.02f)
+                                                                            )
+                                                                    )
+                                                            )
+                                            ) {
+                                                    Column(
+                                                            modifier = Modifier.fillMaxWidth().padding(24.dp),
+                                                            horizontalAlignment = Alignment.CenterHorizontally
+                                                    ) {
+                                                            Text(
+                                                                    text = "MULTI-CORE",
+                                                                    style = MaterialTheme.typography.labelSmall,
+                                                                    fontWeight = FontWeight.Black,
+                                                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                                                    letterSpacing = 1.sp
+                                                            )
+                                                            Spacer(modifier = Modifier.height(10.dp))
+                                                            Text(
+                                                                    text = String.format("%.0f", animatedMulti),
+                                                                    style = MaterialTheme.typography.headlineMedium,
+                                                                    fontWeight = FontWeight.Black,
+                                                                    color = MaterialTheme.colorScheme.onSurface,
+                                                                    letterSpacing = (-1).sp
+                                                            )
+                                                    }
+                                            }
+                                    }
+                            }
                         }
                 }
 
-                // MP Ratio Card - Glassmorphic
+                // Efficiency Card - High-Fidelity Glassmorphism
                 item {
                         val mpRatio = if (summary.singleCoreScore > 0) {
                                 summary.multiCoreScore / summary.singleCoreScore
                         } else {
-                                0.0
+                                1.0
                         }
                         
-                        Card(
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(20.dp),
-                                colors = CardDefaults.cardColors(
-                                        containerColor = Color(0xFFFFE0E0).copy(alpha = 0.5f)
-                                ),
-                                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-                                border = BorderStroke(1.dp, Color(0xFFFF9999).copy(alpha = 0.3f))
-                        ) {
-                                Box(
+                        AnimatedEntranceContainer(index = 2) {
+                            Card(
+                                    modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+                                    shape = RoundedCornerShape(24.dp),
+                                    colors = CardDefaults.cardColors(
+                                            containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.12f)
+                                    ),
+                                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.tertiary.copy(alpha = 0.25f))
+                            ) {
+                                    Box(
                                         modifier = Modifier
-                                                .fillMaxWidth()
-                                                .background(
-                                                        brush = Brush.verticalGradient(
-                                                                colors = listOf(
-                                                                        Color(0xFFFFE0E0).copy(alpha = 0.3f),
-                                                                        Color(0xFFFFE0E0).copy(alpha = 0.5f)
-                                                                )
-                                                        )
+                                            .fillMaxWidth()
+                                            .background(
+                                                Brush.horizontalGradient(
+                                                    listOf(
+                                                        MaterialTheme.colorScheme.tertiary.copy(alpha = 0.08f),
+                                                        Color.Transparent
+                                                    )
                                                 )
-                                ) {
+                                            )
+                                    ) {
                                         Row(
-                                                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-                                                horizontalArrangement = Arrangement.Center,
+                                                modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 20.dp),
+                                                horizontalArrangement = Arrangement.SpaceBetween,
                                                 verticalAlignment = Alignment.CenterVertically
                                         ) {
-                                                Text(
-                                                        text = "MP Ratio",
-                                                        fontSize = 12.sp,
-                                                        fontWeight = FontWeight.Medium,
-                                                        color = Color(0xFF8B0000) // Dark red
-                                                )
-                                                Spacer(modifier = Modifier.width(16.dp))
-                                                Text(
-                                                        text = String.format("%.2fx", mpRatio),
-                                                        fontSize = 16.sp,
-                                                        fontWeight = FontWeight.Bold,
-                                                        color = Color(0xFF8B0000) // Dark red
-                                                )
+                                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                                        Box(
+                                                                modifier = Modifier
+                                                                        .size(48.dp)
+                                                                        .clip(CircleShape)
+                                                                        .background(MaterialTheme.colorScheme.tertiary.copy(alpha = 0.15f)),
+                                                                contentAlignment = Alignment.Center
+                                                        ) {
+                                                                Icon(
+                                                                        imageVector = Icons.Rounded.Speed,
+                                                                        contentDescription = null,
+                                                                        tint = MaterialTheme.colorScheme.tertiary,
+                                                                        modifier = Modifier.size(26.dp)
+                                                                )
+                                                        }
+                                                        Spacer(modifier = Modifier.width(16.dp))
+                                                        Column {
+                                                                Text(
+                                                                        text = "MULTI-CORE SCALING",
+                                                                        style = MaterialTheme.typography.labelSmall,
+                                                                        fontWeight = FontWeight.Black,
+                                                                        color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.8f),
+                                                                        letterSpacing = 1.sp
+                                                                )
+                                                                Text(
+                                                                        text = if (mpRatio > 4) "Excellent Parallelism" else "Standard Scaling",
+                                                                        style = MaterialTheme.typography.bodySmall,
+                                                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                                                )
+                                                        }
+                                                }
+                                                Column(horizontalAlignment = Alignment.End) {
+                                                    Text(
+                                                            text = String.format("%.2fx", mpRatio),
+                                                            style = MaterialTheme.typography.titleLarge,
+                                                            fontWeight = FontWeight.Black,
+                                                            color = MaterialTheme.colorScheme.tertiary
+                                                    )
+                                                    Text(
+                                                        text = "FACTOR",
+                                                        style = MaterialTheme.typography.labelSmall,
+                                                        fontSize = 8.sp,
+                                                        fontWeight = FontWeight.Black,
+                                                        color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.5f)
+                                                    )
+                                                }
                                         }
-                                }
+                                    }
+                            }
                         }
                 }
 
-                // Device Summary Card
+                // Device Info - High-Fidelity Glassmorphism
                 item {
                         summary.deviceSummary?.let { device ->
+                           AnimatedEntranceContainer(index = 3) {
                                 Card(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        elevation =
-                                                CardDefaults.cardElevation(defaultElevation = 4.dp)
+                                        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+                                        shape = RoundedCornerShape(28.dp),
+                                        colors = CardDefaults.cardColors(
+                                                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.12f)
+                                        ),
+                                        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f))
                                 ) {
-                                        Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-                                                Text(
-                                                        text = "Device Summary",
-                                                        fontSize = 18.sp,
-                                                        fontWeight = FontWeight.Bold,
-                                                        color = MaterialTheme.colorScheme.primary,
-                                                        modifier = Modifier.padding(bottom = 12.dp)
-                                                )
+                                        Column(modifier = Modifier.fillMaxWidth().padding(24.dp)) {
+                                                Row(
+                                                    modifier = Modifier.fillMaxWidth().padding(bottom = 20.dp),
+                                                    verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                    Icon(
+                                                        imageVector = Icons.Rounded.Info,
+                                                        contentDescription = null,
+                                                        tint = MaterialTheme.colorScheme.primary,
+                                                        modifier = Modifier.size(20.dp)
+                                                    )
+                                                    Spacer(modifier = Modifier.width(12.dp))
+                                                    Text(
+                                                            text = "Device Information",
+                                                            style = MaterialTheme.typography.titleMedium,
+                                                            fontWeight = FontWeight.Black,
+                                                            color = MaterialTheme.colorScheme.onSurface,
+                                                            letterSpacing = 0.5.sp
+                                                    )
+                                                }
 
                                                 // Basic Info
-                                                SummaryInfoRow("Device", device.deviceName)
-                                                SummaryInfoRow("OS", device.os)
-                                                SummaryInfoRow("Kernel", device.kernel)
-
-                                                Divider(
-                                                        modifier =
-                                                                Modifier.padding(vertical = 12.dp)
+                                                SummaryInfoRow("Device Model", device.deviceName)
+                                                SummaryInfoRow("OS Version", "${device.os} (API ${android.os.Build.VERSION.SDK_INT})")
+                                                
+                                                HorizontalDivider(
+                                                        modifier = Modifier.padding(vertical = 16.dp),
+                                                        thickness = 0.5.dp,
+                                                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)
                                                 )
 
-                                                // CPU Info
-                                                Text(
-                                                        text = "CPU",
-                                                        fontSize = 14.sp,
-                                                        fontWeight = FontWeight.SemiBold,
-                                                        color =
-                                                                MaterialTheme.colorScheme
-                                                                        .onSurfaceVariant,
-                                                        modifier = Modifier.padding(bottom = 8.dp)
-                                                )
-                                                SummaryInfoRow("Name", device.cpuName)
-                                                SummaryInfoRow("Cores", "${device.cpuCores}")
-                                                SummaryInfoRow(
-                                                        "Architecture",
-                                                        device.cpuArchitecture
-                                                )
-                                                SummaryInfoRow("Governor", device.cpuGovernor)
+                                                // CPU Info Section
+                                                DeviceInfoSectionHeader("Processor Architecture", device.cpuName)
+                                                SummaryInfoRow("Core Count", "${device.cpuCores} Cores")
+                                                SummaryInfoRow("CPU Governor", device.cpuGovernor)
 
-                                                Divider(
-                                                        modifier =
-                                                                Modifier.padding(vertical = 12.dp)
+                                                HorizontalDivider(
+                                                        modifier = Modifier.padding(vertical = 16.dp),
+                                                        thickness = 0.5.dp,
+                                                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)
                                                 )
 
-                                                // GPU Info
-                                                Text(
-                                                        text = "GPU",
-                                                        fontSize = 14.sp,
-                                                        fontWeight = FontWeight.SemiBold,
-                                                        color =
-                                                                MaterialTheme.colorScheme
-                                                                        .onSurfaceVariant,
-                                                        modifier = Modifier.padding(bottom = 8.dp)
-                                                )
-                                                SummaryInfoRow("Name", device.gpuName)
-                                                SummaryInfoRow("Vendor", device.gpuVendor)
-                                                SummaryInfoRow("OpenGL ES", device.gpuDriver)
-                                                if (device.vulkanSupported) {
-                                                        SummaryInfoRow(
-                                                                "Vulkan Version",
-                                                                device.vulkanVersion ?: "Supported"
-                                                        )
-                                                } else {
-                                                        SummaryInfoRow(
-                                                                "Vulkan Version",
-                                                                "Not Supported"
-                                                        )
-                                                }
-                                                Divider(
-                                                        modifier =
-                                                                Modifier.padding(vertical = 12.dp)
+                                                // GPU Info Section
+                                                DeviceInfoSectionHeader("Graphics Unit", device.gpuName)
+                                                SummaryInfoRow("Vulkan API", if (device.vulkanSupported) "Supported (${device.vulkanVersion ?: "Yes"})" else "Not Supported")
+
+                                                HorizontalDivider(
+                                                        modifier = Modifier.padding(vertical = 16.dp),
+                                                        thickness = 0.5.dp,
+                                                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)
                                                 )
 
-                                                // Battery Info
-                                                Text(
-                                                        text = "Battery",
-                                                        fontSize = 14.sp,
-                                                        fontWeight = FontWeight.SemiBold,
-                                                        color =
-                                                                MaterialTheme.colorScheme
-                                                                        .onSurfaceVariant,
-                                                        modifier = Modifier.padding(bottom = 8.dp)
-                                                )
-                                                SummaryInfoRow(
-                                                        "Level",
-                                                        device.batteryLevel?.let {
-                                                                "${it.toInt()}%"
-                                                        }
-                                                                ?: "N/A"
-                                                )
-                                                SummaryInfoRow(
-                                                        "Temperature",
-                                                        device.batteryTemp?.let {
-                                                                String.format("%.1f°C", it)
-                                                        }
-                                                                ?: "N/A"
-                                                )
-
-                                                Divider(
-                                                        modifier =
-                                                                Modifier.padding(vertical = 12.dp)
-                                                )
-
-                                                // Memory Info
-                                                Text(
-                                                        text = "Memory",
-                                                        fontSize = 14.sp,
-                                                        fontWeight = FontWeight.SemiBold,
-                                                        color =
-                                                                MaterialTheme.colorScheme
-                                                                        .onSurfaceVariant,
-                                                        modifier = Modifier.padding(bottom = 8.dp)
-                                                )
-                                                SummaryInfoRow(
-                                                        "Total RAM",
-                                                        formatBytes(device.totalRam)
-                                                )
-                                                SummaryInfoRow(
-                                                        "Total Swap",
-                                                        if (device.totalSwap > 0)
-                                                                formatBytes(device.totalSwap)
-                                                        else "None"
-                                                )
+                                                // Memory Section
+                                                DeviceInfoSectionHeader("Memory Resources", formatBytes(device.totalRam))
+                                                SummaryInfoRow("Swap Available", if (device.totalSwap > 0) formatBytes(device.totalSwap) else "Inactive")
                                         }
                                 }
+                           }
                         }
                 }
         }
@@ -933,32 +1056,38 @@ fun DetailedDataTab(summary: BenchmarkSummary) {
                 }
 
         LazyColumn(
-                modifier = Modifier.fillMaxSize().padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
                 // Performance Monitoring Section - FIRST
                 item {
-                        PerformanceMonitoringSection(
-                                performanceMetricsJson = summary.performanceMetricsJson
-                        )
+                        AnimatedEntranceContainer(index = 0) {
+                            PerformanceMonitoringSection(
+                                    performanceMetricsJson = summary.performanceMetricsJson
+                            )
+                        }
                 }
 
                 // Single-Core Section
                 item {
-                        BenchmarkSection(
-                                title = "Single-Core Benchmarks",
-                                score = summary.singleCoreScore,
-                                results = singleCoreResults
-                        )
+                        AnimatedEntranceContainer(index = 1) {
+                            BenchmarkSection(
+                                    title = "Single-Core Benchmarks",
+                                    score = summary.singleCoreScore,
+                                    results = singleCoreResults
+                            )
+                        }
                 }
 
                 // Multi-Core Section
                 item {
-                        BenchmarkSection(
-                                title = "Multi-Core Benchmarks",
-                                score = summary.multiCoreScore,
-                                results = multiCoreResults
-                        )
+                        AnimatedEntranceContainer(index = 2) {
+                            BenchmarkSection(
+                                    title = "Multi-Core Benchmarks",
+                                    score = summary.multiCoreScore,
+                                    results = multiCoreResults
+                            )
+                        }
                 }
         }
 }
@@ -968,47 +1097,70 @@ fun BenchmarkSection(title: String, score: Double, results: List<BenchmarkResult
         var expanded by remember { mutableStateOf(true) }
 
         Card(
-                modifier = Modifier.fillMaxWidth(),
-                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+                shape = RoundedCornerShape(28.dp),
+                colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.12f)
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f))
         ) {
                 Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
                         // Section Header
                         Row(
-                                modifier = Modifier.fillMaxWidth(),
+                                modifier = Modifier.fillMaxWidth()
+                                    .clip(RoundedCornerShape(20.dp))
+                                    .clickable { expanded = !expanded }
+                                    .padding(12.dp),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                         ) {
-                                Column {
-                                        Text(
-                                                text = title,
-                                                fontSize = 18.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                color = MaterialTheme.colorScheme.primary
-                                        )
-                                        Text(
-                                                text = "Score: ${String.format("%.2f", score)}",
-                                                fontSize = 14.sp,
-                                                fontWeight = FontWeight.Medium,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(40.dp)
+                                                .clip(CircleShape)
+                                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(
+                                                imageVector = if (results.firstOrNull()?.name?.startsWith("Single") == true) 
+                                                    Icons.Rounded.Person else Icons.Rounded.Star,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.primary,
+                                                modifier = Modifier.size(20.dp)
+                                            )
+                                        }
+                                        Spacer(modifier = Modifier.width(16.dp))
+                                        Column {
+                                                Text(
+                                                        text = title,
+                                                        style = MaterialTheme.typography.titleMedium,
+                                                        fontWeight = FontWeight.Bold,
+                                                        color = MaterialTheme.colorScheme.onSurface
+                                                )
+                                                Text(
+                                                        text = "Section Total: ${String.format("%.0f", score)} PTS",
+                                                        style = MaterialTheme.typography.labelSmall,
+                                                        fontWeight = FontWeight.Bold,
+                                                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
+                                                )
+                                        }
                                 }
-                                IconButton(onClick = { expanded = !expanded }) {
-                                        Icon(
-                                                imageVector =
-                                                        if (expanded) Icons.Default.ExpandLess
-                                                        else Icons.Default.ExpandMore,
-                                                contentDescription =
-                                                        if (expanded) "Collapse" else "Expand"
-                                        )
-                                }
+                                Icon(
+                                        imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                         }
 
                         // Benchmark List
                         if (expanded) {
-                                Spacer(modifier = Modifier.height(12.dp))
-                                results.forEach { result ->
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                    results.forEach { result ->
                                         BenchmarkResultItem(result)
-                                        Spacer(modifier = Modifier.height(8.dp))
+                                    }
                                 }
                         }
                 }
@@ -1021,74 +1173,66 @@ fun BenchmarkResultItem(result: BenchmarkResult) {
         val mopsPerSecond = result.opsPerSecond / 1_000_000.0
         val timeInSeconds = result.executionTimeMs / 1000.0
 
-        // Determine if this is a single-core or multi-core benchmark
         val isSingleCore = result.name.startsWith("Single-Core")
-        val scalingFactors = if (isSingleCore) KotlinBenchmarkManager.SCORING_FACTORS else KotlinBenchmarkManager.SCORING_FACTORS
-
-        // Calculate individual score using enum-based lookup
+        val scalingFactors = KotlinBenchmarkManager.SCORING_FACTORS
         val benchmarkName = BenchmarkName.fromString(result.name)
-        val individualScore =
-                benchmarkName?.let { scalingFactors[it]?.times(result.opsPerSecond) } ?: 0.0
+        val individualScore = benchmarkName?.let { scalingFactors[it]?.times(result.opsPerSecond) } ?: 0.0
 
         Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors =
-                        CardDefaults.cardColors(
-                                containerColor =
-                                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                        )
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.08f)
+                ),
+                border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.1f))
         ) {
-                Column(modifier = Modifier.fillMaxWidth().padding(12.dp)) {
-                        Text(
-                                text = cleanName,
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
+                Column(modifier = Modifier.fillMaxWidth().padding(14.dp)) {
                         Row(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
                         ) {
-                                Column {
-                                        Text(
-                                                text = "Performance",
-                                                fontSize = 11.sp,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                        Text(
-                                                text = String.format("%.2f Mops/s", mopsPerSecond),
-                                                fontSize = 13.sp,
-                                                fontWeight = FontWeight.Medium,
-                                                color = MaterialTheme.colorScheme.primary
-                                        )
+                                Text(
+                                        text = cleanName,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                        text = String.format("%.1f", individualScore),
+                                        style = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.Black,
+                                        color = MaterialTheme.colorScheme.primary
+                                )
+                        }
+                        
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
+                        Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                        ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = Icons.Default.ExpandLess,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.secondary.copy(alpha = 0.7f),
+                                        modifier = Modifier.size(12.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                            text = String.format("%.2f Mops/s", mopsPerSecond),
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.9f)
+                                    )
                                 }
-                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                        Text(
-                                                text = "Score",
-                                                fontSize = 11.sp,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                        Text(
-                                                text = String.format("%.2f", individualScore),
-                                                fontSize = 13.sp,
-                                                fontWeight = FontWeight.Medium,
-                                                color = MaterialTheme.colorScheme.secondary
-                                        )
-                                }
-                                Column(horizontalAlignment = Alignment.End) {
-                                        Text(
-                                                text = "Time",
-                                                fontSize = 11.sp,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                        Text(
-                                                text = String.format("%.2f s", timeInSeconds),
-                                                fontSize = 13.sp,
-                                                fontWeight = FontWeight.Medium,
-                                                color = MaterialTheme.colorScheme.onSurface
-                                        )
-                                }
+                                
+                                Text(
+                                        text = String.format("%.3fs", timeInSeconds),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                )
                         }
                 }
         }
@@ -1096,664 +1240,412 @@ fun BenchmarkResultItem(result: BenchmarkResult) {
 
 @Composable
 private fun RankingsTab(finalScore: Double, singleCoreScore: Double, multiCoreScore: Double) {
-        val scrollState = androidx.compose.foundation.rememberScrollState()
-        Column(
-                modifier = Modifier.fillMaxSize().padding(16.dp).verticalScroll(scrollState),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-                // Final Score Bar at top
-                Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors =
-                                CardDefaults.cardColors(
-                                        containerColor = MaterialTheme.colorScheme.primaryContainer
-                                )
+    val scrollState = androidx.compose.foundation.rememberScrollState()
+    
+    // Create rankings logic
+    val hardcodedReferenceDevices = listOf(
+        RankingItem(name = "Snapdragon 8 Gen 3", normalizedScore = 313, singleCore = 100, multiCore = 420, isCurrentUser = false, tag = "Baseline"),
+        RankingItem(name = "MediaTek Dimensity 8300", normalizedScore = 229, singleCore = 78, multiCore = 308, isCurrentUser = false),
+        RankingItem(name = "Snapdragon 8s Gen 3", normalizedScore = 241, singleCore = 87, multiCore = 324, isCurrentUser = false),
+        RankingItem(name = "MediaTek Dimensity 6300", normalizedScore = 107, singleCore = 50, multiCore = 137, isCurrentUser = false)
+    )
+
+    val userDeviceName = "Your Device (${android.os.Build.MODEL})"
+    val currentUserScore = RankingItem(
+        name = userDeviceName, 
+        normalizedScore = finalScore.toInt(), 
+        singleCore = singleCoreScore.toInt(), 
+        multiCore = multiCoreScore.toInt(), 
+        isCurrentUser = true
+    )
+    
+    val allDevices = mutableListOf<RankingItem>().apply {
+        addAll(hardcodedReferenceDevices)
+        add(currentUserScore)
+    }
+
+    val rankedItems = allDevices.sortedByDescending { it.normalizedScore }.mapIndexed { index, item ->
+        item.copy(rank = index + 1)
+    }
+
+    val userRank = rankedItems.indexOfFirst { it.isCurrentUser }
+    val totalDevices = rankedItems.size
+    val beatsPercentage = if (totalDevices > 1) {
+        ((totalDevices - userRank - 1).toFloat() / (totalDevices - 1) * 100).toInt()
+    } else 100
+
+    Column(
+        modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 24.dp).verticalScroll(scrollState),
+        verticalArrangement = Arrangement.spacedBy(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        // 1. Final Score Card - Glassmorphic
+        AnimatedEntranceContainer(index = 0) {
+            Card(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+                shape = RoundedCornerShape(24.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.15f)
+                ),
+                elevation = CardDefaults.cardElevation(0.dp),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.25f))
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(24.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                        Row(
-                                modifier = Modifier.fillMaxWidth().padding(16.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                        ) {
-                                Text(
-                                        text = "Your Final Score",
-                                        fontSize = 16.sp,
-                                        fontWeight = FontWeight.Medium,
-                                        color = MaterialTheme.colorScheme.onPrimaryContainer
-                                )
-                                Text(
-                                        text = String.format("%.0f", finalScore),
-                                        fontSize = 28.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.primary
-                                )
-                        }
-                }
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                // Create rankings with current score
-                val hardcodedReferenceDevices =
-                        listOf(
-                                RankingItem(
-                                        name = "Snapdragon 8 Gen 3",
-                                        normalizedScore = 313,
-                                        singleCore = 100,
-                                        multiCore = 420,
-                                        isCurrentUser = false,
-                                        tag = "Baseline"
-                                ),
-                                RankingItem(
-                                        name = "MediaTek Dimensity 8300",
-                                        normalizedScore = 229,
-                                        singleCore = 78,
-                                        multiCore = 308,
-                                        isCurrentUser = false
-                                ),
-                                RankingItem(
-                                        name = "Snapdragon 8s Gen 3",
-                                        normalizedScore = 241,
-                                        singleCore = 87,
-                                        multiCore = 324,
-                                        isCurrentUser = false
-                                ),
-                                RankingItem(
-                                        name = "MediaTek Dimensity 6300",
-                                        normalizedScore = 107,
-                                        singleCore = 50,
-                                        multiCore = 137,
-                                        isCurrentUser = false
-                                )
+                    Column {
+                        Text(
+                            text = "TOTAL BENCHMARK SCORE",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Black,
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
+                            letterSpacing = 1.5.sp
                         )
-
-                // Add current device score
-                val userDeviceName = "Your Device (${android.os.Build.MODEL})"
-                val currentUserScore =
-                        RankingItem(
-                                name = userDeviceName,
-                                normalizedScore = finalScore.toInt(),
-                                singleCore = singleCoreScore.toInt(),
-                                multiCore = multiCoreScore.toInt(),
-                                isCurrentUser = true
+                        Text(
+                            text = "Current Hardware Rank",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                         )
-
-                // Merge and sort
-                val allDevices =
-                        mutableListOf<RankingItem>().apply {
-                                addAll(hardcodedReferenceDevices)
-                                add(currentUserScore)
-                        }
-
-                // Sort by normalized score and assign ranks
-                val rankedItems =
-                        allDevices.sortedByDescending { it.normalizedScore }.mapIndexed {
-                                index,
-                                item ->
-                                item.copy(rank = index + 1)
-                        }
-
-                // Calculate beats percentage and previous device comparison
-                val userRank = rankedItems.indexOfFirst { it.isCurrentUser }
-                val totalDevices = rankedItems.size
-                val devicesBeaten = totalDevices - userRank - 1
-                val beatsPercentage =
-                        if (totalDevices > 1) {
-                                (devicesBeaten.toFloat() / (totalDevices - 1) * 100).toInt()
-                        } else {
-                                100
-                        }
-
-                // Find next lower ranked device for comparison
-                val nextLowerDevice =
-                        if (userRank < rankedItems.size - 1) {
-                                rankedItems[userRank + 1]
-                        } else {
-                                null
-                        }
-
-                val percentBetterThanNext =
-                        if (nextLowerDevice != null && nextLowerDevice.normalizedScore > 0) {
-                                ((finalScore - nextLowerDevice.normalizedScore) /
-                                                nextLowerDevice.normalizedScore * 100)
-                                        .toInt()
-                        } else {
-                                0
-                        }
-
-                // Modern Comparison Cards - Vertical Layout with Bar Graphs
-                Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                        // Performance Percentile Card with Bar Graph
-                        Card(
-                                modifier = Modifier.fillMaxWidth(),
-                                colors =
-                                        CardDefaults.cardColors(
-                                                containerColor = MaterialTheme.colorScheme.surface
-                                        ),
-                                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-                        ) {
-                                Column(modifier = Modifier.fillMaxWidth().padding(20.dp)) {
-                                        Row(
-                                                modifier = Modifier.fillMaxWidth(),
-                                                horizontalArrangement = Arrangement.SpaceBetween,
-                                                verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                                Text(
-                                                        text = "Performance Ranking",
-                                                        fontSize = 14.sp,
-                                                        fontWeight = FontWeight.Medium,
-                                                        color =
-                                                                MaterialTheme.colorScheme
-                                                                        .onSurfaceVariant
-                                                )
-                                                Text(
-                                                        text = "$beatsPercentage%",
-                                                        fontSize = 24.sp,
-                                                        fontWeight = FontWeight.Bold,
-                                                        color = MaterialTheme.colorScheme.primary
-                                                )
-                                        }
-
-                                        Spacer(modifier = Modifier.height(12.dp))
-
-                                        // Horizontal Bar Graph
-                                        Box(
-                                                modifier =
-                                                        Modifier.fillMaxWidth()
-                                                                .height(12.dp)
-                                                                .clip(RoundedCornerShape(6.dp))
-                                                                .background(
-                                                                        MaterialTheme.colorScheme
-                                                                                .surfaceVariant
-                                                                )
-                                        ) {
-                                                Box(
-                                                        modifier =
-                                                                Modifier.fillMaxHeight()
-                                                                        .fillMaxWidth(
-                                                                                beatsPercentage /
-                                                                                        100f
-                                                                        )
-                                                                        .clip(
-                                                                                RoundedCornerShape(
-                                                                                        6.dp
-                                                                                )
-                                                                        )
-                                                                        .background(
-                                                                                brush =
-                                                                                        Brush.horizontalGradient(
-                                                                                                colors =
-                                                                                                        listOf(
-                                                                                                                MaterialTheme
-                                                                                                                        .colorScheme
-                                                                                                                        .primary,
-                                                                                                                MaterialTheme
-                                                                                                                        .colorScheme
-                                                                                                                        .tertiary
-                                                                                                        )
-                                                                                        )
-                                                                        )
-                                                )
-                                        }
-
-                                        Spacer(modifier = Modifier.height(10.dp))
-
-                                        Text(
-                                                text =
-                                                        if (beatsPercentage >= 100) {
-                                                                "Your device outperforms all tested devices."
-                                                        } else if (beatsPercentage >= 75) {
-                                                                "Your device is in the top tier of performance."
-                                                        } else if (beatsPercentage >= 50) {
-                                                                "Your device performs above average."
-                                                        } else if (beatsPercentage >= 25) {
-                                                                "Your device has moderate performance."
-                                                        } else {
-                                                                "Your device has entry-level performance."
-                                                        },
-                                                fontSize = 13.sp,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                lineHeight = 18.sp
-                                        )
-                                }
-                        }
-
-                        // Speed Comparison Card with Bar Graph
-                        if (nextLowerDevice != null) {
-                                Card(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        colors =
-                                                CardDefaults.cardColors(
-                                                        containerColor =
-                                                                MaterialTheme.colorScheme.surface
-                                                ),
-                                        elevation =
-                                                CardDefaults.cardElevation(defaultElevation = 2.dp)
-                                ) {
-                                        Column(modifier = Modifier.fillMaxWidth().padding(20.dp)) {
-                                                Row(
-                                                        modifier = Modifier.fillMaxWidth(),
-                                                        horizontalArrangement =
-                                                                Arrangement.SpaceBetween,
-                                                        verticalAlignment =
-                                                                Alignment.CenterVertically
-                                                ) {
-                                                        Text(
-                                                                text = "Speed Advantage",
-                                                                fontSize = 14.sp,
-                                                                fontWeight = FontWeight.Medium,
-                                                                color =
-                                                                        MaterialTheme.colorScheme
-                                                                                .onSurfaceVariant
-                                                        )
-                                                        Text(
-                                                                text =
-                                                                        if (percentBetterThanNext >=
-                                                                                        0
-                                                                        )
-                                                                                "+$percentBetterThanNext%"
-                                                                        else
-                                                                                "$percentBetterThanNext%",
-                                                                fontSize = 24.sp,
-                                                                fontWeight = FontWeight.Bold,
-                                                                color =
-                                                                        if (percentBetterThanNext >=
-                                                                                        0
-                                                                        )
-                                                                                MaterialTheme
-                                                                                        .colorScheme
-                                                                                        .tertiary
-                                                                        else
-                                                                                MaterialTheme
-                                                                                        .colorScheme
-                                                                                        .error
-                                                        )
-                                                }
-
-                                                Spacer(modifier = Modifier.height(12.dp))
-
-                                                // Comparison Bar Graph - shows both devices
-                                                Column(
-                                                        verticalArrangement =
-                                                                Arrangement.spacedBy(6.dp)
-                                                ) {
-                                                        // Your device bar
-                                                        Row(
-                                                                modifier = Modifier.fillMaxWidth(),
-                                                                verticalAlignment =
-                                                                        Alignment.CenterVertically
-                                                        ) {
-                                                                Text(
-                                                                        text = "You",
-                                                                        fontSize = 11.sp,
-                                                                        color =
-                                                                                MaterialTheme
-                                                                                        .colorScheme
-                                                                                        .onSurfaceVariant,
-                                                                        modifier =
-                                                                                Modifier.width(
-                                                                                        40.dp
-                                                                                )
-                                                                )
-                                                                Box(
-                                                                        modifier =
-                                                                                Modifier.weight(1f)
-                                                                                        .height(
-                                                                                                8.dp
-                                                                                        )
-                                                                                        .clip(
-                                                                                                RoundedCornerShape(
-                                                                                                        4.dp
-                                                                                                )
-                                                                                        )
-                                                                                        .background(
-                                                                                                MaterialTheme
-                                                                                                        .colorScheme
-                                                                                                        .surfaceVariant
-                                                                                        )
-                                                                ) {
-                                                                        val userBarWidth =
-                                                                                if (finalScore >
-                                                                                                nextLowerDevice
-                                                                                                        .normalizedScore
-                                                                                )
-                                                                                        1f
-                                                                                else
-                                                                                        (finalScore /
-                                                                                                        nextLowerDevice
-                                                                                                                .normalizedScore
-                                                                                                                .toDouble())
-                                                                                                .toFloat()
-                                                                                                .coerceIn(
-                                                                                                        0f,
-                                                                                                        1f
-                                                                                                )
-                                                                        Box(
-                                                                                modifier =
-                                                                                        Modifier.fillMaxHeight()
-                                                                                                .fillMaxWidth(
-                                                                                                        userBarWidth
-                                                                                                )
-                                                                                                .clip(
-                                                                                                        RoundedCornerShape(
-                                                                                                                4.dp
-                                                                                                        )
-                                                                                                )
-                                                                                                .background(
-                                                                                                        MaterialTheme
-                                                                                                                .colorScheme
-                                                                                                                .primary
-                                                                                                )
-                                                                        )
-                                                                }
-                                                        }
-
-                                                        // Next device bar
-                                                        Row(
-                                                                modifier = Modifier.fillMaxWidth(),
-                                                                verticalAlignment =
-                                                                        Alignment.CenterVertically
-                                                        ) {
-                                                                Text(
-                                                                        text =
-                                                                                nextLowerDevice.name
-                                                                                        .take(4),
-                                                                        fontSize = 11.sp,
-                                                                        color =
-                                                                                MaterialTheme
-                                                                                        .colorScheme
-                                                                                        .onSurfaceVariant,
-                                                                        modifier =
-                                                                                Modifier.width(
-                                                                                        40.dp
-                                                                                )
-                                                                )
-                                                                Box(
-                                                                        modifier =
-                                                                                Modifier.weight(1f)
-                                                                                        .height(
-                                                                                                8.dp
-                                                                                        )
-                                                                                        .clip(
-                                                                                                RoundedCornerShape(
-                                                                                                        4.dp
-                                                                                                )
-                                                                                        )
-                                                                                        .background(
-                                                                                                MaterialTheme
-                                                                                                        .colorScheme
-                                                                                                        .surfaceVariant
-                                                                                        )
-                                                                ) {
-                                                                        val otherBarWidth =
-                                                                                if (nextLowerDevice
-                                                                                                .normalizedScore >=
-                                                                                                finalScore
-                                                                                )
-                                                                                        1f
-                                                                                else
-                                                                                        (nextLowerDevice
-                                                                                                        .normalizedScore /
-                                                                                                        finalScore)
-                                                                                                .toFloat()
-                                                                                                .coerceIn(
-                                                                                                        0f,
-                                                                                                        1f
-                                                                                                )
-                                                                        Box(
-                                                                                modifier =
-                                                                                        Modifier.fillMaxHeight()
-                                                                                                .fillMaxWidth(
-                                                                                                        otherBarWidth
-                                                                                                )
-                                                                                                .clip(
-                                                                                                        RoundedCornerShape(
-                                                                                                                4.dp
-                                                                                                        )
-                                                                                                )
-                                                                                                .background(
-                                                                                                        MaterialTheme
-                                                                                                                .colorScheme
-                                                                                                                .outline
-                                                                                                                .copy(
-                                                                                                                        alpha =
-                                                                                                                                0.6f
-                                                                                                                )
-                                                                                                )
-                                                                        )
-                                                                }
-                                                        }
-                                                }
-
-                                                Spacer(modifier = Modifier.height(10.dp))
-
-                                                Text(
-                                                        text =
-                                                                if (percentBetterThanNext > 0) {
-                                                                        "Your device is $percentBetterThanNext% faster than ${nextLowerDevice.name}."
-                                                                } else if (percentBetterThanNext < 0
-                                                                ) {
-                                                                        "Your device is ${kotlin.math.abs(percentBetterThanNext)}% slower than ${nextLowerDevice.name}."
-                                                                } else {
-                                                                        "Your device performs similarly to ${nextLowerDevice.name}."
-                                                                },
-                                                        fontSize = 13.sp,
-                                                        color =
-                                                                MaterialTheme.colorScheme
-                                                                        .onSurfaceVariant,
-                                                        lineHeight = 18.sp
-                                                )
-                                        }
-                                }
-                        } else if (userRank == 0) {
-                                // Top ranked - special card
-                                Card(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        colors =
-                                                CardDefaults.cardColors(
-                                                        containerColor =
-                                                                MaterialTheme.colorScheme
-                                                                        .primaryContainer
-                                                ),
-                                        elevation =
-                                                CardDefaults.cardElevation(defaultElevation = 2.dp)
-                                ) {
-                                        Row(
-                                                modifier = Modifier.fillMaxWidth().padding(20.dp),
-                                                verticalAlignment = Alignment.CenterVertically,
-                                                horizontalArrangement = Arrangement.spacedBy(16.dp)
-                                        ) {
-                                                Text(text = "🏆", fontSize = 32.sp)
-                                                Column {
-                                                        Text(
-                                                                text = "Top Performance!",
-                                                                fontSize = 16.sp,
-                                                                fontWeight = FontWeight.Bold,
-                                                                color =
-                                                                        MaterialTheme.colorScheme
-                                                                                .onPrimaryContainer
-                                                        )
-                                                        Text(
-                                                                text =
-                                                                        "Your device leads the performance rankings.",
-                                                                fontSize = 13.sp,
-                                                                color =
-                                                                        MaterialTheme.colorScheme
-                                                                                .onPrimaryContainer
-                                                                                .copy(alpha = 0.8f)
-                                                        )
-                                                }
-                                        }
-                                }
-                        }
+                    }
+                    Text(
+                        text = String.format("%.0f", finalScore),
+                        style = MaterialTheme.typography.headlineLarge,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = MaterialTheme.colorScheme.primary,
+                        letterSpacing = (-1).sp
+                    )
                 }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Ranks Title
-                Text(
-                        text = "Ranks",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onBackground,
-                        modifier = Modifier.padding(bottom = 12.dp)
-                )
-
-                // Rankings Content
-                Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) { rankedItems.forEach { item -> RankingItemCard(item) } }
+            }
         }
+
+        // 2. Comparison Card (Percentile)
+        AnimatedEntranceContainer(index = 1) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(28.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.12f)
+                ),
+                elevation = CardDefaults.cardElevation(0.dp),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            Brush.verticalGradient(
+                                listOf(
+                                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.1f),
+                                    MaterialTheme.colorScheme.surface.copy(alpha = 0.02f)
+                                )
+                            )
+                        )
+                ) {
+                    Column(modifier = Modifier.padding(24.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.Bottom
+                        ) {
+                            Column {
+                                Text(
+                                    text = "PERFORMANCE PERCENTILE",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Black,
+                                    color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.8f),
+                                    letterSpacing = 1.sp
+                                )
+                                Text(
+                                    text = "Beats $beatsPercentage% of devices",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                            Text(
+                                text = "#${userRank + 1}",
+                                style = MaterialTheme.typography.headlineMedium,
+                                fontWeight = FontWeight.Black,
+                                color = MaterialTheme.colorScheme.tertiary
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(20.dp))
+
+                        // Animating Bar
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(10.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.5f))
+                        ) {
+                            var targetProgress by remember { mutableStateOf(0f) }
+                            LaunchedEffect(Unit) {
+                                delay(600)
+                                targetProgress = beatsPercentage / 100f
+                            }
+                            val animatedProgress by animateFloatAsState(
+                                targetValue = targetProgress,
+                                animationSpec = tween(1500, easing = FastOutSlowInEasing)
+                            )
+
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxHeight()
+                                    .fillMaxWidth(animatedProgress)
+                                    .clip(CircleShape)
+                                    .background(
+                                        Brush.horizontalGradient(
+                                            listOf(
+                                                MaterialTheme.colorScheme.tertiary,
+                                                MaterialTheme.colorScheme.primary
+                                            )
+                                        )
+                                    )
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Text(
+                            text = when {
+                                beatsPercentage >= 90 -> "ELITE: Outperforming almost all reference systems."
+                                beatsPercentage >= 70 -> "POWERHOUSE: Strong enough for heavy professional work."
+                                beatsPercentage >= 50 -> "COMPETITIVE: Above average performance profile."
+                                else -> "STANDARD: Capable hardware for daily operations."
+                            },
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+        }
+
+        // 3. Comparison Card (Adaptive)
+        val nextDevice = if (userRank >= 0 && userRank < rankedItems.size - 1) rankedItems[userRank + 1] else null
+        val gapToNext = if (nextDevice != null) {
+            ((finalScore - nextDevice.normalizedScore) / nextDevice.normalizedScore * 100).toInt()
+        } else 0
+
+        if (userRank >= 0) {
+            AnimatedEntranceContainer(index = 2) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(24.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.12f)
+                    ),
+                    elevation = CardDefaults.cardElevation(0.dp),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.secondary.copy(alpha = 0.25f))
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(20.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(48.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.secondary.copy(alpha = 0.15f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = if (userRank == 0) Icons.Rounded.WorkspacePremium else Icons.Rounded.CompareArrows,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.secondary,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Column {
+                            Text(
+                                text = if (userRank == 0) "TOP PERFORMANCE!" else "PERFORMANCE LEAD",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Black,
+                                color = MaterialTheme.colorScheme.secondary,
+                                letterSpacing = 1.sp
+                            )
+                            Text(
+                                text = when {
+                                    userRank == 0 -> "Your device is the fastest in this cohort."
+                                    nextDevice != null -> "Leads ${nextDevice.name} by $gapToNext%"
+                                    else -> "Ranking analysis complete."
+                                },
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        // 4. Global Ranking Head
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                Icons.Rounded.Leaderboard,
+                null,
+                modifier = Modifier.size(16.dp),
+                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = "GLOBAL LEADERBOARD",
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Black,
+                letterSpacing = 2.sp,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+            )
+        }
+
+        // 5. Rankings List
+        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            rankedItems.forEachIndexed { index, item ->
+                AnimatedEntranceContainer(index = index + 3) {
+                    RankingItemCard(item = item)
+                }
+            }
+        }
+        
+        Spacer(modifier = Modifier.height(32.dp))
+    }
 }
 
 @Composable
 private fun RankingItemCard(item: RankingItem) {
-        val topScoreMax = 1200
-        val scoreProgress = (item.normalizedScore.toFloat() / topScoreMax).coerceIn(0f, 1f)
+    val topScoreMax = 1200
+    val scoreProgress by animateFloatAsState(
+        targetValue = (item.normalizedScore.toFloat() / topScoreMax).coerceIn(0f, 1f),
+        animationSpec = tween(durationMillis = 1000, easing = FastOutSlowInEasing),
+        label = "scoreProgress"
+    )
 
-        val goldColor = Color(0xFFFFD700)
-        val silverColor = Color(0xFFC0C0C0)
-        val bronzeColor = Color(0xFFCD7F32)
+    val goldColor = Color(0xFFFFD700)
+    val silverColor = Color(0xFFC0C0C0)
+    val bronzeColor = Color(0xFFCD7F32)
 
-        val rankColor =
-                when (item.rank) {
-                        1 -> goldColor
-                        2 -> silverColor
-                        3 -> bronzeColor
-                        else -> MaterialTheme.colorScheme.onSurface
+    val rankColor = when (item.rank) {
+        1 -> goldColor
+        2 -> silverColor
+        3 -> bronzeColor
+        else -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+    }
+
+    val isTop3 = item.rank <= 3
+    val containerColor = if (item.isCurrentUser) {
+        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.18f)
+    } else {
+        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.15f)
+    }
+
+    val borderColor = if (item.isCurrentUser) {
+        MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
+    } else {
+        MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f)
+    }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = containerColor),
+        elevation = CardDefaults.cardElevation(0.dp),
+        border = BorderStroke(1.dp, borderColor)
+    ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Rank Badge
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(CircleShape)
+                        .background(
+                            if (isTop3) rankColor.copy(alpha = 0.15f)
+                            else MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.5f)
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "#${item.rank}",
+                        fontWeight = FontWeight.Black,
+                        color = if (isTop3) rankColor else MaterialTheme.colorScheme.onSurface,
+                        fontSize = 16.sp
+                    )
                 }
 
-        val containerColor =
-                if (item.isCurrentUser) {
-                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.1f)
-                } else {
-                        MaterialTheme.colorScheme.surfaceVariant
-                }
+                Spacer(modifier = Modifier.width(16.dp))
 
-        val borderModifier =
-                if (item.isCurrentUser) {
-                        Modifier.border(
-                                width = 2.dp,
-                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
-                                shape = RoundedCornerShape(12.dp)
+                // Name & Metadata
+                Column(modifier = Modifier.weight(1f)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = item.name,
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
-                } else {
-                        Modifier
-                }
-
-        Card(
-                modifier = Modifier.fillMaxWidth().then(borderModifier),
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = containerColor)
-        ) {
-                Column(modifier = Modifier.padding(12.dp)) {
-                        // Header row: Rank, Name, Score
-                        Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                                // Left: Rank
-                                Box(
-                                        modifier =
-                                                Modifier.width(50.dp)
-                                                        .height(40.dp)
-                                                        .background(
-                                                                color =
-                                                                        rankColor.copy(
-                                                                                alpha = 0.2f
-                                                                        ),
-                                                                shape = RoundedCornerShape(8.dp)
-                                                        ),
-                                        contentAlignment = Alignment.Center
-                                ) {
-                                        Text(
-                                                text = "#${item.rank}",
-                                                fontWeight = FontWeight.Bold,
-                                                color = rankColor,
-                                                fontSize = 16.sp
-                                        )
-                                }
-
-                                Spacer(modifier = Modifier.width(12.dp))
-
-                                // Center: Name and Scores
-                                Column(modifier = Modifier.weight(1f)) {
-                                        Row(
-                                                verticalAlignment = Alignment.CenterVertically,
-                                                horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                        ) {
-                                                Text(
-                                                        text = item.name,
-                                                        fontWeight = FontWeight.SemiBold,
-                                                        fontSize = 14.sp,
-                                                        color = MaterialTheme.colorScheme.onSurface
-                                                )
-                                                // Display tag if present
-                                                item.tag?.let { tag ->
-                                                        Surface(
-                                                                color = MaterialTheme.colorScheme.tertiaryContainer,
-                                                                shape = RoundedCornerShape(4.dp),
-                                                                modifier = Modifier.padding(start = 4.dp)
-                                                        ) {
-                                                                Text(
-                                                                        text = tag,
-                                                                        fontSize = 9.sp,
-                                                                        fontWeight = FontWeight.Bold,
-                                                                        color = MaterialTheme.colorScheme.onTertiaryContainer,
-                                                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                                                )
-                                                        }
-                                                }
-                                        }
-                                        Text(
-                                                text =
-                                                        "Single: ${item.singleCore} | Multi: ${item.multiCore}",
-                                                fontSize = 12.sp,
-                                                color =
-                                                        MaterialTheme.colorScheme.onSurface.copy(
-                                                                alpha = 0.7f
-                                                        ),
-                                                modifier = Modifier.paddingFromBaseline(top = 4.dp)
-                                        )
-                                }
-
-                                Spacer(modifier = Modifier.width(12.dp))
-
-                                // Right: Normalized Score
-                                Column(horizontalAlignment = Alignment.End) {
-                                        Text(
-                                                text = item.normalizedScore.toString(),
-                                                fontWeight = FontWeight.Bold,
-                                                fontSize = 18.sp,
-                                                color = MaterialTheme.colorScheme.primary
-                                        )
-                                        Text(
-                                                text = "Score",
-                                                fontSize = 10.sp,
-                                                color =
-                                                        MaterialTheme.colorScheme.onSurface.copy(
-                                                                alpha = 0.6f
-                                                        )
-                                        )
-                                }
+                        if (item.isCurrentUser) {
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Surface(
+                                color = MaterialTheme.colorScheme.primary,
+                                shape = RoundedCornerShape(6.dp)
+                            ) {
+                                Text(
+                                    "YOU",
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                    fontSize = 9.sp,
+                                    fontWeight = FontWeight.Black,
+                                    color = MaterialTheme.colorScheme.onPrimary
+                                )
+                            }
                         }
-
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        // Progress Bar
-                        LinearProgressIndicator(
-                                progress = scoreProgress,
-                                modifier = Modifier.fillMaxWidth().height(4.dp),
-                                color = GruvboxDarkAccent,
-                                trackColor =
-                                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-                        )
+                    }
+                    Text(
+                        text = "Score: ${item.normalizedScore} pts",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                    )
                 }
+                
+                // Trophy/Icon
+                if (isTop3) {
+                    Text(
+                        text = when(item.rank) {
+                            1 -> "🥇"
+                            2 -> "🥈"
+                            else -> "🥉"
+                        },
+                        fontSize = 20.sp
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Progress Bar
+            LinearProgressIndicator(
+                progress = { scoreProgress },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(6.dp)
+                    .clip(CircleShape),
+                color = if (item.isCurrentUser) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
+                trackColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+            )
         }
+    }
 }
+
 
 @Composable
 fun ScoreItem(title: String, value: String) {
@@ -1794,4 +1686,115 @@ fun SubScoreItem(label: String, score: Int, color: Color) {
             fontWeight = FontWeight.Bold
         )
     }
+}
+@Composable
+fun DeviceInfoSectionHeader(title: String, subtitle: String) {
+    Column(modifier = Modifier.padding(bottom = 8.dp)) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Black,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+            letterSpacing = 1.sp
+        )
+        Text(
+            text = subtitle,
+            style = MaterialTheme.typography.bodyLarge,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+    }
+}
+
+@Composable
+fun AnimatedEntranceContainer(
+    index: Int,
+    content: @Composable () -> Unit
+) {
+    var visible by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        delay(index * 100L)
+        visible = true
+    }
+    
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn(animationSpec = tween(600)) + 
+                slideInVertically(
+                    initialOffsetY = { it / 3 },
+                    animationSpec = tween(600, easing = FastOutSlowInEasing)
+                )
+    ) {
+        content()
+    }
+}
+
+private fun formatBenchmarkShareData(context: Context, summary: BenchmarkSummary): String {
+    val builder = StringBuilder()
+    builder.append("FinalBenchmark 2 Results\n")
+    builder.append("========================\n\n")
+
+    // Device Info
+    summary.deviceSummary?.let { device ->
+        builder.append("Device: ${device.deviceName}\n")
+        builder.append("Model: ${android.os.Build.MODEL}\n") // Use Build.MODEL as fallback or explicit additional info
+        builder.append("OS: ${device.os}\n")
+        builder.append("Kernel: ${device.kernel}\n")
+        builder.append("CPU: ${device.cpuName}\n")
+        builder.append("Cores: ${device.cpuCores}\n")
+        builder.append("GPU: ${device.gpuName}\n\n")
+    }
+
+    // Scores
+    builder.append("TOTAL SCORE: ${String.format("%.0f", summary.finalScore)}\n")
+    builder.append("(Normalized: ${String.format("%.0f", summary.normalizedScore)})\n\n")
+
+    builder.append("Single-Core Score: ${String.format("%.0f", summary.singleCoreScore)}\n")
+    builder.append("Multi-Core Score: ${String.format("%.0f", summary.multiCoreScore)}\n\n")
+
+    // Detailed Results
+    if (summary.detailedResults.isNotEmpty()) {
+        builder.append("Detailed Results:\n")
+        builder.append("--------------------------------\n")
+
+        // Group by Single/Multi
+        val singleCoreResults = summary.detailedResults.filter { it.name.contains("Single-Core") }
+        val multiCoreResults = summary.detailedResults.filter { it.name.contains("Multi-Core") }
+
+        if (singleCoreResults.isNotEmpty()) {
+            builder.append("[Single-Core Benchmarks]\n")
+            singleCoreResults.forEach { result ->
+                val cleanName = result.name.replace("Single-Core ", "")
+                val mopsPerSecond = result.opsPerSecond / 1_000_000.0
+                
+                // Calculate point score
+                val benchmarkName = BenchmarkName.fromString(result.name)
+                val scalingFactor = KotlinBenchmarkManager.SCORING_FACTORS[benchmarkName] ?: 0.0
+                val points = scalingFactor * result.opsPerSecond
+
+                builder.append("$cleanName: ${String.format("%.1f", points)} pts (${String.format("%.2f", mopsPerSecond)} Mops/s)\n")
+            }
+            builder.append("\n")
+        }
+
+        if (multiCoreResults.isNotEmpty()) {
+            builder.append("[Multi-Core Benchmarks]\n")
+            multiCoreResults.forEach { result ->
+                val cleanName = result.name.replace("Multi-Core ", "")
+                val mopsPerSecond = result.opsPerSecond / 1_000_000.0
+                
+                // Calculate point score
+                val benchmarkName = BenchmarkName.fromString(result.name)
+                val scalingFactor = KotlinBenchmarkManager.SCORING_FACTORS[benchmarkName] ?: 0.0
+                val points = scalingFactor * result.opsPerSecond
+
+                builder.append("$cleanName: ${String.format("%.1f", points)} pts (${String.format("%.2f", mopsPerSecond)} Mops/s)\n")
+            }
+        }
+    }
+    
+    // Performance Link
+    builder.append("\nGenerated by FinalBenchmark 2")
+    
+    return builder.toString()
 }

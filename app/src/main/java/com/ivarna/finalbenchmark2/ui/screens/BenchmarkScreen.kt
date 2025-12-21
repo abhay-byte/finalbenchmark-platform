@@ -57,6 +57,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
@@ -425,6 +426,36 @@ fun TimelineTestRow(test: TestState) {
         Color.Transparent
     }
 
+    // Animation for running state
+    val infiniteTransition = rememberInfiniteTransition(label = "running_text")
+    val scale by if (isRunning) {
+        infiniteTransition.animateFloat(
+            initialValue = 1.0f,
+            targetValue = 1.05f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(1000, easing = LinearEasing),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "scale"
+        )
+    } else {
+        remember { mutableStateOf(1.0f) }
+    }
+
+    val textAlpha by if (isRunning) {
+        infiniteTransition.animateFloat(
+            initialValue = 0.7f,
+            targetValue = 1.0f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(1000, easing = LinearEasing),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "alpha"
+        )
+    } else {
+        remember { mutableStateOf(1.0f) }
+    }
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -435,12 +466,7 @@ fun TimelineTestRow(test: TestState) {
         // Status Icon
         when {
             isRunning -> {
-                Icon(
-                    imageVector = Icons.Outlined.Timer,
-                    contentDescription = "Running",
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(20.dp)
-                )
+                RunningBenchmarkIndicator()
             }
             isCompleted -> {
                 Icon(
@@ -466,9 +492,23 @@ fun TimelineTestRow(test: TestState) {
         Text(
             text = test.name,
             style = MaterialTheme.typography.bodyLarge,
-            color = if (isRunning || isCompleted) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
-            fontWeight = if (isRunning) FontWeight.Bold else FontWeight.Medium,
-            modifier = Modifier.weight(1f)
+            color = if (isRunning) 
+                        MaterialTheme.colorScheme.primary.copy(alpha = textAlpha) 
+                    else if (isCompleted) 
+                        MaterialTheme.colorScheme.onBackground 
+                    else 
+                        MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
+            fontWeight = if (isRunning) FontWeight.ExtraBold else if (isCompleted) FontWeight.Medium else FontWeight.Normal,
+            modifier = Modifier
+                .weight(1f)
+                .then(
+                    if (isRunning) {
+                        Modifier
+                            .scale(scale)
+                            // "Elevated looks" via shadow or just scale/color impact
+                            // Actual elevation on Text is weird, scale + brightness (alpha) works better for "pop"
+                    } else Modifier
+                )
         )
 
         // Duration or Score
@@ -478,6 +518,39 @@ fun TimelineTestRow(test: TestState) {
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
                 fontFamily = MaterialTheme.typography.labelSmall.fontFamily // maintain consistency
+            )
+        }
+    }
+}
+
+@Composable
+fun RunningBenchmarkIndicator() {
+    val infiniteTransition = rememberInfiniteTransition(label = "spinner")
+    val rotation by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "rotation"
+    )
+
+    val primaryColor = MaterialTheme.colorScheme.primary
+
+    Canvas(modifier = Modifier.size(20.dp)) {
+        rotate(rotation) {
+            drawArc(
+                brush = Brush.sweepGradient(
+                    colors = listOf(
+                        Color.Transparent,
+                        primaryColor
+                    )
+                ),
+                startAngle = 0f,
+                sweepAngle = 270f, // "Semi" circle feel (3/4 actually, but fits implied intent of arc)
+                useCenter = false,
+                style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round)
             )
         }
     }
