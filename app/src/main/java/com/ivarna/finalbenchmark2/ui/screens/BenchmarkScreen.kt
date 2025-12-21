@@ -308,13 +308,20 @@ fun BenchmarkScreen(
                 // Timeline List
                 LazyColumn(
                     state = scrollState,
-                    contentPadding = PaddingValues(bottom = 150.dp), // Increased space for HUD
+                    contentPadding = PaddingValues(bottom = 150.dp, top = 24.dp), // Added top padding
                     modifier = Modifier
                         .fillMaxWidth()
                         .onGloballyPositioned { listCoordinates = it }
                 ) {
                     val singleCoreTests = uiState.testStates.filter { !it.name.startsWith("Multi-Core", ignoreCase = true) }
                     val multiCoreTests = uiState.testStates.filter { it.name.startsWith("Multi-Core", ignoreCase = true) }
+
+                    // Dots at start
+                    items(6) { 
+                        Box(modifier = Modifier.wheelCurve(scrollState, listCoordinates)) {
+                            WheelSpacerDot() 
+                        }
+                    }
 
                     // Single Core Section
                     if (singleCoreTests.isNotEmpty()) {
@@ -347,6 +354,13 @@ fun BenchmarkScreen(
                             Box(modifier = Modifier.wheelCurve(scrollState, listCoordinates)) {
                                 TimelineTestRow(test = test)
                             }
+                        }
+                    }
+
+                    // Dots at end
+                    items(6) { 
+                        Box(modifier = Modifier.wheelCurve(scrollState, listCoordinates)) {
+                            WheelSpacerDot() 
                         }
                     }
                 }
@@ -426,6 +440,23 @@ fun ReactorProgress(progress: Float) {
                 )
             }
         }
+    }
+}
+
+@Composable
+fun WheelSpacerDot() {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(24.dp)
+            .padding(start = 24.dp), // Align with list content start padding
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(4.dp)
+                .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f), CircleShape)
+        )
     }
 }
 
@@ -514,8 +545,8 @@ fun TimelineTestRow(test: TestState) {
         modifier = Modifier
             .fillMaxWidth()
             .background(rowBackgroundColor)
-            .padding(start = 24.dp, top = 12.dp, bottom = 12.dp)
-            .padding(end = 60.dp), // Extra padding to ensure text isn't clipped when shifted right
+            .padding(start = 16.dp, top = 12.dp, bottom = 12.dp) // Reduced start padding
+            .padding(end = 16.dp), // Reduced extra end padding as translation is smaller now
         verticalAlignment = Alignment.CenterVertically
     ) {
         // Status Icon
@@ -733,7 +764,7 @@ fun Modifier.wheelCurve(
             // Normalized distance [-1, 1] relative to half height
             val normalizedDist = (distanceFromCenter / (viewportHeight / 1.6f)).coerceIn(-1f, 1f)
             
-            val maxTranslationX = 80.dp.toPx() // Reduced from 120dp to make stats more visible
+            val maxTranslationX = 60.dp.toPx() // Further reduced from 80dp to 60dp to reduce left gap
             
             // Apply translation
             // 1 - dist^2 creates a nice bell curve
