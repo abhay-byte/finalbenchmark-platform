@@ -29,15 +29,11 @@ object SingleCoreBenchmarks {
 
                         val (primeCount, timeMs) =
                                 BenchmarkHelpers.measureBenchmark {
-                                        // Use single-threaded Sieve of Eratosthenes
-                                        BenchmarkHelpers.countPrimesMillerRabin(params.primeRange)
+                                        // Use Pollard's Rho for factorization
+                                        BenchmarkHelpers.countFactorsPollardRho(params.primeRange)
                                 }
 
-                        // Miller-Rabin operations: Each odd number tested requires ~50-100 ops
-                        // (modular exponentiation, divisions, witness checks)
-                        val numbersToTest = (params.primeRange / 2).toDouble()  // Only odd numbers
-                        val opsPerTest = 75.0  // Average ops per Miller-Rabin test
-                        val ops = numbersToTest * opsPerTest
+                        val ops = params.primeRange.toDouble() // Operations = numbers processed
                         val opsPerSecond = ops / (timeMs / 1000.0)
 
                         CpuAffinityManager.resetPerformance()
@@ -480,13 +476,12 @@ object SingleCoreBenchmarks {
                         val maxDepth = params.rayTracingDepth
                         val iterations = params.rayTracingIterations
 
-                        val (totalEnergy, timeMs) =
+                        val (totalNoise, timeMs) =
                                 BenchmarkHelpers.measureBenchmark {
-                                        // CACHE-RESIDENT: Use centralized helper function
-                                        BenchmarkHelpers.performRayTracing(
+                                        BenchmarkHelpers.performPerlinNoise(
                                                 width,
                                                 height,
-                                                maxDepth,
+                                                params.rayTracingDepth,  // Use depth as 3rd dimension
                                                 iterations
                                         )
                                 }
@@ -505,7 +500,7 @@ object SingleCoreBenchmarks {
                                 name = "Single-Core Ray Tracing",
                                 executionTimeMs = timeMs.toDouble(),
                                 opsPerSecond = raysPerSecond,
-                                isValid = totalEnergy > 0.0,
+                                isValid = totalNoise != 0.0,
                                 metricsJson =
                                         JSONObject()
                                                 .apply {
@@ -513,13 +508,13 @@ object SingleCoreBenchmarks {
                                                                 "resolution",
                                                                 listOf(width, height).toString()
                                                         )
-                                                        put("max_depth", maxDepth)
+                                                        put("depth", params.rayTracingDepth)
                                                         put("iterations", iterations)
-                                                        put("total_rays", totalRays)
-                                                        put("total_energy", totalEnergy)
+                                                        put("total_samples", totalRays)
+                                                        put("total_noise", totalNoise)
                                                         put(
-                                                                "fix",
-                                                                "Inlined ray tracing logic for zero function call overhead - enables proper multi-core scaling"
+                                                                "implementation",
+                                                                "Perlin Noise 3D - Procedural generation"
                                                         )
                                                 }
                                                 .toString()
@@ -625,37 +620,13 @@ object SingleCoreBenchmarks {
 
                         val iterations = params.monteCarloSamples.toLong()
 
-                        val (partialSum, timeMs) = BenchmarkHelpers.measureBenchmark {
-                            var sum = 0.0
-                            var term = 0L
-
-                            // Use while loop instead of repeat() to handle Long iterations
-                            // repeat() takes Int, which overflows for >2.1 billion iterations
-                            while (term < iterations) {
-                                // Leibniz: (-1)^n / (2n + 1)
-                                val denominator = 2.0 * term + 1.0
-                                val sign = if (term % 2 == 0L) 1.0 else -1.0
-                                sum += sign / denominator
-                                term++
-                            }
-
-                            sum
+                        val (totalIterations, timeMs) = BenchmarkHelpers.measureBenchmark {
+                            BenchmarkHelpers.performMandelbrotSet(iterations, maxIterations = 256)
                         }
 
-                        // Calculate π estimate (Leibniz gives π/4)
-                        val piEstimate = partialSum * 4.0
-                        val opsPerSecond = iterations.toDouble() / (timeMs / 1000.0)
-                        val accuracy = kotlin.math.abs(piEstimate - kotlin.math.PI)
+                        val opsPerSecond = totalIterations.toDouble() / (timeMs / 1000.0)
 
-                        // Accuracy threshold based on iterations
-                        val accuracyThreshold = when {
-                            iterations >= 100_000_000 -> 0.00001
-                            iterations >= 10_000_000 -> 0.0001
-                            iterations >= 1_000_000 -> 0.001
-                            else -> 0.01
-                        }
-
-                        val isValid = timeMs > 0 && opsPerSecond > 0 && accuracy < accuracyThreshold
+                        val isValid = timeMs > 0 && opsPerSecond > 0 && totalIterations > 0
 
                         CpuAffinityManager.resetPerformance()
                         CpuAffinityManager.resetCpuAffinity()
@@ -673,14 +644,10 @@ object SingleCoreBenchmarks {
                                 metricsJson =
                                         JSONObject()
                                                 .apply {
-                                                        put("iterations", iterations)
-                                                        put("pi_estimate", piEstimate)
-                                                        put("actual_pi", kotlin.math.PI)
-                                                        put("accuracy", accuracy)
-                                                        put("accuracy_threshold", accuracyThreshold)
-                                                        put("partial_sum", partialSum)
-                                                        put("implementation", "Leibniz formula")
-                                                        put("optimization", "Deterministic, no randomness")
+                                                        put("samples", iterations)
+                                                        put("total_iterations", totalIterations)
+                                                        put("implementation", "Mandelbrot Set")
+                                                        put("max_iterations", 256)
                                                 }
                                                 .toString()
                         )

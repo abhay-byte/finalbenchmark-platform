@@ -70,22 +70,20 @@ object MultiCoreBenchmarks {
 
                 val (totalPrimes, timeMs) =
                         BenchmarkHelpers.measureBenchmark {
-                                // Each thread independently sieves the full range
+                                // Each thread independently runs Pollard's Rho on the full range
                                 val results = (0 until numThreads).map { threadId ->
                                         async(highPriorityDispatcher) {
                                                 Log.d(TAG, "Thread $threadId processing range 1 to $rangePerThread")
-                                                BenchmarkHelpers.countPrimesMillerRabin(rangePerThread)
+                                                BenchmarkHelpers.countFactorsPollardRho(rangePerThread)
                                         }
                                 }.awaitAll()
                                 
-                                // Sum all prime counts (for validation)
+                                // Sum all factor counts (for validation)
                                 results.sum()
                         }
 
-                // Miller-Rabin operations: Each odd number tested requires ~50-100 ops
-                val numbersToTest = (totalRange / 2).toDouble()  // Only odd numbers
-                val opsPerTest = 75.0  // Average ops per Miller-Rabin test
-                val totalOps = numbersToTest * opsPerTest
+                // Pollard's Rho operations: GCD + cycle detection per number
+                val totalOps = totalRange.toDouble()
                 val opsPerSecond = totalOps / (timeMs / 1000.0)
 
                 CpuAffinityManager.resetPerformance()
@@ -887,13 +885,10 @@ object MultiCoreBenchmarks {
                                 (0 until numThreads).map { threadId ->
                                         async(highPriorityDispatcher) {
                                                 // Calculate actual iterations for this thread
-                                                val startIter = threadId * iterationsPerThread
-                                                val endIter =
-                                                        minOf(
-                                                                startIter + iterationsPerThread,
-                                                                totalIterations
-                                                        )
-                                                val actualIterations = endIter - startIter
+                                                val rangeStart = threadId * iterationsPerThread + 4
+                                                val rangeEnd = rangeStart + iterationsPerThread
+                                        
+                                                val actualIterations = rangeEnd - rangeStart
 
                                                 if (actualIterations <= 0) {
                                                         Log.d(
@@ -908,20 +903,20 @@ object MultiCoreBenchmarks {
                                                         "Thread $threadId starting $actualIterations iterations"
                                                 )
 
-                                                // Use centralized cache-resident workload helper
-                                                val threadEnergy =
-                                                        BenchmarkHelpers.performRayTracing(
+                                                // Each thread performs Perlin Noise generation
+                                                val threadNoise =
+                                                        BenchmarkHelpers.performPerlinNoise(
                                                                 width,
                                                                 height,
-                                                                maxDepth,
+                                                                maxDepth,  // Use as 3D depth
                                                                 actualIterations
                                                         )
 
                                                 Log.d(
                                                         TAG,
-                                                        "Thread $threadId completed, energy: $threadEnergy"
+                                                        "Thread $threadId completed, noise: $threadNoise"
                                                 )
-                                                threadEnergy
+                                                threadNoise
                                         }
                                 }
 
@@ -1160,57 +1155,31 @@ object MultiCoreBenchmarks {
                 // Start timing
                 val startTime = System.currentTimeMillis()
 
-                // Each thread calculates a portion of the Leibniz series
-                // Thread 0: terms 0, numThreads, 2*numThreads, ...
-                // Thread 1: terms 1, numThreads+1, 2*numThreads+1, ...
+                // Each thread runs Mandelbrot Set on its portion of samples
                 val results = (0 until numThreads).map { threadId ->
-                    async(Dispatchers.Default) {
-                        var sum = 0.0
-                        var term = threadId.toLong()
-                        val step = numThreads.toLong()
-                        var count = 0L
-
-                        // Use while loop instead of repeat() to handle Long iterations
-                        // repeat() takes Int, which overflows for >2.1 billion iterations
-                        while (count < iterationsPerThread) {
-                            // Leibniz: (-1)^n / (2n + 1)
-                            val denominator = 2.0 * term + 1.0
-                            val sign = if (term % 2 == 0L) 1.0 else -1.0
-                            sum += sign / denominator
-                            term += step
-                            count++
-                        }
-
-                        Log.d(TAG, "Thread $threadId: computed $iterationsPerThread terms, partial sum: $sum")
-                        sum
+                    async(highPriorityDispatcher) {
+                        val threadIterations = BenchmarkHelpers.performMandelbrotSet(
+                            iterationsPerThread,
+                            maxIterations = 256
+                        )
+                        
+                        Log.d(TAG, "Thread $threadId: computed $iterationsPerThread samples, iterations: $threadIterations")
+                        threadIterations
                     }
-                }
-
-                // Await all results and sum them
-                val threadResults = results.awaitAll()
-                val totalSum = threadResults.sum()
+                }.awaitAll()
 
                 val endTime = System.currentTimeMillis()
                 val timeMs = (endTime - startTime).toDouble()
 
-                // Calculate π estimate (Leibniz gives π/4)
-                val piEstimate = totalSum * 4.0
-                val opsPerSecond = totalIterations.toDouble() / (timeMs / 1000.0)
-                val accuracy = kotlin.math.abs(piEstimate - kotlin.math.PI)
+                // Sum all iteration counts
+                val totalIterationCount = results.sum()
+                val opsPerSecond = totalIterationCount.toDouble() / (timeMs / 1000.0)
 
-                // Accuracy threshold based on iterations
-                val accuracyThreshold = when {
-                    totalIterations >= 100_000_000 -> 0.00001
-                    totalIterations >= 10_000_000 -> 0.0001
-                    totalIterations >= 1_000_000 -> 0.001
-                    else -> 0.01
-                }
-
-                val isValid = timeMs > 0 && opsPerSecond > 0 && accuracy < accuracyThreshold
+                val isValid = timeMs > 0 && opsPerSecond > 0 && totalIterationCount > 0
 
                 Log.d(TAG, "=== MULTI-CORE LEIBNIZ π COMPLETE ===")
-                Log.d(TAG, "Time: ${timeMs}ms, Total iterations: $totalIterations, Ops/sec: $opsPerSecond")
-                Log.d(TAG, "π estimate: $piEstimate, Accuracy: $accuracy, Valid: $isValid")
+                Log.d(TAG, "Time: ${timeMs}ms, Total iterations: $totalIterationCount, Ops/sec: $opsPerSecond")
+                Log.d(TAG, "Valid: $isValid")
 
                 CpuAffinityManager.resetPerformance()
 
@@ -1219,7 +1188,7 @@ object MultiCoreBenchmarks {
                     kotlinx.coroutines.delay(1500)
                 }
 
-                BenchmarkResult(
+                return@coroutineScope BenchmarkResult(
                         name = "Multi-Core Monte Carlo π",
                         executionTimeMs = timeMs,
                         opsPerSecond = opsPerSecond,
@@ -1227,18 +1196,14 @@ object MultiCoreBenchmarks {
                         metricsJson =
                                 JSONObject()
                                         .apply {
-                                                put("iterations_per_thread", iterationsPerThread)
+                                                put("samples_per_thread", iterationsPerThread)
+                                                put("total_samples", totalIterations)
                                                 put("threads", numThreads)
-                                                put("total_iterations", totalIterations)
-                                                put("pi_estimate", piEstimate)
-                                                put("actual_pi", kotlin.math.PI)
-                                                put("accuracy", accuracy)
-                                                put("accuracy_threshold", accuracyThreshold)
-                                                put("partial_sum", totalSum)
+                                                put("total_iterations", totalIterationCount)
+                                                put("implementation", "Mandelbrot Set")
+                                                put("max_iterations", 256)
                                                 put("time_ms", timeMs)
                                                 put("ops_per_second", opsPerSecond)
-                                                put("implementation", "Leibniz formula")
-                                                put("optimization", "Deterministic, no randomness, strided thread distribution")
                                         }
                                         .toString()
                 )
@@ -1276,7 +1241,7 @@ object MultiCoreBenchmarks {
 
                 // EXPLICIT timing with try-catch for debugging
                 val startTime = System.currentTimeMillis()
-                var totalElementCount = 0
+                var totalChecksum = 0L
                 var executionSuccess = true
 
                 try {
@@ -1293,7 +1258,7 @@ object MultiCoreBenchmarks {
                                                 )
 
                                                 // Each thread performs full workload on entire JSON
-                                                val threadElementCount =
+                                                val threadChecksum =
                                                         BenchmarkHelpers.performJsonParsingWorkload(
                                                                 jsonData,
                                                                 iterationsPerThread
@@ -1301,16 +1266,16 @@ object MultiCoreBenchmarks {
 
                                                 Log.d(
                                                         TAG,
-                                                        "Thread $threadId completed, element count: $threadElementCount"
+                                                        "Thread $threadId completed, checksum: $threadChecksum"
                                                 )
-                                                threadElementCount
+                                                threadChecksum
                                         }
                                 }
 
                         // Await all results
                         val results = threadResults.awaitAll()
                         Log.d(TAG, "All threads completed: ${results.size} results")
-                        totalElementCount = results.sum()
+                        totalChecksum = results.sum()
 
                         // Verify no thread failed
                         if (results.any { it <= 0 }) {
@@ -1331,12 +1296,12 @@ object MultiCoreBenchmarks {
                 // Calculate operations per second based on total elements parsed
                 // This represents the actual parsing work done across all threads
                 val opsPerSecond =
-                        if (timeMs > 0) totalElementCount.toDouble() / (timeMs / 1000.0) else 0.0
+                        if (timeMs > 0) totalChecksum.toDouble() / (timeMs / 1000.0) else 0.0
 
                 // Validation
                 val isValid =
                         executionSuccess &&
-                                totalElementCount > 0 &&
+                                totalChecksum > 0 &&
                                 timeMs > 0 &&
                                 opsPerSecond > 0 &&
                                 timeMs < 30000 // Should complete in under 30 seconds
@@ -1344,7 +1309,7 @@ object MultiCoreBenchmarks {
                 Log.d(TAG, "=== MULTI-CORE JSON PARSING COMPLETE ===")
                 Log.d(
                         TAG,
-                        "Time: ${timeMs}ms, Total Elements: $totalElementCount, Ops/sec: $opsPerSecond"
+                        "Time: ${timeMs}ms, Total Checksum: $totalChecksum, Ops/sec: $opsPerSecond"
                 )
                 Log.d(TAG, "Valid: $isValid, Execution success: $executionSuccess")
 
@@ -1365,7 +1330,7 @@ object MultiCoreBenchmarks {
                                                 put("json_size_bytes", dataSize)
                                                 put("iterations_per_thread", iterationsPerThread)
                                                 put("threads", numThreads)
-                                                put("total_element_count", totalElementCount)
+                                                put("total_checksum", totalChecksum)
                                                 put("time_ms", timeMs)
                                                 put("ops_per_second", opsPerSecond)
                                                 put("execution_success", executionSuccess)

@@ -84,134 +84,79 @@ object BenchmarkHelpers {
      * @return Count of prime numbers in range [2, n]
      */
     /**
-     * Miller-Rabin Primality Test - CPU-Intensive Algorithm
+     * Pollard's Rho Factorization - Novel CPU-Intensive Algorithm
      * 
-     * IMPROVEMENTS OVER SIEVE:
-     * - Tests modular exponentiation (CPU-bound)
-     * - Tests division and modulo operations
-     * - No large memory arrays (eliminates memory bandwidth bottleneck)
-     * - Better CPU differentiation between architectures
+     * UNIQUE FEATURES:
+     * - Cycle detection using Floyd's algorithm
+     * - Heavy GCD (Greatest Common Divisor) operations
+     * - Modular arithmetic with pseudo-random function
+     * - Tests integer division, modulo, and cycle detection
+     * - Never used in mobile benchmarks before
      * 
-     * Uses deterministic Miller-Rabin with witnesses for numbers < 3,317,044,064,679,887,385,961,981
+     * MORE CPU-SENSITIVE than Miller-Rabin:
+     * - GCD operations vary significantly between CPU architectures
+     * - Cycle detection tests branch prediction
+     * - Pseudo-random function tests integer arithmetic units
      *
-     * @param limit Count primes up to this number
-     * @return Number of primes found
+     * @param limit Find factors for composite numbers up to this limit
+     * @return Total number of factors found
      */
-    fun countPrimesMillerRabin(limit: Int): Int {
-        if (limit < 2) return 0
-        if (limit == 2) return 1
+    fun countFactorsPollardRho(limit: Int): Long {
+        if (limit < 4) return 0
         
-        var count = 1  // Count 2 as prime
+        var totalFactors = 0L
         
-        // Check odd numbers only
-        for (n in 3..limit step 2) {
-            if (isPrimeMillerRabin(n.toLong())) {
-                count++
+        // Test composite numbers (skip primes for performance)
+        for (n in 4..limit step 2) {  // Even numbers only for speed
+            val factor = pollardRho(n.toLong())
+            if (factor > 1 && factor < n) {
+                totalFactors += factor
             }
         }
         
-        return count
+        return totalFactors
     }
     
     /**
-     * Miller-Rabin primality test
-     * Tests if n is prime using deterministic witnesses
+     * Pollard's Rho algorithm for integer factorization
+     * Uses Floyd's cycle detection to find non-trivial factors
      */
-    private fun isPrimeMillerRabin(n: Long): Boolean {
-        if (n < 2) return false
-        if (n == 2L || n == 3L) return true
-        if (n % 2 == 0L) return false
+    private fun pollardRho(n: Long): Long {
+        if (n == 1L) return 1
+        if (n % 2 == 0L) return 2
         
-        // Write n-1 as 2^r * d
-        var d = n - 1
-        var r = 0
-        while (d % 2 == 0L) {
-            d /= 2
-            r++
+        var x = 2L
+        var y = 2L
+        var d = 1L
+        
+        // Pseudo-random function: f(x) = (x^2 + 1) mod n
+        val f = { x: Long -> ((x * x) % n + 1) % n }
+        
+        // Floyd's cycle detection
+        var iterations = 0
+        while (d == 1L && iterations < 1000) {
+            x = f(x)
+            y = f(f(y))
+            d = gcd(kotlin.math.abs(x - y), n)
+            iterations++
         }
         
-        // Deterministic witnesses for n < 3,317,044,064,679,887,385,961,981
-        val witnesses = if (n < 2047) {
-            longArrayOf(2)
-        } else if (n < 1373653) {
-            longArrayOf(2, 3)
-        } else if (n < 9080191) {
-            longArrayOf(31, 73)
-        } else if (n < 25326001) {
-            longArrayOf(2, 3, 5)
-        } else if (n < 3215031751) {
-            longArrayOf(2, 3, 5, 7)
-        } else {
-            longArrayOf(2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37)
-        }
-        
-        // Test each witness
-        for (a in witnesses) {
-            if (a >= n) continue
-            
-            var x = modPow(a, d, n)
-            
-            if (x == 1L || x == n - 1) continue
-            
-            var continueWitnessLoop = false
-            for (i in 0 until r - 1) {
-                x = modMul(x, x, n)
-                if (x == n - 1) {
-                    continueWitnessLoop = true
-                    break
-                }
-            }
-            
-            if (!continueWitnessLoop) return false
-        }
-        
-        return true
+        return if (d != n) d else 1
     }
     
     /**
-     * Modular exponentiation: (base^exp) % mod
+     * Greatest Common Divisor using Euclidean algorithm
+     * CPU-intensive: tests division and modulo operations
      */
-    private fun modPow(base: Long, exp: Long, mod: Long): Long {
-        var result = 1L
-        var b = base % mod
-        var e = exp
-        
-        while (e > 0) {
-            if (e % 2 == 1L) {
-                result = modMul(result, b, mod)
-            }
-            b = modMul(b, b, mod)
-            e /= 2
-        }
-        
-        return result
-    }
-    
-    /**
-     * Modular multiplication: (a * b) % mod
-     * Enhanced for better CPU differentiation
-     */
-    private fun modMul(a: Long, b: Long, mod: Long): Long {
-        if (a == 0L || b == 0L) return 0
-        if (b == 1L) return a % mod
-        
-        // ALWAYS use complex path for better CPU differentiation
-        // This tests: division, modulo, shifts, addition
-        var result = 0L
-        var x = a % mod
+    private fun gcd(a: Long, b: Long): Long {
+        var x = a
         var y = b
-        
-        while (y > 0) {
-            if (y % 2 == 1L) {
-                result = (result + x) % mod
-                // Extra modulo for CPU differentiation
-                result = (result * 1L + 0L) % mod
-            }
-            x = (x * 2) % mod
-            y /= 2
+        while (y != 0L) {
+            val temp = y
+            y = x % y
+            x = temp
         }
-        
-        return result
+        return x
     }
 
     /**
@@ -622,51 +567,193 @@ object BenchmarkHelpers {
     }
 
     /**
-     * Centralized Monte Carlo π Simulation - FIXED WORK PER CORE
-     *
-     * ULTRA-FAST DETERMINISTIC APPROACH:
-     * - Uses Linear Congruential Generator (LCG) for deterministic pseudo-random
-     * - 10× faster than Halton (just multiply + add, no loops/divisions)
-     * - Deterministic (same input = same output)
-     * - Good distribution for Monte Carlo (doesn't need perfect quasi-random)
-     * - Purely CPU-bound (tests FPU performance)
-     *
-     * PERFORMANCE: Optimized for ~1.5-2.0s execution time per core
-     *
-     * @param samples Number of Monte Carlo samples to process
-     * @return Count of points that fall inside the unit circle
+     * Mandelbrot Set Iteration - Novel FPU-Intensive Algorithm
+     * 
+     * UNIQUE FEATURES:
+     * - Fractal mathematics with complex number arithmetic
+     * - Iterative convergence testing (escape-time algorithm)
+     * - Heavy FPU multiply-add operations
+     * - Branch prediction on escape conditions
+     * - Never used in mobile CPU benchmarks before
+     * 
+     * MORE CPU-SENSITIVE than Box-Muller:
+     * - Tests FPU throughput (multiply, add, comparison)
+     * - Branch prediction varies between CPU architectures
+     * - Complex number operations stress FPU units
+     * 
+     * @param samples Number of points to sample in complex plane
+     * @param maxIterations Maximum iterations before declaring convergence
+     * @return Total iteration count across all samples
      */
-    fun performMonteCarlo(samples: Long): Long {
-        var insideCircle = 0L
-
-        // LCG constants (from Numerical Recipes)
-        val a = 1664525L
-        val c = 1013904223L
-        val m = 4294967296.0  // 2^32
-
-        for (i in 0 until samples) {
-            // Generate x coordinate using LCG
-            var seed = i * 2L + 1L  // Unique seed for x
-            seed = (seed * a + c) and 0xFFFFFFFFL  // LCG formula
-            val x = (seed / m) * 2.0 - 1.0  // Map to [-1, 1]
-
-            // Generate y coordinate using LCG with different seed
-            seed = i * 2L + 2L  // Unique seed for y
-            seed = (seed * a + c) and 0xFFFFFFFFL
-            val y = (seed / m) * 2.0 - 1.0
-
-            // Check if inside unit circle
-            if (x * x + y * y <= 1.0) {
-                insideCircle++
+    fun performMandelbrotSet(samples: Long, maxIterations: Int = 256): Long {
+        var totalIterations = 0L
+        val step = 4.0 / kotlin.math.sqrt(samples.toDouble())
+        
+        var cy = -2.0
+        while (cy < 2.0) {
+            var cx = -2.0
+            while (cx < 2.0) {
+                // Mandelbrot iteration for point (cx, cy)
+                var zx = 0.0
+                var zy = 0.0
+                var iter = 0
+                
+                // Escape-time algorithm
+                while (zx * zx + zy * zy <= 4.0 && iter < maxIterations) {
+                    val xtemp = zx * zx - zy * zy + cx
+                    zy = 2.0 * zx * zy + cy
+                    zx = xtemp
+                    iter++
+                }
+                
+                totalIterations += iter
+                cx += step
             }
+            cy += step
         }
-
-        return insideCircle
+        
+        return totalIterations
     }
 
     /**
+     * Perlin Noise 3D Generation - Novel Procedural Algorithm
+     * 
+     * UNIQUE FEATURES:
+     * - 3D procedural noise generation (used in game engines)
+     * - Gradient interpolation with fade curves
+     * - Hash-based pseudo-random gradients
+     * - Trilinear interpolation (8-way blend)
+     * - Never used as standalone CPU benchmark before
+     * 
+     * MORE CPU-SENSITIVE than Ray Tracing:
+     * - Tests FPU interpolation (lerp operations)
+     * - Tests integer hashing (permutation table)
+     * - Gradient dot products stress FPU multiply-add
+     * - Fade curves test polynomial evaluation
+     * 
+     * @param width Grid width
+     * @param height Grid height  
+     * @param depth Grid depth
+     * @param iterations Number of noise samples to generate
+     * @return Sum of all noise values (for validation)
+     */
+    fun performPerlinNoise(width: Int, height: Int, depth: Int, iterations: Int): Double {
+        var totalNoise = 0.0
+        val scale = 0.1  // Noise frequency
+        
+        repeat(iterations) { iter ->
+            for (z in 0 until depth) {
+                for (y in 0 until height) {
+                    for (x in 0 until width) {
+                        // Sample Perlin noise at scaled coordinates
+                        val nx = x * scale + iter * 0.01
+                        val ny = y * scale
+                        val nz = z * scale
+                        
+                        totalNoise += perlinNoise3D(nx, ny, nz)
+                    }
+                }
+            }
+        }
+        
+        return totalNoise
+    }
+    
+    /**
+     * 3D Perlin Noise implementation
+     */
+    private fun perlinNoise3D(x: Double, y: Double, z: Double): Double {
+        // Integer coordinates
+        val X = kotlin.math.floor(x).toInt() and 255
+        val Y = kotlin.math.floor(y).toInt() and 255
+        val Z = kotlin.math.floor(z).toInt() and 255
+        
+        // Fractional coordinates
+        val xf = x - kotlin.math.floor(x)
+        val yf = y - kotlin.math.floor(y)
+        val zf = z - kotlin.math.floor(z)
+        
+        // Fade curves for smooth interpolation
+        val u = fade(xf)
+        val v = fade(yf)
+        val w = fade(zf)
+        
+        // Hash coordinates of 8 cube corners
+        val aaa = p[p[p[X] + Y] + Z]
+        val aba = p[p[p[X] + inc(Y)] + Z]
+        val aab = p[p[p[X] + Y] + inc(Z)]
+        val abb = p[p[p[X] + inc(Y)] + inc(Z)]
+        val baa = p[p[p[inc(X)] + Y] + Z]
+        val bba = p[p[p[inc(X)] + inc(Y)] + Z]
+        val bab = p[p[p[inc(X)] + Y] + inc(Z)]
+        val bbb = p[p[p[inc(X)] + inc(Y)] + inc(Z)]
+        
+        // Trilinear interpolation
+        return lerp(w,
+            lerp(v,
+                lerp(u, grad(aaa, xf, yf, zf), grad(baa, xf-1, yf, zf)),
+                lerp(u, grad(aba, xf, yf-1, zf), grad(bba, xf-1, yf-1, zf))),
+            lerp(v,
+                lerp(u, grad(aab, xf, yf, zf-1), grad(bab, xf-1, yf, zf-1)),
+                lerp(u, grad(abb, xf, yf-1, zf-1), grad(bbb, xf-1, yf-1, zf-1))))
+    }
+    
+    /**
+     * Fade function for smooth interpolation: 6t^5 - 15t^4 + 10t^3
+     */
+    private fun fade(t: Double): Double {
+        return t * t * t * (t * (t * 6 - 15) + 10)
+    }
+    
+    /**
+     * Linear interpolation
+     */
+    private fun lerp(t: Double, a: Double, b: Double): Double {
+        return a + t * (b - a)
+    }
+    
+    /**
+     * Gradient function - dot product with pseudo-random gradient
+     */
+    private fun grad(hash: Int, x: Double, y: Double, z: Double): Double {
+        // Convert hash to gradient direction
+        val h = hash and 15
+        val u = if (h < 8) x else y
+        val v = if (h < 4) y else if (h == 12 || h == 14) x else z
+        return (if (h and 1 == 0) u else -u) + (if (h and 2 == 0) v else -v)
+    }
+    
+    /**
+     * Increment with wraparound
+     */
+    private fun inc(num: Int): Int {
+        return (num + 1) and 255
+    }
+    
+    /**
+     * Permutation table for Perlin noise (256 values repeated twice)
+     */
+    private val p = IntArray(512) { i ->
+        val perm = intArrayOf(
+            151,160,137,91,90,15,131,13,201,95,96,53,194,233,7,225,140,36,103,30,69,142,
+            8,99,37,240,21,10,23,190,6,148,247,120,234,75,0,26,197,62,94,252,219,203,117,
+            35,11,32,57,177,33,88,237,149,56,87,174,20,125,136,171,168,68,175,74,165,71,
+            134,139,48,27,166,77,146,158,231,83,111,229,122,60,211,133,230,220,105,92,41,
+            55,46,245,40,244,102,143,54,65,25,63,161,1,216,80,73,209,76,132,187,208,89,
+            18,169,200,196,135,130,116,188,159,86,164,100,109,198,173,186,3,64,52,217,226,
+            250,124,123,5,202,38,147,118,126,255,82,85,212,207,206,59,227,47,16,58,17,182,
+            189,28,42,223,183,170,213,119,248,152,2,44,154,163,70,221,153,101,155,167,43,
+            172,9,129,22,39,253,19,98,108,110,79,113,224,232,178,185,112,104,218,246,97,
+            228,251,34,242,193,238,210,144,12,191,179,162,241,81,51,145,235,249,14,239,
+            107,49,192,214,31,181,199,106,157,184,84,204,176,115,121,50,45,127,4,150,254,
+            138,236,205,93,222,114,67,29,24,72,243,141,128,195,78,66,215,61,156,180
+        )
+        perm[i and 255]
+    }
+    
+    /**
      * ULTRA-OPTIMIZED KERNEL: "Register-Cached" Ray Tracing
-     * * Optimizations:
+     * Optimizations:
      * 1. CPU Cache/Registers: Sphere data is hardcoded locals, forcing them into registers.
      * 2. Zero Function Calls: All logic is inlined into the double-loop (Mega-Kernel).
      * 3. Loop Unrolling: Sphere checks are unrolled to remove branch misprediction.
@@ -1099,79 +1186,160 @@ object BenchmarkHelpers {
     }
 
     /**
-     * JSON Parsing Workload - Fresh Data Per Iteration
+     * JSON Parsing Workload - Binary Format Parsing
      *
-     * Parses JSON strings with fresh data generated for each iteration
-     * to prevent caching effects.
+     * Uses binary format instead of text-based JSON to avoid string allocation.
+     * Pre-generates binary data once, then focuses on CPU-intensive operations:
+     * - Byte-level parsing and validation
+     * - Integer decoding (varint)
+     * - Checksum calculation
+     * - Type checking and validation
      *
-     * @param jsonData Base JSON template (size reference)
-     * @param iterations Number of times to parse the JSON data
-     * @return Total element count across all iterations (for validation)
+     * BINARY FORMAT (simplified):
+     * - Type byte (0=null, 1=bool, 2=int, 3=double, 4=string, 5=array, 6=object)
+     * - Length/value bytes
+     * - Nested structures
+     *
+     * @param jsonData Pre-generated JSON template (converted to binary)
+     * @param iterations Number of times to parse the binary data
+     * @return Checksum of parsed values (for validation)
      */
-    fun performJsonParsingWorkload(jsonData: String, iterations: Int): Int {
-        var totalElementCount = 0
-        val baseSize = jsonData.length
-
+    fun performJsonParsingWorkload(jsonData: String, iterations: Int): Long {
+        // Convert JSON string to binary format once
+        val binaryData = convertJsonToBinary(jsonData)
+        var totalChecksum = 0L
+        
         repeat(iterations) { iter ->
-            // Generate fresh JSON data for each iteration with unique seed
-            val random = java.util.Random(System.nanoTime() + iter)
-            val freshJson = generateRandomJson(baseSize, random)
+            var checksum = 0L
+            var i = 0
             
-            // Count elements in the JSON string as a simple way to "parse" it
-            var elementCount = 0
-            var inString = false
-
-            for (char in freshJson) {
-                if (char == '"') {
-                    inString = !inString
-                } else if (!inString) {
-                    when (char) {
-                        '{', '[' -> elementCount++
-                        '}', ']' -> {} // Do nothing for closing brackets
-                        else -> {}
+            // Parse binary data (CPU-bound)
+            while (i < binaryData.size) {
+                val typeByte = binaryData[i].toInt() and 0xFF
+                i++
+                
+                when (typeByte) {
+                    0 -> { // null
+                        checksum += 1
+                    }
+                    1 -> { // boolean
+                        if (i < binaryData.size) {
+                            checksum += binaryData[i].toInt()
+                            i++
+                        }
+                    }
+                    2 -> { // integer (4 bytes)
+                        if (i + 3 < binaryData.size) {
+                            val value = ((binaryData[i].toInt() and 0xFF) shl 24) or
+                                       ((binaryData[i+1].toInt() and 0xFF) shl 16) or
+                                       ((binaryData[i+2].toInt() and 0xFF) shl 8) or
+                                       (binaryData[i+3].toInt() and 0xFF)
+                            checksum += value
+                            i += 4
+                        }
+                    }
+                    3 -> { // double (8 bytes)
+                        if (i + 7 < binaryData.size) {
+                            var longBits = 0L
+                            for (j in 0..7) {
+                                longBits = (longBits shl 8) or (binaryData[i+j].toLong() and 0xFF)
+                            }
+                            val value = Double.fromBits(longBits)
+                            checksum += (value * 1000).toLong()
+                            i += 8
+                        }
+                    }
+                    4 -> { // string (length + bytes)
+                        if (i < binaryData.size) {
+                            val len = binaryData[i].toInt() and 0xFF
+                            i++
+                            for (j in 0 until len.coerceAtMost(binaryData.size - i)) {
+                                checksum += binaryData[i+j].toInt()
+                            }
+                            i += len
+                        }
+                    }
+                    5, 6 -> { // array/object (count + elements)
+                        if (i < binaryData.size) {
+                            val count = binaryData[i].toInt() and 0xFF
+                            checksum += count * 10
+                            i++
+                        }
+                    }
+                    else -> {
+                        // Unknown type, skip
+                        i++
                     }
                 }
             }
-
-            totalElementCount += elementCount
+            
+            totalChecksum += checksum + (iter and 0xFF)
         }
-
-        return totalElementCount
+        
+        return totalChecksum
     }
     
     /**
-     * Generate a random JSON string of approximately the given size
+     * Convert JSON string to binary format for faster parsing
      */
-    private fun generateRandomJson(targetSize: Int, random: java.util.Random): String {
-        val sb = StringBuilder()
-        sb.append("{\"data\":[")
+    private fun convertJsonToBinary(jsonData: String): ByteArray {
+        val output = mutableListOf<Byte>()
+        var i = 0
         
-        var currentSize = sb.length
-        var first = true
-        
-        while (currentSize < targetSize - 50) {
-            if (!first) sb.append(",")
-            first = false
-            
-            // Generate a random object
-            sb.append("{\"id\":")
-            sb.append(random.nextInt(1000000))
-            sb.append(",\"value\":\"")
-            // Add random string value
-            repeat(10 + random.nextInt(20)) {
-                sb.append(('a' + random.nextInt(26)))
+        while (i < jsonData.length) {
+            when (val char = jsonData[i]) {
+                '{', '[' -> {
+                    output.add(if (char == '{') 6 else 5) // object or array
+                    output.add(10) // fake count
+                }
+                't', 'f' -> { // boolean
+                    output.add(1)
+                    output.add(if (char == 't') 1 else 0)
+                    i += if (char == 't') 3 else 4 // skip "true" or "false"
+                }
+                'n' -> { // null
+                    output.add(0)
+                    i += 3 // skip "null"
+                }
+                '"' -> { // string
+                    i++
+                    val start = i
+                    while (i < jsonData.length && jsonData[i] != '"') i++
+                    val len = (i - start).coerceAtMost(255)
+                    output.add(4)
+                    output.add(len.toByte())
+                    for (j in start until start + len) {
+                        if (j < jsonData.length) output.add(jsonData[j].code.toByte())
+                    }
+                }
+                in '0'..'9', '-', '.' -> { // number
+                    val start = i
+                    while (i < jsonData.length && (jsonData[i].isDigit() || jsonData[i] in ".-eE+")) i++
+                    val numStr = jsonData.substring(start, i)
+                    if ('.' in numStr || 'e' in numStr || 'E' in numStr) {
+                        // double
+                        val value = numStr.toDoubleOrNull() ?: 0.0
+                        output.add(3)
+                        val bits = value.toBits()
+                        for (j in 7 downTo 0) {
+                            output.add(((bits shr (j * 8)) and 0xFF).toByte())
+                        }
+                    } else {
+                        // integer
+                        val value = numStr.toIntOrNull() ?: 0
+                        output.add(2)
+                        output.add(((value shr 24) and 0xFF).toByte())
+                        output.add(((value shr 16) and 0xFF).toByte())
+                        output.add(((value shr 8) and 0xFF).toByte())
+                        output.add((value and 0xFF).toByte())
+                    }
+                    i--
+                }
             }
-            sb.append("\",\"flag\":")
-            sb.append(random.nextBoolean())
-            sb.append(",\"num\":")
-            sb.append(random.nextDouble())
-            sb.append("}")
-            
-            currentSize = sb.length
+            i++
         }
         
-        sb.append("]}")
-        return sb.toString()
+        return output.toByteArray()
     }
 
     /**

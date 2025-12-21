@@ -657,9 +657,9 @@ class KotlinBenchmarkManager {
                                         rayTracingDepth = 2,
                                         compressionDataSizeMb = 1,
                                         compressionIterations = 100,
-                                        monteCarloSamples = 1_000_000L,
+                                        monteCarloSamples = 10_000L,  // Reduced 100x for Mandelbrot Set
                                         jsonDataSizeMb = 1,
-                                        jsonParsingIterations = 100,
+                                        jsonParsingIterations = 10,  // Reduced 10x for CPU-bound parsing
                                         nqueensSize = 11
                                 )
                         "slow" ->
@@ -686,11 +686,9 @@ class KotlinBenchmarkManager {
                                         compressionIterations =
                                                 600, // INCREASED: Target ~15s execution (was 20)
                                         monteCarloSamples =
-                                                10_000_000L, // FIXED WORK PER CORE: Target ~1.5s
+                                                100_000L, // Reduced 100x for Mandelbrot Set (was 10M)
                                         jsonDataSizeMb = 1,
-                                        jsonParsingIterations =
-                                                400, // CACHE-RESIDENT: Low iterations for slow
-                                        // devices (~1-2s)
+                                        jsonParsingIterations = 100,  // Reduced 10x for CPU-bound parsing
                                         nqueensSize = 12 // INCREASED: 92 solutions, ~1.5s (was 8)
                                 )
                         "mid" ->
@@ -717,11 +715,9 @@ class KotlinBenchmarkManager {
                                         compressionIterations =
                                                 1_000, // INCREASED: Target ~15s execution (was 50)
                                         monteCarloSamples =
-                                                200_000_000L, // FIXED WORK PER CORE: Target ~1.5s
+                                                2_000_000L, // Reduced 100x for Mandelbrot Set (was 200M)
                                         jsonDataSizeMb = 1,
-                                        jsonParsingIterations =
-                                                600, // CACHE-RESIDENT: Medium iterations for mid
-                                        // devices (~1-2s)
+                                        jsonParsingIterations = 250,  // Reduced 10x for CPU-bound parsing
                                         nqueensSize = 13 // INCREASED: 341 solutions, ~5s (was 9)
                                 )
                         "flagship" ->
@@ -763,13 +759,9 @@ class KotlinBenchmarkManager {
                                                 2_000, // INCREASED: Target ~15s execution (was
                                         // 100)
                                         monteCarloSamples =
-                                                4_999_000_000L, // FIXED WORK PER CORE: Target ~1.5s
-                                        // (was
-                                        // 15M)
+                                                50_000_000L, // Reduced 100x for Mandelbrot Set (was 5B)
                                         jsonDataSizeMb = 1,
-                                        jsonParsingIterations =
-                                                800, // CACHE-RESIDENT: High iterations for flagship
-                                        // devices (~1-2s)
+                                        jsonParsingIterations = 500,  // Reduced 10x for CPU-bound parsing
                                         nqueensSize =
                                                 15 // INCREASED: 14,200 solutions, ~20s (was 10)
                                 )
