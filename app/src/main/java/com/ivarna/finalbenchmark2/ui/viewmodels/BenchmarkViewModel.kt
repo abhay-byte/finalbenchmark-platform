@@ -34,6 +34,7 @@ data class TestState(
         val name: String,
         val status: TestStatus,
         val timeText: String = "", // ADDED: Will contain timing like "342ms"
+        val durationMs: Long = 0L, // ADDED: Raw duration for calculation
         val result: com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkResult? = null
 )
 
@@ -57,7 +58,8 @@ data class BenchmarkUiState(
         val testStates: List<TestState> =
                 emptyList(), // CHANGED: from allTestStates to testStates for clarity
         val workloadPreset: String =
-                "Auto" // ADDED: Track the current workload preset for UI display
+                "Auto", // ADDED: Track the current workload preset for UI display
+        val estimatedTimeRemaining: String = "--:--"
 )
 
 // Old data class kept for compatibility
@@ -90,11 +92,14 @@ class BenchmarkViewModel(
         private val historyRepository:
                 com.ivarna.finalbenchmark2.data.repository.HistoryRepository? =
                 null,
-        private val application: Application,
-        private val onBenchmarkCompleteCallback: ((String) -> Unit)? = null
+        private val application: Application
 ) : ViewModel() {
         private val _benchmarkState = MutableStateFlow<BenchmarkState>(BenchmarkState.Idle)
         val benchmarkState: StateFlow<BenchmarkState> = _benchmarkState
+
+        // SharedFlow for navigation events (One-time events)
+        private val _completionEvent = kotlinx.coroutines.flow.MutableSharedFlow<String>()
+        val completionEvent: kotlinx.coroutines.flow.SharedFlow<String> = _completionEvent
 
         // New state flow for granular benchmark UI state
         private val _uiState = MutableStateFlow(BenchmarkUiState())
@@ -138,11 +143,7 @@ class BenchmarkViewModel(
                                         // monitoring
                                         // LOG 1: Monitor wakes up
                                         val currentSizeBefore = _uiState.value.completedTests.size
-                                        Log.d(
-                                                "BENCH_DEBUG",
-                                                "[Monitor] Waking up. Current List Size: $currentSizeBefore"
-                                        )
-
+                                        
                                         // Calculate memory usage percentage
                                         val memoryLoad =
                                                 try {
@@ -178,16 +179,44 @@ class BenchmarkViewModel(
 
                                         // CRITICAL MOMENT: Updating State
                                         _uiState.update { currentState ->
-                                                // LOG 2: Inside the atomic update block for Monitor
-                                                if (currentState.completedTests.size !=
-                                                                currentSizeBefore
-                                                ) {
-                                                        Log.d(
-                                                                "BENCH_DEBUG",
-                                                                "[Monitor] !!! RACE CONDITION DETECTED !!! I saw size $currentSizeBefore, but inside update it is ${currentState.completedTests.size}"
-                                                        )
+                                                
+                                                // Calculate Estimated Time Remaining
+                                                var timeRemainingStr = currentState.estimatedTimeRemaining
+                                                if (currentState.isRunning) {
+                                                    val completed = currentState.testStates.filter { it.status == TestStatus.COMPLETED }
+                                                    val remaining = currentState.testStates.filter { it.status != TestStatus.COMPLETED }
+                                                    
+                                                    if (remaining.isNotEmpty()) {
+                                                        val avgTimeMs = if (completed.isNotEmpty()) {
+                                                            completed.map { it.durationMs }.average()
+                                                        } else {
+                                                            // Better initial guess based on preset
+                                                            when (currentState.workloadPreset.lowercase()) {
+                                                                "flagship" -> 9000.0 // ~3 min total (High end 1.5m, Low end 6m -> Geom Mean ~3m)
+                                                                "mid" -> 4500.0
+                                                                "slow" -> 1500.0
+                                                                else -> 2000.0
+                                                            } 
+                                                        }
+                                                        
+                                                        val totalRemainingMs = (avgTimeMs * remaining.size).toLong()
+                                                        
+                                                        // Smoother display: round up to next second
+                                                        val totalSeconds = (totalRemainingMs + 999) / 1000
+                                                        val seconds = totalSeconds % 60
+                                                        val minutes = totalSeconds / 60
+                                                        timeRemainingStr = String.format("%02d:%02d", minutes, seconds)
+                                                    } else {
+                                                        timeRemainingStr = "00:00"
+                                                    }
+                                                } else if (currentState.progress == 1f) {
+                                                    timeRemainingStr = "00:00"
                                                 }
-                                                currentState.copy(systemStats = stats)
+
+                                                currentState.copy(
+                                                    systemStats = stats,
+                                                    estimatedTimeRemaining = timeRemainingStr
+                                                )
                                         }
 
                                         delay(1000)
@@ -369,7 +398,8 @@ class BenchmarkViewModel(
                                                                                                                                         "%.2f s",
                                                                                                                                         event.timeMs /
                                                                                                                                                 1000.0
-                                                                                                                                )
+                                                                                                                                ),
+                                                                                                                        durationMs = event.timeMs // Capture duration
                                                                                                                 )
                                                                                                         else
                                                                                                                 it
@@ -483,9 +513,8 @@ class BenchmarkViewModel(
                                         "Captured performance metrics: ${lastPerformanceMetricsJson.take(100)}..."
                                 )
 
-                                // DIRECT CALLBACK: Call the completion callback directly to ensure
-                                // navigation works
-                                if (onBenchmarkCompleteCallback != null) {
+                                // DIRECT CALLBACK: Emit event regardless of callback presence
+                                // if (onBenchmarkCompleteCallback != null) { // REMOVED
                                         try {
                                                 // Create summary JSON similar to what
                                                 // BenchmarkScreen expects
@@ -593,26 +622,24 @@ class BenchmarkViewModel(
                                                 )
                                                 Log.d(
                                                         "BenchmarkViewModel",
-                                                        "Calling onBenchmarkCompleteCallback with JSON (includes performance_metrics): ${summaryJson.take(300)}..."
+                                                        "Emitting completion event with JSON: ${summaryJson.take(300)}..."
                                                 )
-                                                onBenchmarkCompleteCallback!!(summaryJson)
+                                                
+                                                // Emit event for UI to handle navigation
+                                                // Using SharedFlow ensures the UI (even if recreated) can receive it if it's listening
+                                                _completionEvent.emit(summaryJson)
+                                                
                                                 Log.d(
                                                         "BenchmarkViewModel",
-                                                        "onBenchmarkCompleteCallback called successfully"
+                                                        "Completion event emitted successfully"
                                                 )
                                         } catch (e: Exception) {
                                                 Log.e(
                                                         "BenchmarkViewModel",
-                                                        "Error calling onBenchmarkCompleteCallback: ${e.message}",
+                                                        "Error emitting completion event: ${e.message}",
                                                         e
                                                 )
                                         }
-                                } else {
-                                        Log.w(
-                                                "BenchmarkViewModel",
-                                                "onBenchmarkCompleteCallback is null - navigation will rely on flow collection"
-                                        )
-                                }
 
                                 // Save to database with performance metrics
                                 if (historyRepository != null) {

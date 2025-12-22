@@ -111,6 +111,9 @@ class GpuInfoViewModel : ViewModel() {
                         
                         _gpuHistory.value = updatedHistory
                     }
+                    
+                    // CRITICAL FIX: Always update the state so the Card UI reflects real-time values
+                    _gpuFrequencyState.value = result
                 } catch (e: Exception) {
                     // Log error but continue monitoring
                     e.printStackTrace()

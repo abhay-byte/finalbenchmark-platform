@@ -101,14 +101,14 @@ fun BenchmarkScreen(
     val application = context.applicationContext as Application
     
     // Custom Factory to inject dependencies properly
+    // Custom Factory to inject dependencies properly
     val viewModel: BenchmarkViewModel = viewModel(
         factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
                 return BenchmarkViewModel(
                     historyRepository = historyRepository,
-                    application = application,
-                    onBenchmarkCompleteCallback = onBenchmarkComplete
+                    application = application
                 ) as T
             }
         }
@@ -117,6 +117,14 @@ fun BenchmarkScreen(
     val uiState by viewModel.uiState.collectAsState()
     val isWarmingUp by viewModel.isWarmingUp.collectAsState()
     val scrollState = rememberLazyListState()
+    
+    // Listen for completion events from ViewModel
+    // This survives configuration changes because ViewModel survives, and we re-subscribe here
+    LaunchedEffect(viewModel) {
+        viewModel.completionEvent.collect { summaryJson ->
+            onBenchmarkComplete(summaryJson)
+        }
+    }
     
     // Track list position for wheel calculations
     var listCoordinates by remember { mutableStateOf<androidx.compose.ui.layout.LayoutCoordinates?>(null) }
@@ -230,8 +238,17 @@ fun BenchmarkScreen(
                             color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
                             letterSpacing = 2.sp
                         )
+                        
+                        // Map internal keys to human-readable titles matches HomeScreen
+                        val configTitle = when (preset.lowercase()) {
+                            "slow" -> "Low Accuracy - Fastest"
+                            "mid" -> "Mid Accuracy - Fast"
+                            "flagship" -> "High Accuracy - Slow"
+                            else -> preset.replace("Workload: ", "")
+                        }
+                        
                         Text(
-                            text = preset.replace("Workload: ", ""),
+                            text = configTitle,
                             style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.onBackground,
                             fontWeight = FontWeight.Bold
@@ -260,47 +277,66 @@ fun BenchmarkScreen(
                 }
 
                 // Reactor Progress (Hero)
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 32.dp),
-                    contentAlignment = Alignment.Center
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    ReactorProgress(progress = uiState.progress)
-                    
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            text = "${(uiState.progress * 100).toInt()}%",
-                            style = MaterialTheme.typography.displayLarge,
-                            color = MaterialTheme.colorScheme.onBackground,
-                            fontWeight = FontWeight.ExtraBold,
-                            letterSpacing = (-2).sp
-                        )
-                        // Pulsing animation for Warm-up
-                        val infiniteTransition = rememberInfiniteTransition(label = "warmup_pulse")
-                        val pulseAlpha by infiniteTransition.animateFloat(
-                            initialValue = 0.4f,
-                            targetValue = 1f,
-                            animationSpec = infiniteRepeatable(
-                                animation = tween(800),
-                                repeatMode = RepeatMode.Reverse
-                            ),
-                            label = "alpha"
-                        )
+                    Box(
+                        modifier = Modifier
+                            .padding(vertical = 32.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        ReactorProgress(progress = uiState.progress)
+                        
+                        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(horizontal = 40.dp)) {
+                            // 1. Percentage Text
+                            Text(
+                                text = "${(uiState.progress * 100).toInt()}%",
+                                style = MaterialTheme.typography.displayLarge,
+                                color = MaterialTheme.colorScheme.onBackground,
+                                fontWeight = FontWeight.ExtraBold,
+                                letterSpacing = (-2).sp
+                            )
+                            
+                            // Pulsing animation for Warm-up
+                            val infiniteTransition = rememberInfiniteTransition(label = "warmup_pulse")
+                            val pulseAlpha by infiniteTransition.animateFloat(
+                                initialValue = 0.4f,
+                                targetValue = 1f,
+                                animationSpec = infiniteRepeatable(
+                                    animation = tween(800),
+                                    repeatMode = RepeatMode.Reverse
+                                ),
+                                label = "alpha"
+                            )
 
+                            // 2. Status Text ("PROCESSING", "WARMING UP") - "bellow text processing"
+                            Text(
+                                text = when {
+                                    isWarmingUp -> "WARMING UP"
+                                    uiState.isRunning -> "PROCESSING"
+                                    else -> "READY"
+                                },
+                                style = MaterialTheme.typography.labelMedium,
+                                color = if (isWarmingUp) 
+                                            MaterialTheme.colorScheme.tertiary.copy(alpha = pulseAlpha)
+                                        else 
+                                            MaterialTheme.colorScheme.primary,
+                                letterSpacing = 2.sp,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(top = 4.dp)
+                            )
+                        }
+                    }
+
+                    // Time Remaining Text (Below Dial)
+                    if (uiState.isRunning || isWarmingUp) {
                         Text(
-                            text = when {
-                                isWarmingUp -> "WARMING UP..."
-                                uiState.isRunning -> "PROCESSING"
-                                else -> "READY"
-                            },
-                            style = MaterialTheme.typography.labelMedium,
-                            color = if (isWarmingUp) 
-                                        MaterialTheme.colorScheme.tertiary.copy(alpha = pulseAlpha)
-                                    else 
-                                        MaterialTheme.colorScheme.primary,
-                            letterSpacing = 4.sp,
-                            fontWeight = FontWeight.Bold
+                            text = "Estimated Time Remaining: ${uiState.estimatedTimeRemaining}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(bottom = 16.dp)
                         )
                     }
                 }

@@ -513,7 +513,7 @@ fun ResultScreen(
                                         modifier = Modifier.size(18.dp)
                                     )
                                 }
-                                Spacer(modifier = Modifier.width(8.dp))
+                                Spacer(modifier = Modifier.width(16.dp))
                                 IconButton(
                                     onClick = { 
                                         val shareText = formatBenchmarkShareData(context, summary)

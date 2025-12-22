@@ -96,40 +96,33 @@ fun MainNavigation(
                     )
                 }
 
+                // Unified Transitions
+                val enterTransition: androidx.compose.animation.AnimatedContentTransitionScope<androidx.navigation.NavBackStackEntry>.() -> androidx.compose.animation.EnterTransition = {
+                    androidx.compose.animation.fadeIn(animationSpec = androidx.compose.animation.core.tween(400)) +
+                    androidx.compose.animation.scaleIn(initialScale = 0.95f, animationSpec = androidx.compose.animation.core.tween(400, easing = androidx.compose.animation.core.FastOutSlowInEasing))
+                }
+                
+                val exitTransition: androidx.compose.animation.AnimatedContentTransitionScope<androidx.navigation.NavBackStackEntry>.() -> androidx.compose.animation.ExitTransition = {
+                    androidx.compose.animation.fadeOut(animationSpec = androidx.compose.animation.core.tween(400)) +
+                    androidx.compose.animation.scaleOut(targetScale = 0.95f, animationSpec = androidx.compose.animation.core.tween(400, easing = androidx.compose.animation.core.FastOutSlowInEasing))
+                }
+                
+                val popEnterTransition: androidx.compose.animation.AnimatedContentTransitionScope<androidx.navigation.NavBackStackEntry>.() -> androidx.compose.animation.EnterTransition = {
+                    androidx.compose.animation.fadeIn(animationSpec = androidx.compose.animation.core.tween(400)) +
+                    androidx.compose.animation.scaleIn(initialScale = 0.95f, animationSpec = androidx.compose.animation.core.tween(400, easing = androidx.compose.animation.core.FastOutSlowInEasing))
+                }
+                
+                val popExitTransition: androidx.compose.animation.AnimatedContentTransitionScope<androidx.navigation.NavBackStackEntry>.() -> androidx.compose.animation.ExitTransition = {
+                    androidx.compose.animation.fadeOut(animationSpec = androidx.compose.animation.core.tween(400)) +
+                    androidx.compose.animation.scaleOut(targetScale = 0.95f, animationSpec = androidx.compose.animation.core.tween(400, easing = androidx.compose.animation.core.FastOutSlowInEasing))
+                }
+
                 composable(
                     route = "home",
-                    enterTransition = {
-                        androidx.compose.animation.fadeIn(
-                            animationSpec = androidx.compose.animation.core.tween(300)
-                        ) + androidx.compose.animation.scaleIn(
-                            initialScale = 0.95f,
-                            animationSpec = androidx.compose.animation.core.tween(300)
-                        )
-                    },
-                    exitTransition = {
-                        androidx.compose.animation.fadeOut(
-                            animationSpec = androidx.compose.animation.core.tween(300)
-                        ) + androidx.compose.animation.scaleOut(
-                            targetScale = 0.95f,
-                            animationSpec = androidx.compose.animation.core.tween(300)
-                        )
-                    },
-                    popEnterTransition = {
-                        androidx.compose.animation.fadeIn(
-                            animationSpec = androidx.compose.animation.core.tween(300)
-                        ) + androidx.compose.animation.scaleIn(
-                            initialScale = 0.95f,
-                            animationSpec = androidx.compose.animation.core.tween(300)
-                        )
-                    },
-                    popExitTransition = {
-                        androidx.compose.animation.fadeOut(
-                            animationSpec = androidx.compose.animation.core.tween(300)
-                        ) + androidx.compose.animation.scaleOut(
-                            targetScale = 0.95f,
-                            animationSpec = androidx.compose.animation.core.tween(300)
-                        )
-                    }
+                    enterTransition = enterTransition,
+                    exitTransition = exitTransition,
+                    popEnterTransition = popEnterTransition,
+                    popExitTransition = popExitTransition
                 ) {
                     val historyRepository = remember {
                         HistoryRepository(
@@ -145,8 +138,21 @@ fun MainNavigation(
                             hazeState = hazeState // Pass hazeState
                     )
                 }
-                composable("device") { DeviceScreen() }
-                composable("rankings") {
+                composable(
+                    route = "device",
+                    enterTransition = enterTransition,
+                    exitTransition = exitTransition,
+                    popEnterTransition = popEnterTransition,
+                    popExitTransition = popExitTransition
+                ) { DeviceScreen() }
+                
+                composable(
+                    route = "rankings",
+                    enterTransition = enterTransition,
+                    exitTransition = exitTransition,
+                    popEnterTransition = popEnterTransition,
+                    popExitTransition = popExitTransition
+                ) {
                     RankingsScreen(
                         onDeviceClick = { selectedItem ->
                             val encodedData = java.net.URLEncoder.encode(
@@ -159,22 +165,10 @@ fun MainNavigation(
                 }
                 composable(
                     route = "cpu-comparison/{deviceData}",
-                    enterTransition = {
-                        androidx.compose.animation.fadeIn(animationSpec = androidx.compose.animation.core.tween(300)) +
-                        androidx.compose.animation.scaleIn(initialScale = 0.95f, animationSpec = androidx.compose.animation.core.tween(300))
-                    },
-                    exitTransition = {
-                        androidx.compose.animation.fadeOut(animationSpec = androidx.compose.animation.core.tween(300)) +
-                        androidx.compose.animation.scaleOut(targetScale = 0.95f, animationSpec = androidx.compose.animation.core.tween(300))
-                    },
-                    popEnterTransition = {
-                        androidx.compose.animation.fadeIn(animationSpec = androidx.compose.animation.core.tween(300)) +
-                        androidx.compose.animation.scaleIn(initialScale = 0.95f, animationSpec = androidx.compose.animation.core.tween(300))
-                    },
-                    popExitTransition = {
-                        androidx.compose.animation.fadeOut(animationSpec = androidx.compose.animation.core.tween(300)) +
-                        androidx.compose.animation.scaleOut(targetScale = 0.95f, animationSpec = androidx.compose.animation.core.tween(300))
-                    }
+                    enterTransition = enterTransition,
+                    exitTransition = exitTransition,
+                    popEnterTransition = popEnterTransition,
+                    popExitTransition = popExitTransition
                 ) { backStackEntry ->
                     val encodedData = backStackEntry.arguments?.getString("deviceData") ?: "{}"
                     val decodedData = try {
@@ -196,22 +190,10 @@ fun MainNavigation(
                 }
                 composable(
                     route = "history",
-                    enterTransition = {
-                        androidx.compose.animation.fadeIn(animationSpec = androidx.compose.animation.core.tween(300)) +
-                        androidx.compose.animation.scaleIn(initialScale = 0.95f, animationSpec = androidx.compose.animation.core.tween(300))
-                    },
-                    exitTransition = {
-                        androidx.compose.animation.fadeOut(animationSpec = androidx.compose.animation.core.tween(300)) +
-                        androidx.compose.animation.scaleOut(targetScale = 0.95f, animationSpec = androidx.compose.animation.core.tween(300))
-                    },
-                    popEnterTransition = {
-                        androidx.compose.animation.fadeIn(animationSpec = androidx.compose.animation.core.tween(300)) +
-                        androidx.compose.animation.scaleIn(initialScale = 0.95f, animationSpec = androidx.compose.animation.core.tween(300))
-                    },
-                    popExitTransition = {
-                        androidx.compose.animation.fadeOut(animationSpec = androidx.compose.animation.core.tween(300)) +
-                        androidx.compose.animation.scaleOut(targetScale = 0.95f, animationSpec = androidx.compose.animation.core.tween(300))
-                    }
+                    enterTransition = enterTransition,
+                    exitTransition = exitTransition,
+                    popEnterTransition = popEnterTransition,
+                    popExitTransition = popExitTransition
                 ) {
                     val historyViewModel =
                             com.ivarna.finalbenchmark2.di.DatabaseInitializer
@@ -220,22 +202,10 @@ fun MainNavigation(
                 }
                 composable(
                     route = "settings",
-                    enterTransition = {
-                        androidx.compose.animation.fadeIn(animationSpec = androidx.compose.animation.core.tween(300)) +
-                        androidx.compose.animation.scaleIn(initialScale = 0.95f, animationSpec = androidx.compose.animation.core.tween(300))
-                    },
-                    exitTransition = {
-                        androidx.compose.animation.fadeOut(animationSpec = androidx.compose.animation.core.tween(300)) +
-                        androidx.compose.animation.scaleOut(targetScale = 0.95f, animationSpec = androidx.compose.animation.core.tween(300))
-                    },
-                    popEnterTransition = {
-                        androidx.compose.animation.fadeIn(animationSpec = androidx.compose.animation.core.tween(300)) +
-                        androidx.compose.animation.scaleIn(initialScale = 0.95f, animationSpec = androidx.compose.animation.core.tween(300))
-                    },
-                    popExitTransition = {
-                        androidx.compose.animation.fadeOut(animationSpec = androidx.compose.animation.core.tween(300)) +
-                        androidx.compose.animation.scaleOut(targetScale = 0.95f, animationSpec = androidx.compose.animation.core.tween(300))
-                    }
+                    enterTransition = enterTransition,
+                    exitTransition = exitTransition,
+                    popEnterTransition = popEnterTransition,
+                    popExitTransition = popExitTransition
                 ) {
                     SettingsScreen(
                             rootStatus = rootStatus,
@@ -249,7 +219,13 @@ fun MainNavigation(
                     )
                 }
                 // Keep the existing benchmark flow - consolidate into one route
-                composable("benchmark/{preset}") { backStackEntry ->
+                composable(
+                    route = "benchmark/{preset}",
+                    enterTransition = enterTransition,
+                    exitTransition = exitTransition,
+                    popEnterTransition = popEnterTransition,
+                    popExitTransition = popExitTransition
+                ) { backStackEntry ->
                     val preset = backStackEntry.arguments?.getString("preset") ?: "Auto"
                     val historyRepository =
                             com.ivarna.finalbenchmark2.data.repository.HistoryRepository(
@@ -273,22 +249,10 @@ fun MainNavigation(
                 }
                 composable(
                     route = "result/{summaryJson}",
-                    enterTransition = {
-                        androidx.compose.animation.fadeIn(animationSpec = androidx.compose.animation.core.tween(300)) +
-                        androidx.compose.animation.scaleIn(initialScale = 0.95f, animationSpec = androidx.compose.animation.core.tween(300))
-                    },
-                    exitTransition = {
-                        androidx.compose.animation.fadeOut(animationSpec = androidx.compose.animation.core.tween(300)) +
-                        androidx.compose.animation.scaleOut(targetScale = 0.95f, animationSpec = androidx.compose.animation.core.tween(300))
-                    },
-                    popEnterTransition = {
-                        androidx.compose.animation.fadeIn(animationSpec = androidx.compose.animation.core.tween(300)) +
-                        androidx.compose.animation.scaleIn(initialScale = 0.95f, animationSpec = androidx.compose.animation.core.tween(300))
-                    },
-                    popExitTransition = {
-                        androidx.compose.animation.fadeOut(animationSpec = androidx.compose.animation.core.tween(300)) +
-                        androidx.compose.animation.scaleOut(targetScale = 0.95f, animationSpec = androidx.compose.animation.core.tween(300))
-                    }
+                    enterTransition = enterTransition,
+                    exitTransition = exitTransition,
+                    popEnterTransition = popEnterTransition,
+                    popExitTransition = popExitTransition
                 ) { backStackEntry ->
                     val encodedSummaryJson =
                             backStackEntry.arguments?.getString("summaryJson") ?: "{}"
@@ -325,7 +289,13 @@ fun MainNavigation(
                             hazeState = hazeState
                     )
                 }
-                composable("detailed-results/{summaryJson}") { backStackEntry ->
+                composable(
+                    route = "detailed-results/{summaryJson}",
+                    enterTransition = enterTransition,
+                    exitTransition = exitTransition,
+                    popEnterTransition = popEnterTransition,
+                    popExitTransition = popExitTransition
+                ) { backStackEntry ->
                     val encodedSummaryJson =
                             backStackEntry.arguments?.getString("summaryJson") ?: "{}"
                     // URL-decode the JSON to handle special characters properly
