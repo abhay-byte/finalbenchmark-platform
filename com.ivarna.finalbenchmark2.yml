@@ -15,7 +15,7 @@ Binaries: https://github.com/abhay-byte/finalbenchmark-platform/releases/downloa
 Builds:
   - versionName: 0.5.1
     versionCode: 6
-    commit: 4dec6aaf43f1a7020b3b5b7fa217765a04c988a9
+    commit: 715174920a27faa27fe1d940d591c1fc8f9bf5c2
     subdir: app
     sudo:
       - apt-get update
