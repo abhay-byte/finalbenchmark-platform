@@ -76,6 +76,11 @@ android {
         includeInBundle = false
     }
 
+    // Signing configuration for release builds
+    signingConfigs {
+        create("release") { storeFile = file("../keystore/my-release-key.keystore") }
+    }
+
     buildTypes {
         debug {
             isDebuggable = true
@@ -94,28 +99,7 @@ android {
                 resources.excludes.add("**.prof")
                 resources.excludes.add("assets/dexopt/baseline.prof")
             }
-        }
-
-        // Signing configuration for release builds
-        signingConfigs {
-            create("release") { storeFile = file("../keystore/my-release-key.keystore") }
-        }
-
-        buildTypes {
-            debug {
-                isDebuggable = true
-                isJniDebuggable = false
-                packaging { resources.excludes.add("META-INF/**") }
-            }
-            release {
-                isMinifyEnabled = false
-                proguardFiles(
-                        getDefaultProguardFile("proguard-android-optimize.txt"),
-                        "proguard-rules.pro"
-                )
-                packaging { resources.excludes.add("META-INF/**") }
-                signingConfig = signingConfigs.getByName("release")
-            }
+            signingConfig = signingConfigs.getByName("release")
         }
     }
     compileOptions {
