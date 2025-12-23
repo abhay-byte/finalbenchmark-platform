@@ -161,36 +161,26 @@ fun BenchmarkScreen(
             // Strict centering logic
             val singleCoreCount = uiState.testStates.count { !it.name.startsWith("Multi-Core", ignoreCase = true) }
             
-            // Calculate list index (Offset 0 per user request):
-            // Header Single (index 0)
-            // Single Items (indices 1 to 1+SingleCount-1)
-            // Spacer (index 1+SingleCount)
-            // Header Multi (index 1+SingleCount+1)
-            // Multi Items (indices 1+SingleCount+2 to End)
-            
-            val listIndex = if (activeIndex < singleCoreCount) {
-                // User requested offset 0 or -1. Using 0 (activeIndex).
-                // This effectively targets the item *before* the active one (or header).
-                maxOf(0, activeIndex)
+            // Calculate list index (Offset -5 per user request):
+            val baseListIndex = if (activeIndex < singleCoreCount) {
+                // Header (1) + activeIndex
+                1 + activeIndex
             } else {
-                // Header S (1) + SingleCount + Spacer (1) + Header M (1) + (activeIndex - SingleCount) - 1 (Offset)
-                // = 2 + activeIndex
-                2 + activeIndex
+                // Header S (1) + SingleCount + Spacer (1) + Header M (1) + (activeIndex - SingleCount)
+                // = 3 + activeIndex
+                3 + activeIndex
             }
-
-            val viewportHeight = scrollState.layoutInfo.viewportSize.height
-            if (viewportHeight > 0) {
-            	// Estimate item height
-            	val estimatedItemHeightPx = with(density) { 72.dp.toPx() }
             
-                // Target center of item to center of viewport
-                val targetOffset = (viewportHeight / 2) - (estimatedItemHeightPx / 2).toInt()
-                
-                scrollState.animateScrollToItem(
-                    index = listIndex,
-                    scrollOffset = targetOffset 
-                )
-            }
+            // Apply offset -2 (User Report: "-3 was showing 1 benchmark behind")
+            // Trend: -5 (2 behind) -> -3 (1 behind) -> -2 (Should be centered/active).
+            // By scrolling (Active - 2) to the top, Active becomes the 3rd item visible.
+            val targetListIndex = maxOf(0, baseListIndex - 2)
+
+            // Simple scroll to top of the target item. 
+            scrollState.animateScrollToItem(
+                index = targetListIndex,
+                scrollOffset = 0 
+            )
         }
     }
 

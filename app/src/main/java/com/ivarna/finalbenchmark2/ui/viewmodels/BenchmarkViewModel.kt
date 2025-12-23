@@ -201,12 +201,12 @@ class BenchmarkViewModel(
                                                     
                                                     // If explicit "Wait..." needed when 0 but still running:
                                                     if (currentCountdownSeconds == 0) {
-                                                        // Only say "Finalizing" if we are actually at the very end (last 5%)
-                                                        if (currentState.progress > 0.95f) {
+                                                        // User requested: Keep at 00:00.
+                                                        // Only show "Finalizing..." if we are unreasonably far (99%)
+                                                        if (currentState.progress > 0.99f) {
                                                             timeRemainingStr = "Finalizing..."
                                                         } else {
-                                                            // Time ran out but still working
-                                                            timeRemainingStr = "Processing..."
+                                                            timeRemainingStr = "00:00"
                                                         }
                                                     }
                                                     
@@ -382,10 +382,24 @@ class BenchmarkViewModel(
                                                         // Normal benchmark event handling (SINGLE and MULTI modes)
                                                         when (event.state) {
                                                                 "STARTED" -> {
-                                                                        // Tests have started, end warm-up state
                                                                         if (_isWarmingUp.value) {
                                                                             _isWarmingUp.value = false
                                                                         }
+                                                                        
+                                                                        // RECALCULATE TIMER if needed
+                                                                        val remainingTests = _uiState.value.testStates.count { it.status == TestStatus.PENDING }
+                                                                        // Simple heuristic: If 00:00 (or close), add time based on remaining count
+                                                                        if (currentCountdownSeconds < 5 && remainingTests > 0) {
+                                                                             val timePerTest = when (preset.lowercase()) {
+                                                                                 "flagship" -> 10 // 10s per test (20 tests = 200s total was estimate)
+                                                                                 "mid" -> 6
+                                                                                 "slow" -> 3
+                                                                                 else -> 6
+                                                                             }
+                                                                             currentCountdownSeconds += (remainingTests * timePerTest)
+                                                                             Log.d("BenchmarkViewModel", "Timer extended by ${remainingTests * timePerTest}s")
+                                                                        }
+
                                                                         _uiState.update { state ->
                                                                                 state.copy(
                                                                                         currentTestName =
