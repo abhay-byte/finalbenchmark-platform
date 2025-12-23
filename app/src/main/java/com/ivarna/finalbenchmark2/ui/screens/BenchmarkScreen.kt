@@ -325,7 +325,8 @@ fun BenchmarkScreen(
                             Text(
                                 text = when {
                                     isWarmingUp -> "WARMING UP"
-                                    uiState.isRunning -> "PROCESSING"
+                                    // Show PROCESSING if running OR if we have intermediate progress (to handle state edge cases)
+                                    uiState.isRunning || (uiState.progress > 0f && uiState.progress < 1f) -> "PROCESSING"
                                     else -> "READY"
                                 },
                                 style = MaterialTheme.typography.labelMedium,
