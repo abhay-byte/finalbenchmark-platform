@@ -122,8 +122,10 @@ fun DeviceScreen(viewModel: DeviceViewModel = androidx.lifecycle.viewmodel.compo
                                         modifier =
                                                 Modifier.fillMaxWidth()
                                                         .padding(
-                                                                horizontal = 16.dp,
-                                                                vertical = 8.dp
+                                                                start = 16.dp,
+                                                                end = 16.dp,
+                                                                top = 24.dp, // Increased top spacing
+                                                                bottom = 8.dp
                                                         ),
                                         shape =
                                                 androidx.compose.foundation.shape
@@ -157,6 +159,7 @@ fun DeviceScreen(viewModel: DeviceViewModel = androidx.lifecycle.viewmodel.compo
                                         ) {
                                                 tabs.forEachIndexed { index, title ->
                                                         Tab(
+                                                                modifier = Modifier.height(72.dp), // Increased height (width of bar) by 1.5x
                                                                 selected =
                                                                         pagerState.currentPage ==
                                                                                 index,
