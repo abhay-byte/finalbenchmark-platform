@@ -1,7 +1,7 @@
 package com.ivarna.finalbenchmark2.ui.viewmodels
 
 import android.content.Context
-import android.util.Log
+
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -51,6 +51,8 @@ class HistoryViewModel(private val repository: HistoryRepository) : ViewModel() 
                             rawList,
                             category,
                             sort ->
+                        
+                        
                         val list =
                                 rawList.map { benchmark ->
                                     // Parse detailed results from JSON string if available
@@ -78,10 +80,7 @@ class HistoryViewModel(private val repository: HistoryRepository) : ViewModel() 
                                                     emptyList()
                                                 }
                                             } catch (e: Exception) {
-                                                Log.e(
-                                                        "HistoryViewModel",
-                                                        "Error parsing detailed results JSON: ${e.message}"
-                                                )
+
                                                 emptyList()
                                             }
 
@@ -125,15 +124,19 @@ class HistoryViewModel(private val repository: HistoryRepository) : ViewModel() 
                                 }
 
                         // Return appropriate state based on the results
-                        if (sortedList.isEmpty()) {
+                        val finalState = if (sortedList.isEmpty()) {
                             HistoryScreenState.Empty
                         } else {
                             HistoryScreenState.Success(sortedList)
                         }
+                        
+                        
+                        
+                        finalState
                     }
                     .stateIn(
                             scope = viewModelScope,
-                            started = SharingStarted.WhileSubscribed(5000),
+                            started = SharingStarted.Lazily,
                             initialValue = HistoryScreenState.Loading
                     )
 

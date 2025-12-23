@@ -260,9 +260,12 @@ fun MainNavigation(
                     popEnterTransition = popEnterTransition,
                     popExitTransition = popExitTransition
                 ) {
-                    val historyViewModel =
-                            com.ivarna.finalbenchmark2.di.DatabaseInitializer
-                                    .createHistoryViewModel(context)
+                    val historyViewModel: com.ivarna.finalbenchmark2.ui.viewmodels.HistoryViewModel =
+                            viewModel(
+                                    factory =
+                                            com.ivarna.finalbenchmark2.di.DatabaseInitializer
+                                                    .HistoryViewModelFactory(context)
+                            )
                     HistoryScreen(viewModel = historyViewModel, navController = navController)
                 }
                 composable(

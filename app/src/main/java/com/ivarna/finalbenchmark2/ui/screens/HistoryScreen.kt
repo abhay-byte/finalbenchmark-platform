@@ -166,6 +166,9 @@ fun formatSortName(sort: HistorySort): String {
 @Composable
 fun HistoryScreen(viewModel: HistoryViewModel, navController: NavController) {
     val screenState by viewModel.screenState.collectAsState()
+    
+
+
     val selectedCategory by viewModel.selectedCategory.collectAsState()
     val sortOption by viewModel.sortOption.collectAsState()
     val formatter = SimpleDateFormat("MMM dd, yyyy • HH:mm", Locale.getDefault())
