@@ -155,49 +155,41 @@ fun BenchmarkScreen(
     }
 
     // Handle Scroll to active item - Center it!
+    // Handle Scroll to active item - Center it!
+    val density = LocalDensity.current
     val activeIndex = uiState.testStates.indexOfFirst { it.status == TestStatus.RUNNING }
     LaunchedEffect(activeIndex) {
         if (activeIndex >= 0) {
-            // Estimate item height + header offset to center it. 
-            // A more robust way is getting layout info, but a rough offset works well for fixed-ish height items.
-            // TimelineTestRow is approx 60-80dp? Let's aim for center.
-            // Scroll offset logic: Center of screen approx 400dp down (depending on screen).
-            // We want the item to be valid in the "sweet spot" of the curve.
+            // REDO: Auto-scroll Logic
+            // We want strict centering.
             
-            // Note: LazyList auto-handling of indices with headers is tricky. 
-            // We need to account for the header "SINGLE CORE OPERATIONS" (index 0).
-            // Single core items start at index 1.
-            // Using the key or finding the exact list index is safer if we had keys.
-            // For now, let's just use the index mapping logic used in the LazyColumn below.
+            // Calculate Correct List Index:
+            // 6 dots at start (indices 0-5)
+            // Header Single (index 6)
+            // Single Items (indices 7 to 7+SingleCount-1)
+            // Spacer (index 7+SingleCount)
+            // Header Multi (index 7+SingleCount+1)
+            // Multi Items (indices 7+SingleCount+2 to End)
             
             val singleCoreCount = uiState.testStates.count { !it.name.startsWith("Multi-Core", ignoreCase = true) }
             
-            // Calculate list index:
-            // 0: Header Single
-            // 1..N: Single items
-            // N+1: Spacer
-            // N+2: Header Multi
-            // N+3..End: Multi items
-            
             val listIndex = if (activeIndex < singleCoreCount) {
-                // 6 dots + 1 header + itemIndex
-                activeIndex + 7 
+                // It's a single core item.
+                // Index = 6 (dots) + 1 (header) + activeIndex
+                7 + activeIndex 
             } else {
-                // 6 dots + 1 header + N single + 1 spacer + 1 header + (activeIndex - N)
-                // = activeIndex + 9
-                activeIndex + 9
+                // It's a multi core item.
+                // Index = 6 (dots) + 1 (header) + SingleCount + 1 (Spacer) + 1 (Header) + (activeIndex - SingleCount)
+                // = 9 + activeIndex
+                9 + activeIndex
             }
 
-            // Animate scroll with an offset to center the item
-            // scrollToItem(index, offset): offset is pixels from the start of the viewport.
-            // Target exact center (50% down)
-            val density = LocalDensity.current
             val viewportHeight = scrollState.layoutInfo.viewportSize.height
             
             // Only scroll if layout is ready and we have a valid height
             if (viewportHeight > 0) {
-            	// Estimate item height (roughly 60dp for a row)
-            	val estimatedItemHeightPx = with(density) { 60.dp.toPx() }
+            	// Estimate item height (roughly 72dp for the new glass row + padding)
+            	val estimatedItemHeightPx = with(density) { 72.dp.toPx() }
             
                 // Target center of item to center of viewport
                 // Offset = (ViewportCenter) - (ItemHalfHeight)
@@ -350,13 +342,10 @@ fun BenchmarkScreen(
                     }
 
                     // Time Remaining Text (Below Dial)
+                    // Time Remaining Text (Below Dial)
                     if (uiState.isRunning || isWarmingUp) {
-                        Text(
-                            text = "Estimated Time Remaining: ${uiState.estimatedTimeRemaining}",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(bottom = 16.dp)
-                        )
+                        GlassTimerPill(timeText = uiState.estimatedTimeRemaining)
+                        Spacer(modifier = Modifier.height(24.dp))
                     }
                 }
 
@@ -561,10 +550,19 @@ fun TimelineTestRow(test: TestState) {
     val isRunning = test.status == TestStatus.RUNNING
     val isCompleted = test.status == TestStatus.COMPLETED
     
-    val rowBackgroundColor = if (isRunning) {
-        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+    // Glassy Highlight for Running State
+    val rowModifier = if (isRunning) {
+        Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp, horizontal = 12.dp) // Add spacing for the card
+            .clip(RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.15f)) // Glass tint
+            .border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f), RoundedCornerShape(16.dp))
     } else {
-        Color.Transparent
+        Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp) // Maintain vertical spacing
+            .background(Color.Transparent)
     }
 
     // Animation for running state
@@ -598,11 +596,9 @@ fun TimelineTestRow(test: TestState) {
     }
 
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(rowBackgroundColor)
-            .padding(start = 16.dp, top = 12.dp, bottom = 12.dp) // Reduced start padding
-            .padding(end = 16.dp), // Reduced extra end padding as translation is smaller now
+        modifier = rowModifier
+            .padding(start = 16.dp, top = 12.dp, bottom = 12.dp)
+            .padding(end = 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         // Status Icon
