@@ -115,13 +115,13 @@ class HistoryViewModel(private val repository: HistoryRepository) : ViewModel() 
                         val sortedList =
                                 when (sort) {
                                     HistorySort.DATE_NEWEST ->
-                                            filteredList.sortedByDescending { it.timestamp }
+                                            filteredList.sortedWith(compareByDescending<HistoryUiModel> { it.timestamp }.thenByDescending { it.id })
                                     HistorySort.DATE_OLDEST ->
-                                            filteredList.sortedBy { it.timestamp }
+                                            filteredList.sortedWith(compareBy<HistoryUiModel> { it.timestamp }.thenBy { it.id })
                                     HistorySort.SCORE_HIGH_TO_LOW ->
-                                            filteredList.sortedByDescending { it.finalScore }
+                                            filteredList.sortedWith(compareByDescending<HistoryUiModel> { it.finalScore }.thenByDescending { it.id })
                                     HistorySort.SCORE_LOW_TO_HIGH ->
-                                            filteredList.sortedBy { it.finalScore }
+                                            filteredList.sortedWith(compareBy<HistoryUiModel> { it.finalScore }.thenBy { it.id })
                                 }
 
                         // Return appropriate state based on the results

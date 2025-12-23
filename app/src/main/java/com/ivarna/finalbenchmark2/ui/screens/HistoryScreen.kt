@@ -235,7 +235,10 @@ fun HistoryScreen(viewModel: HistoryViewModel, navController: NavController) {
                                     contentPadding = PaddingValues(bottom = 120.dp), // Bottom padding for list
                                     verticalArrangement = Arrangement.spacedBy(16.dp)
                             ) {
-                                itemsIndexed(state.results) { index, result ->
+                                itemsIndexed(
+                                    items = state.results,
+                                    key = { _, result -> result.id }
+                                ) { index, result ->
                                     BenchmarkHistoryItem(
                                             result = result,
                                             timestampFormatter = formatter,
