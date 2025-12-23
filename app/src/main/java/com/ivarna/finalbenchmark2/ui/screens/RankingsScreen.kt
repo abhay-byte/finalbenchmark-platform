@@ -111,7 +111,7 @@ fun RankingsScreen(
 
             // Content
             val state = screenState
-            Box(modifier = Modifier.fillMaxSize()) {
+            Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
                 when (state) {
                     is RankingScreenState.Loading -> {
                         LoadingContent()
@@ -411,49 +411,11 @@ private fun RankingItemCard(
 private fun ComingSoonContent(
     category: String
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(32.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Box(
-            modifier = Modifier
-                .size(100.dp)
-                .background(
-                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                    CircleShape
-                ),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = Icons.Rounded.EmojiEvents, // Trophy icon
-                contentDescription = "Coming Soon",
-                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
-                modifier = Modifier.size(48.dp)
-            )
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        Text(
-            text = "Coming Soon",
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface,
-            textAlign = TextAlign.Center
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Text(
-            text = "$category rankings will be available in a future update.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center
-        )
-    }
+    com.ivarna.finalbenchmark2.ui.components.EmptyStateView(
+        icon = Icons.Rounded.EmojiEvents,
+        title = "Coming Soon",
+        message = "$category rankings will be available in a future update."
+    )
 }
 
 @Composable

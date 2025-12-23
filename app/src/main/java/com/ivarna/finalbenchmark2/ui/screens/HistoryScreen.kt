@@ -213,90 +213,57 @@ fun HistoryScreen(viewModel: HistoryViewModel, navController: NavController) {
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                when (val state = screenState) {
-                    is HistoryScreenState.Loading -> {
-                        Box(
-                                modifier = Modifier.fillMaxSize(),
-                                contentAlignment = Alignment.Center
-                        ) { CircularProgressIndicator() }
-                    }
-                    is HistoryScreenState.Empty -> {
-                        Box(
-                                modifier = Modifier.fillMaxSize().padding(32.dp),
-                                contentAlignment = Alignment.Center
-                        ) {
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.Center
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(100.dp)
-                                        .background(
-                                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                                            CircleShape
-                                        ),
+                Box(modifier = Modifier.weight(1f)) {
+                    when (val state = screenState) {
+                        is HistoryScreenState.Loading -> {
+                            Box(
+                                    modifier = Modifier.fillMaxSize(),
                                     contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Rounded.History, // Changed icon
-                                        contentDescription = "No history",
-                                        modifier = Modifier.size(48.dp),
-                                        tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
+                            ) { CircularProgressIndicator() }
+                        }
+                        is HistoryScreenState.Empty -> {
+                            com.ivarna.finalbenchmark2.ui.components.EmptyStateView(
+                                icon = Icons.Rounded.History,
+                                title = "No Benchmarks Yet",
+                                message = "Run a benchmark to see your results history here."
+                            )
+                        }
+                        is HistoryScreenState.Success -> {
+                            LazyColumn(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentPadding = PaddingValues(bottom = 120.dp), // Bottom padding for list
+                                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                            ) {
+                                items(state.results) { result ->
+                                    BenchmarkHistoryItem(
+                                            result = result,
+                                            timestampFormatter = formatter,
+                                            onItemClick = {
+                                                // Convert detailed results to JSON using Gson
+                                                val gson = Gson()
+                                                val detailedResultsJson =
+                                                        gson.toJson(result.detailedResults)
+
+                                                val summaryJson =
+                                                        """
+                                                {
+                                                    "single_core_score": ${result.singleCoreScore},
+                                                    "multi_core_score": ${result.multiCoreScore},
+                                                    "final_score": ${result.finalScore},
+                                                    "normalized_score": ${result.normalizedScore},
+                                                    "timestamp": ${result.timestamp},
+                                                    "benchmark_id": ${result.id},
+                                                    "performance_metrics": ${if (result.performanceMetricsJson.isNotEmpty()) result.performanceMetricsJson else "{}"},
+                                                    "detailed_results": $detailedResultsJson
+                                                }
+                                            """.trimIndent()
+
+                                                val encodedJson =
+                                                        java.net.URLEncoder.encode(summaryJson, "UTF-8")
+                                                navController.navigate("result/$encodedJson")
+                                            }
                                     )
                                 }
-                                Spacer(modifier = Modifier.height(24.dp))
-                                Text(
-                                        text = "No Benchmarks Yet",
-                                        style = MaterialTheme.typography.headlineSmall,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.onSurface
-                                )
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text(
-                                        text = "Run a benchmark to see your results history here.",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        textAlign = TextAlign.Center,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-                    }
-                    is HistoryScreenState.Success -> {
-                        LazyColumn(
-                                modifier = Modifier.fillMaxSize(),
-                                contentPadding = PaddingValues(bottom = 120.dp), // Bottom padding for list
-                                verticalArrangement = Arrangement.spacedBy(16.dp)
-                        ) {
-                            items(state.results) { result ->
-                                BenchmarkHistoryItem(
-                                        result = result,
-                                        timestampFormatter = formatter,
-                                        onItemClick = {
-                                            // Convert detailed results to JSON using Gson
-                                            val gson = Gson()
-                                            val detailedResultsJson =
-                                                    gson.toJson(result.detailedResults)
-
-                                            val summaryJson =
-                                                    """
-                                            {
-                                                "single_core_score": ${result.singleCoreScore},
-                                                "multi_core_score": ${result.multiCoreScore},
-                                                "final_score": ${result.finalScore},
-                                                "normalized_score": ${result.normalizedScore},
-                                                "timestamp": ${result.timestamp},
-                                                "benchmark_id": ${result.id},
-                                                "performance_metrics": ${if (result.performanceMetricsJson.isNotEmpty()) result.performanceMetricsJson else "{}"},
-                                                "detailed_results": $detailedResultsJson
-                                            }
-                                        """.trimIndent()
-
-                                            val encodedJson =
-                                                    java.net.URLEncoder.encode(summaryJson, "UTF-8")
-                                            navController.navigate("result/$encodedJson")
-                                        }
-                                )
                             }
                         }
                     }
