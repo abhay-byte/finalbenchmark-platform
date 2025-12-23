@@ -189,10 +189,9 @@ fun BenchmarkScreen(
 
             // Animate scroll with an offset to center the item
             // scrollToItem(index, offset): offset is pixels from the start of the viewport.
-            // To center: offset = (ViewportHeight / 2) - (ApproxItemHalfHeight)
+            // Target upper-middle area (1/3rd down) to be safe
             val viewportHeight = scrollState.layoutInfo.viewportSize.height
-            val estimatedItemHeightPx = 150 
-            val targetOffset = (viewportHeight / 2) - (estimatedItemHeightPx / 2)
+            val targetOffset = (viewportHeight / 3)
             
             scrollState.animateScrollToItem(
                 index = listIndex,
@@ -355,6 +354,7 @@ fun BenchmarkScreen(
                     contentPadding = PaddingValues(bottom = 150.dp, top = 24.dp), // Added top padding
                     modifier = Modifier
                         .fillMaxWidth()
+                        .weight(1f) // Ensure it takes up remaining space correctly
                         .onGloballyPositioned { listCoordinates = it }
                 ) {
                     val singleCoreTests = uiState.testStates.filter { !it.name.startsWith("Multi-Core", ignoreCase = true) }
