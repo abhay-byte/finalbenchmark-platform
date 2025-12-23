@@ -96,25 +96,90 @@ fun MainNavigation(
                     )
                 }
 
-                // Unified Transitions
+                // Unified Transitions - Optimized Slide
+                val commonSpec = androidx.compose.animation.core.tween<androidx.compose.ui.unit.IntOffset>(
+                    durationMillis = 350,
+                    easing = androidx.compose.animation.core.FastOutSlowInEasing
+                )
+
+                // Helper to determine screen index for sliding direction
+                fun getRouteIndex(route: String?): Int {
+                    return when (route) {
+                        "home" -> 0
+                        "device" -> 1
+                        "rankings" -> 2
+                        "history" -> 3
+                        else -> -1
+                    }
+                }
+
                 val enterTransition: androidx.compose.animation.AnimatedContentTransitionScope<androidx.navigation.NavBackStackEntry>.() -> androidx.compose.animation.EnterTransition = {
-                    androidx.compose.animation.fadeIn(animationSpec = androidx.compose.animation.core.tween(400)) +
-                    androidx.compose.animation.scaleIn(initialScale = 0.95f, animationSpec = androidx.compose.animation.core.tween(400, easing = androidx.compose.animation.core.FastOutSlowInEasing))
+                    val initialIndex = getRouteIndex(initialState.destination.route)
+                    val targetIndex = getRouteIndex(targetState.destination.route)
+                    
+                    if (initialIndex != -1 && targetIndex != -1) {
+                        // Tab to Tab
+                        if (targetIndex > initialIndex) {
+                            androidx.compose.animation.slideInHorizontally(initialOffsetX = { it }, animationSpec = commonSpec)
+                        } else {
+                            androidx.compose.animation.slideInHorizontally(initialOffsetX = { -it }, animationSpec = commonSpec)
+                        }
+                    } else {
+                        // To Detail or others
+                        androidx.compose.animation.slideInHorizontally(initialOffsetX = { it }, animationSpec = commonSpec)
+                    }
                 }
                 
                 val exitTransition: androidx.compose.animation.AnimatedContentTransitionScope<androidx.navigation.NavBackStackEntry>.() -> androidx.compose.animation.ExitTransition = {
-                    androidx.compose.animation.fadeOut(animationSpec = androidx.compose.animation.core.tween(400)) +
-                    androidx.compose.animation.scaleOut(targetScale = 0.95f, animationSpec = androidx.compose.animation.core.tween(400, easing = androidx.compose.animation.core.FastOutSlowInEasing))
+                    val initialIndex = getRouteIndex(initialState.destination.route)
+                    val targetIndex = getRouteIndex(targetState.destination.route)
+                    
+                    if (initialIndex != -1 && targetIndex != -1) {
+                         // Tab to Tab
+                        if (targetIndex > initialIndex) {
+                            androidx.compose.animation.slideOutHorizontally(targetOffsetX = { -it }, animationSpec = commonSpec)
+                        } else {
+                            androidx.compose.animation.slideOutHorizontally(targetOffsetX = { it }, animationSpec = commonSpec)
+                        }
+                    } else {
+                        // From Detail or others
+                        androidx.compose.animation.slideOutHorizontally(targetOffsetX = { -it }, animationSpec = commonSpec)
+
+                    }
                 }
                 
                 val popEnterTransition: androidx.compose.animation.AnimatedContentTransitionScope<androidx.navigation.NavBackStackEntry>.() -> androidx.compose.animation.EnterTransition = {
-                    androidx.compose.animation.fadeIn(animationSpec = androidx.compose.animation.core.tween(400)) +
-                    androidx.compose.animation.scaleIn(initialScale = 0.95f, animationSpec = androidx.compose.animation.core.tween(400, easing = androidx.compose.animation.core.FastOutSlowInEasing))
+                    val initialIndex = getRouteIndex(initialState.destination.route)
+                    val targetIndex = getRouteIndex(targetState.destination.route)
+                    
+                    if (initialIndex != -1 && targetIndex != -1) {
+                         // Back within Tabs (if applicable)
+                        if (targetIndex > initialIndex) {
+                             androidx.compose.animation.slideInHorizontally(initialOffsetX = { it }, animationSpec = commonSpec)
+                        } else {
+                             androidx.compose.animation.slideInHorizontally(initialOffsetX = { -it }, animationSpec = commonSpec)
+                        }
+                    } else {
+                         // Back from Detail
+                        androidx.compose.animation.slideInHorizontally(initialOffsetX = { -it }, animationSpec = commonSpec)
+                    }
                 }
                 
                 val popExitTransition: androidx.compose.animation.AnimatedContentTransitionScope<androidx.navigation.NavBackStackEntry>.() -> androidx.compose.animation.ExitTransition = {
-                    androidx.compose.animation.fadeOut(animationSpec = androidx.compose.animation.core.tween(400)) +
-                    androidx.compose.animation.scaleOut(targetScale = 0.95f, animationSpec = androidx.compose.animation.core.tween(400, easing = androidx.compose.animation.core.FastOutSlowInEasing))
+                    val initialIndex = getRouteIndex(initialState.destination.route)
+                    val targetIndex = getRouteIndex(targetState.destination.route)
+                    
+                    if (initialIndex != -1 && targetIndex != -1) {
+                         // Back within Tabs
+                        if (targetIndex > initialIndex) {
+                             androidx.compose.animation.slideOutHorizontally(targetOffsetX = { -it }, animationSpec = commonSpec)
+                        } else {
+                             androidx.compose.animation.slideOutHorizontally(targetOffsetX = { it }, animationSpec = commonSpec)
+                        }
+                    } else {
+                        // Back from Detail (Detail leaving)
+                        androidx.compose.animation.slideOutHorizontally(targetOffsetX = { it }, animationSpec = commonSpec)
+                    }
                 }
 
                 composable(
