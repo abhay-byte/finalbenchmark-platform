@@ -230,7 +230,8 @@ fun CpuComparisonScreen(
                             benchmark = benchmark,
                             userDeviceName = userDevice?.name ?: "Your Device",
                             selectedDeviceName = selectedDevice.name,
-                            delayMillis = singleCoreBaseDelay + (index * 50)
+                            // Cap stagger at index 4 (200ms max stagger) so off-screen items appear quickly
+                            delayMillis = singleCoreBaseDelay + (minOf(index, 4) * 50)
                         )
                     }
                     
@@ -245,14 +246,16 @@ fun CpuComparisonScreen(
                         )
                     }
                     
-                    val multiCoreBaseDelay = singleCoreBaseDelay + (singleCoreBenchmarks.size * 50) + 100
+                    // Independent base delay, not waiting for entire single-core list
+                    val multiCoreBaseDelay = 100 
                     val multiCoreBenchmarks = getMultiCoreBenchmarkItems(userDevice, selectedDevice)
                     itemsIndexed(multiCoreBenchmarks) { index, benchmark ->
                         BenchmarkComparisonCard(
                             benchmark = benchmark,
                             userDeviceName = userDevice?.name ?: "Your Device",
                             selectedDeviceName = selectedDevice.name,
-                            delayMillis = multiCoreBaseDelay + (index * 50)
+                            // Cap stagger at index 4
+                            delayMillis = multiCoreBaseDelay + (minOf(index, 4) * 50)
                         )
                     }
                 }
