@@ -11,6 +11,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeChild
+import dev.chrisbanes.haze.haze
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
@@ -73,7 +74,9 @@ fun DeviceScreen(
         val deviceInfo by viewModel.deviceInfo.collectAsState()
         
         // Local HazeState for this screen to avoid conflict with parent HazeState
+        // Local HazeState for this screen to avoid conflict with parent HazeState
         val deviceScreenHazeState = remember { HazeState() }
+        val blurBackgroundColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f)
 
         // Initialize the ViewModel with context
         LaunchedEffect(context) {
@@ -111,7 +114,7 @@ fun DeviceScreen(
                                                                 ),
                                                         radius = 1000f
                                                 )
-                                ) {
+                                )) {
                         // Main Content Layer (Source for Blur)
                         Box(
                             modifier = Modifier
@@ -128,14 +131,18 @@ fun DeviceScreen(
                                             modifier = Modifier.weight(1f) // Fill remaining space
                                     ) { page ->
                                             when (page) {
-                                                    0 -> DeviceInfoTab(deviceInfo)
-                                                    1 -> CpuTab(deviceInfo)
+                                                    0 -> InfoTab(deviceInfo, viewModel)
+                                                    1 -> CpuTab(deviceInfo, viewModel)
                                                     2 -> GpuTab(deviceInfo)
-                                                    3 -> MemoryTab(deviceInfo)
-                                                    4 -> DisplayTab(deviceInfo)
-                                                    5 -> OperatingSystemTab(deviceInfo)
-                                                    6 -> HardwareTab(deviceInfo)
-                                                    7 -> SensorsTab(deviceInfo)
+                                                    3 -> MemoryTab(deviceInfo, viewModel)
+                                                    4 -> ScreenTab(context)
+                                                    5 -> OsTab(deviceInfo)
+                                                    6 -> {
+                                                            val hardwareViewModel: HardwareViewModel =
+                                                                    viewModel()
+                                                            HardwareTabContent(hardwareViewModel)
+                                                    }
+                                                    7 -> SensorsTab(context)
                                             }
                                     }
                             }
@@ -198,92 +205,34 @@ fun DeviceScreen(
                                         ) {
                                                 tabs.forEachIndexed { index, title ->
                                                         Tab(
-                                                                modifier = Modifier.height(58.dp), // Reduced height (-20% from 72dp)
-                                                                selected =
-                                                                        pagerState.currentPage ==
-                                                                                index,
+                                                                modifier = Modifier.height(58.dp),
+                                                                selected = pagerState.currentPage == index,
                                                                 onClick = {
-                                                                        coroutineScope.launch {
-                                                                                pagerState
-                                                                                        .animateScrollToPage(
-                                                                                                index
-                                                                                        )
-                                                                        }
+                                                                    coroutineScope.launch {
+                                                                        pagerState.animateScrollToPage(index)
+                                                                    }
                                                                 },
                                                                 text = {
-                                                                        Text(
-                                                                                text = title,
-                                                                                maxLines = 1,
-                                                                                style =
-                                                                                        if (pagerState
-                                                                                                        .currentPage ==
-                                                                                                        index
-                                                                                        )
-                                                                                                MaterialTheme
-                                                                                                        .typography
-                                                                                                        .titleSmall
-                                                                                                        .copy(
-                                                                                                                fontWeight =
-                                                                                                                        androidx.compose
-                                                                                                                                .ui
-                                                                                                                                .text
-                                                                                                                                .font
-                                                                                                                                .FontWeight
-                                                                                                                                .Bold
-                                                                                                        )
-                                                                                        else
-                                                                                                MaterialTheme
-                                                                                                        .typography
-                                                                                                        .bodyMedium,
-                                                                                color =
-                                                                                        if (pagerState
-                                                                                                        .currentPage ==
-                                                                                                        index
-                                                                                        )
-                                                                                                MaterialTheme
-                                                                                                        .colorScheme
-                                                                                                        .primary
-                                                                                        else
-                                                                                                MaterialTheme
-                                                                                                        .colorScheme
-                                                                                                        .onSurfaceVariant
-                                                                        )
+                                                                    val isSelected = pagerState.currentPage == index
+                                                                    Text(
+                                                                        text = title,
+                                                                        maxLines = 1,
+                                                                        style = if (isSelected)
+                                                                            MaterialTheme.typography.titleSmall.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                                                                        else
+                                                                            MaterialTheme.typography.bodyMedium,
+                                                                        color = if (isSelected)
+                                                                            MaterialTheme.colorScheme.primary
+                                                                        else
+                                                                            MaterialTheme.colorScheme.onSurfaceVariant
+                                                                    )
                                                                 }
                                                         )
-                                                }
+
                                         }
                                 }
 
-                                // Swipeable Pager Area
-                                HorizontalPager(
-                                        state = pagerState,
-                                        modifier =
-                                                Modifier.weight(1f)
-                                                        .fillMaxSize()
-                                                        .padding(
-                                                                top = 8.dp
-                                                        ), // Add spacing at top of each tab view
-                                        // Critical Performance Optimization: Only keep visible page
-                                        // + 1 neighbor in
-                                        // memory
-                                        beyondViewportPageCount = 1,
-                                        userScrollEnabled = true
-                                ) { page ->
-                                        when (page) {
-                                                0 -> InfoTab(deviceInfo, viewModel)
-                                                1 -> CpuTab(deviceInfo, viewModel)
-                                                2 -> GpuTab(deviceInfo)
-                                                3 -> MemoryTab(deviceInfo, viewModel)
-                                                4 -> ScreenTab(context)
-                                                5 -> OsTab(deviceInfo)
-                                                6 -> {
-                                                        val hardwareViewModel: HardwareViewModel =
-                                                                viewModel()
-                                                        HardwareTabContent(hardwareViewModel)
-                                                }
-                                                7 -> SensorsTab(context)
-                                        }
-                                }
+
                         }
                 }
         }
