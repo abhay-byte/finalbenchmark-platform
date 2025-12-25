@@ -94,10 +94,11 @@ import com.ivarna.finalbenchmark2.ui.viewmodels.TestStatus
 @Composable
 fun BenchmarkScreen(
     preset: String,
+    benchmarkType: String = "CPU", // Added parameter with default
     onBenchmarkComplete: (String) -> Unit,
     onBenchmarkStart: () -> Unit = {},
     onBenchmarkEnd: () -> Unit = {},
-    onNavBack: () -> Unit = {}, // New parameter
+    onNavBack: () -> Unit = {},
     historyRepository: HistoryRepository
 ) {
     val context = LocalContext.current
@@ -139,7 +140,8 @@ fun BenchmarkScreen(
     LaunchedEffect(Unit) {
         if (!uiState.isRunning && uiState.progress == 0f) {
             onBenchmarkStart()
-            viewModel.startBenchmark(preset)
+            // Pass the benchmark type to the ViewModel
+            viewModel.startBenchmark(preset, benchmarkType)
         }
     }
     
@@ -227,10 +229,10 @@ fun BenchmarkScreen(
                         )
                         
                         val configTitle = when (preset.lowercase()) {
-                            "slow" -> "Low Accuracy - Fastest"
-                            "mid" -> "Mid Accuracy - Fast"
-                            "flagship" -> "High Accuracy - Slow"
-                            else -> preset.replace("Workload: ", "")
+                            "slow" -> "Low Accuracy - Fastest ($benchmarkType)"
+                            "mid" -> "Mid Accuracy - Fast ($benchmarkType)"
+                            "flagship" -> "High Accuracy - Slow ($benchmarkType)"
+                            else -> "${preset.replace("Workload: ", "")} ($benchmarkType)"
                         }
                         
                         Text(

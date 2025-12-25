@@ -3,11 +3,13 @@ package com.ivarna.finalbenchmark2.cpuBenchmark
 import android.util.Log
 import com.ivarna.finalbenchmark2.cpuBenchmark.algorithms.MultiCoreBenchmarks
 import com.ivarna.finalbenchmark2.cpuBenchmark.algorithms.SingleCoreBenchmarks
+import com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.delay
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -50,7 +52,14 @@ class KotlinBenchmarkManager {
                 BenchmarkName.COMPRESSION to 1.5243e-8*0.92,            // 20 / 656.04 Mops/s
                 BenchmarkName.MONTE_CARLO to 0.6125e-6/20,             // 20 / 16.32 Mops/s
                 BenchmarkName.JSON_PARSING to 1.56e-6/28500,            // 20 / 6.41 Mops/s
-                BenchmarkName.N_QUEENS to 2.011e-7/3.2                 // 20 / 66.18e6 ops/s
+                BenchmarkName.N_QUEENS to 2.011e-7/3.2,                // 20 / 66.18e6 ops/s
+                
+                // AI Scoring Factors (Placeholder / TBD - Target similar point range)
+                BenchmarkName.LLM_INFERENCE to 1.0e-5,
+                BenchmarkName.IMAGE_CLASSIFICATION to 1.0e-5,
+                BenchmarkName.OBJECT_DETECTION to 1.0e-5,
+                BenchmarkName.TEXT_EMBEDDING to 1.0e-5,
+                BenchmarkName.SPEECH_TO_TEXT to 1.0e-5
         )
 
         }
@@ -121,12 +130,72 @@ class KotlinBenchmarkManager {
                 )
         }
 
-        suspend fun runAllBenchmarks(deviceTier: String = "Flagship") {
+        suspend fun runBenchmarks(deviceTier: String = "Flagship", type: String = "CPU") {
                 Log.d(
                         TAG,
-                        "SINGLE_SOURCE_OF_TRUTH: Starting benchmark execution with device tier: $deviceTier"
+                        "SINGLE_SOURCE_OF_TRUTH: Starting benchmark execution with device tier: $deviceTier, Type: $type"
                 )
 
+                if (type == "AI") {
+                    Log.d(TAG, "Running AI Benchmarks (Placeholder)")
+                    runAiBenchmarks(deviceTier)
+                } else {
+                    Log.d(TAG, "Running CPU Benchmarks")
+                    runCpuBenchmarks(deviceTier)
+                }
+        }
+
+        private suspend fun runAiBenchmarks(deviceTier: String) {
+             // Placeholder for AI benchmarks
+             // Simulate work for now to prevent crashes until actual implementation
+             val aiTests = BenchmarkName.getByCategory(BenchmarkCategory.AI)
+             val categoryName = BenchmarkCategory.AI.name
+
+             runTestWorkload() // Warmup
+
+             val results = mutableListOf<BenchmarkResult>()
+             
+             aiTests.forEach { testNameEnum ->
+                 val testName = testNameEnum.displayName()
+                 emitBenchmarkStart(testName, categoryName)
+                 delay(1000) // Simulate work
+                 val result = BenchmarkResult(
+                     name = testName,
+                     executionTimeMs = 1000.0,
+                     opsPerSecond = 1000000.0, // Dummy score
+                     isValid = true,
+                     metricsJson = "{}"
+                 )
+                 results.add(result)
+                 emitBenchmarkComplete(testName, categoryName, 1000, 1000000.0)
+             }
+             
+             // Calculate generic score
+             val totalScore = results.sumOf { it.opsPerSecond } / 1000.0 // Simple sum for now
+             
+             val detailedResultsArray = JSONArray()
+             results.forEach { result ->
+                 detailedResultsArray.put(JSONObject().apply {
+                     put("name", result.name)
+                     put("opsPerSecond", result.opsPerSecond)
+                     put("executionTimeMs", result.executionTimeMs)
+                     put("isValid", result.isValid)
+                     put("metricsJson", result.metricsJson)
+                 })
+             }
+
+             val summaryJson = JSONObject().apply {
+                 put("single_core_score", 0.0)
+                 put("multi_core_score", 0.0) // Not applicable for AI in this simplified view
+                 put("final_score", totalScore)
+                 put("normalized_score", totalScore) // No normalization yet
+                 put("detailed_results", detailedResultsArray)
+             }.toString()
+
+             _benchmarkComplete.emit(summaryJson)
+        }
+
+        private suspend fun runCpuBenchmarks(deviceTier: String) {
                 // Run test workload first (warm-up)
                 runTestWorkload()
 
@@ -139,14 +208,14 @@ class KotlinBenchmarkManager {
                 val singleResults = mutableListOf<BenchmarkResult>()
 
                 // Prime Generation
-                emitBenchmarkStart("Single-Core Prime Generation", "SINGLE")
+                emitBenchmarkStart(BenchmarkName.PRIME_GENERATION.singleCore(), "SINGLE")
                 val singlePrimeResult =
-                        safeBenchmarkRun("Single-Core Prime Generation") {
+                        safeBenchmarkRun(BenchmarkName.PRIME_GENERATION.singleCore()) {
                                 SingleCoreBenchmarks.primeGeneration(params)
                         }
                 singleResults.add(singlePrimeResult)
                 emitBenchmarkComplete(
-                        "Single-Core Prime Generation",
+                        BenchmarkName.PRIME_GENERATION.singleCore(),
                         "SINGLE",
                         singlePrimeResult.executionTimeMs.toLong(),
                         singlePrimeResult.opsPerSecond
@@ -167,112 +236,112 @@ class KotlinBenchmarkManager {
                 )
 
                 // Matrix Multiplication
-                emitBenchmarkStart("Single-Core Matrix Multiplication", "SINGLE")
+                emitBenchmarkStart(BenchmarkName.MATRIX_MULTIPLICATION.singleCore(), "SINGLE")
                 val singleMatrixResult =
-                        safeBenchmarkRun("Single-Core Matrix Multiplication") {
+                        safeBenchmarkRun(BenchmarkName.MATRIX_MULTIPLICATION.singleCore()) {
                                 SingleCoreBenchmarks.matrixMultiplication(params)
                         }
                 singleResults.add(singleMatrixResult)
                 emitBenchmarkComplete(
-                        "Single-Core Matrix Multiplication",
+                        BenchmarkName.MATRIX_MULTIPLICATION.singleCore(),
                         "SINGLE",
                         singleMatrixResult.executionTimeMs.toLong(),
                         singleMatrixResult.opsPerSecond
                 )
 
                 // Hash Computing
-                emitBenchmarkStart("Single-Core Hash Computing", "SINGLE")
+                emitBenchmarkStart(BenchmarkName.HASH_COMPUTING.singleCore(), "SINGLE")
                 val singleHashResult =
-                        safeBenchmarkRun("Single-Core Hash Computing") {
+                        safeBenchmarkRun(BenchmarkName.HASH_COMPUTING.singleCore()) {
                                 SingleCoreBenchmarks.hashComputing(params)
                         }
                 singleResults.add(singleHashResult)
                 emitBenchmarkComplete(
-                        "Single-Core Hash Computing",
+                        BenchmarkName.HASH_COMPUTING.singleCore(),
                         "SINGLE",
                         singleHashResult.executionTimeMs.toLong(),
                         singleHashResult.opsPerSecond
                 )
 
                 // String Sorting
-                emitBenchmarkStart("Single-Core String Sorting", "SINGLE")
+                emitBenchmarkStart(BenchmarkName.STRING_SORTING.singleCore(), "SINGLE")
                 val singleStringResult =
-                        safeBenchmarkRun("Single-Core String Sorting") {
+                        safeBenchmarkRun(BenchmarkName.STRING_SORTING.singleCore()) {
                                 SingleCoreBenchmarks.stringSorting(params)
                         }
                 singleResults.add(singleStringResult)
                 emitBenchmarkComplete(
-                        "Single-Core String Sorting",
+                        BenchmarkName.STRING_SORTING.singleCore(),
                         "SINGLE",
                         singleStringResult.executionTimeMs.toLong(),
                         singleStringResult.opsPerSecond
                 )
 
                 // Ray Tracing
-                emitBenchmarkStart("Single-Core Ray Tracing", "SINGLE")
+                emitBenchmarkStart(BenchmarkName.RAY_TRACING.singleCore(), "SINGLE")
                 val singleRayResult =
-                        safeBenchmarkRun("Single-Core Ray Tracing") {
+                        safeBenchmarkRun(BenchmarkName.RAY_TRACING.singleCore()) {
                                 SingleCoreBenchmarks.rayTracing(params)
                         }
                 singleResults.add(singleRayResult)
                 emitBenchmarkComplete(
-                        "Single-Core Ray Tracing",
+                        BenchmarkName.RAY_TRACING.singleCore(),
                         "SINGLE",
                         singleRayResult.executionTimeMs.toLong(),
                         singleRayResult.opsPerSecond
                 )
 
                 // Compression
-                emitBenchmarkStart("Single-Core Compression", "SINGLE")
+                emitBenchmarkStart(BenchmarkName.COMPRESSION.singleCore(), "SINGLE")
                 val singleCompressionResult =
-                        safeBenchmarkRun("Single-Core Compression") {
+                        safeBenchmarkRun(BenchmarkName.COMPRESSION.singleCore()) {
                                 SingleCoreBenchmarks.compression(params)
                         }
                 singleResults.add(singleCompressionResult)
                 emitBenchmarkComplete(
-                        "Single-Core Compression",
+                        BenchmarkName.COMPRESSION.singleCore(),
                         "SINGLE",
                         singleCompressionResult.executionTimeMs.toLong(),
                         singleCompressionResult.opsPerSecond
                 )
 
                 // Monte Carlo Pi
-                emitBenchmarkStart("Single-Core Monte Carlo π", "SINGLE")
+                emitBenchmarkStart(BenchmarkName.MONTE_CARLO.singleCore(), "SINGLE")
                 val singleMonteResult =
-                        safeBenchmarkRun("Single-Core Monte Carlo π") {
+                        safeBenchmarkRun(BenchmarkName.MONTE_CARLO.singleCore()) {
                                 SingleCoreBenchmarks.monteCarloPi(params)
                         }
                 singleResults.add(singleMonteResult)
                 emitBenchmarkComplete(
-                        "Single-Core Monte Carlo π",
+                        BenchmarkName.MONTE_CARLO.singleCore(),
                         "SINGLE",
                         singleMonteResult.executionTimeMs.toLong(),
                         singleMonteResult.opsPerSecond
                 )
 
                 // JSON Parsing
-                emitBenchmarkStart("Single-Core JSON Parsing", "SINGLE")
+                emitBenchmarkStart(BenchmarkName.JSON_PARSING.singleCore(), "SINGLE")
                 val singleJsonResult =
-                        safeBenchmarkRun("Single-Core JSON Parsing") {
+                        safeBenchmarkRun(BenchmarkName.JSON_PARSING.singleCore()) {
                                 SingleCoreBenchmarks.jsonParsing(params)
                         }
                 singleResults.add(singleJsonResult)
                 emitBenchmarkComplete(
-                        "Single-Core JSON Parsing",
+                        BenchmarkName.JSON_PARSING.singleCore(),
                         "SINGLE",
                         singleJsonResult.executionTimeMs.toLong(),
                         singleJsonResult.opsPerSecond
                 )
 
                 // N-Queens
-                emitBenchmarkStart("Single-Core N-Queens", "SINGLE")
+                emitBenchmarkStart(BenchmarkName.N_QUEENS.singleCore(), "SINGLE")
                 val singleNqueensResult =
-                        safeBenchmarkRun("Single-Core N-Queens") {
+                        safeBenchmarkRun(BenchmarkName.N_QUEENS.singleCore()) {
                                 SingleCoreBenchmarks.nqueens(params)
                         }
                 singleResults.add(singleNqueensResult)
                 emitBenchmarkComplete(
-                        "Single-Core N-Queens",
+                        BenchmarkName.N_QUEENS.singleCore(),
                         "SINGLE",
                         singleNqueensResult.executionTimeMs.toLong(),
                         singleNqueensResult.opsPerSecond
@@ -282,14 +351,14 @@ class KotlinBenchmarkManager {
                 val multiResults = mutableListOf<BenchmarkResult>()
 
                 // Prime Generation
-                emitBenchmarkStart("Multi-Core Prime Generation", "MULTI")
+                emitBenchmarkStart(BenchmarkName.PRIME_GENERATION.multiCore(), "MULTI")
                 val multiPrimeResult =
-                        safeBenchmarkRun("Multi-Core Prime Generation") {
+                        safeBenchmarkRun(BenchmarkName.PRIME_GENERATION.multiCore()) {
                                 MultiCoreBenchmarks.primeGeneration(params)
                         }
                 multiResults.add(multiPrimeResult)
                 emitBenchmarkComplete(
-                        "Multi-Core Prime Generation",
+                        BenchmarkName.PRIME_GENERATION.multiCore(),
                         "MULTI",
                         multiPrimeResult.executionTimeMs.toLong(),
                         multiPrimeResult.opsPerSecond
@@ -310,112 +379,112 @@ class KotlinBenchmarkManager {
                 )
 
                 // Matrix Multiplication
-                emitBenchmarkStart("Multi-Core Matrix Multiplication", "MULTI")
+                emitBenchmarkStart(BenchmarkName.MATRIX_MULTIPLICATION.multiCore(), "MULTI")
                 val multiMatrixResult =
-                        safeBenchmarkRun("Multi-Core Matrix Multiplication") {
+                        safeBenchmarkRun(BenchmarkName.MATRIX_MULTIPLICATION.multiCore()) {
                                 MultiCoreBenchmarks.matrixMultiplication(params)
                         }
                 multiResults.add(multiMatrixResult)
                 emitBenchmarkComplete(
-                        "Multi-Core Matrix Multiplication",
+                        BenchmarkName.MATRIX_MULTIPLICATION.multiCore(),
                         "MULTI",
                         multiMatrixResult.executionTimeMs.toLong(),
                         multiMatrixResult.opsPerSecond
                 )
 
                 // Hash Computing
-                emitBenchmarkStart("Multi-Core Hash Computing", "MULTI")
+                emitBenchmarkStart(BenchmarkName.HASH_COMPUTING.multiCore(), "MULTI")
                 val multiHashResult =
-                        safeBenchmarkRun("Multi-Core Hash Computing") {
+                        safeBenchmarkRun(BenchmarkName.HASH_COMPUTING.multiCore()) {
                                 MultiCoreBenchmarks.hashComputing(params)
                         }
                 multiResults.add(multiHashResult)
                 emitBenchmarkComplete(
-                        "Multi-Core Hash Computing",
+                        BenchmarkName.HASH_COMPUTING.multiCore(),
                         "MULTI",
                         multiHashResult.executionTimeMs.toLong(),
                         multiHashResult.opsPerSecond
                 )
 
                 // String Sorting
-                emitBenchmarkStart("Multi-Core String Sorting", "MULTI")
+                emitBenchmarkStart(BenchmarkName.STRING_SORTING.multiCore(), "MULTI")
                 val multiStringResult =
-                        safeBenchmarkRun("Multi-Core String Sorting") {
+                        safeBenchmarkRun(BenchmarkName.STRING_SORTING.multiCore()) {
                                 MultiCoreBenchmarks.stringSorting(params)
                         }
                 multiResults.add(multiStringResult)
                 emitBenchmarkComplete(
-                        "Multi-Core String Sorting",
+                        BenchmarkName.STRING_SORTING.multiCore(),
                         "MULTI",
                         multiStringResult.executionTimeMs.toLong(),
                         multiStringResult.opsPerSecond
                 )
 
                 // Ray Tracing
-                emitBenchmarkStart("Multi-Core Ray Tracing", "MULTI")
+                emitBenchmarkStart(BenchmarkName.RAY_TRACING.multiCore(), "MULTI")
                 val multiRayResult =
-                        safeBenchmarkRun("Multi-Core Ray Tracing") {
+                        safeBenchmarkRun(BenchmarkName.RAY_TRACING.multiCore()) {
                                 MultiCoreBenchmarks.rayTracing(params)
                         }
                 multiResults.add(multiRayResult)
                 emitBenchmarkComplete(
-                        "Multi-Core Ray Tracing",
+                        BenchmarkName.RAY_TRACING.multiCore(),
                         "MULTI",
                         multiRayResult.executionTimeMs.toLong(),
                         multiRayResult.opsPerSecond
                 )
 
                 // Compression
-                emitBenchmarkStart("Multi-Core Compression", "MULTI")
+                emitBenchmarkStart(BenchmarkName.COMPRESSION.multiCore(), "MULTI")
                 val multiCompressionResult =
-                        safeBenchmarkRun("Multi-Core Compression") {
+                        safeBenchmarkRun(BenchmarkName.COMPRESSION.multiCore()) {
                                 MultiCoreBenchmarks.compression(params)
                         }
                 multiResults.add(multiCompressionResult)
                 emitBenchmarkComplete(
-                        "Multi-Core Compression",
+                        BenchmarkName.COMPRESSION.multiCore(),
                         "MULTI",
                         multiCompressionResult.executionTimeMs.toLong(),
                         multiCompressionResult.opsPerSecond
                 )
 
                 // Monte Carlo Pi
-                emitBenchmarkStart("Multi-Core Monte Carlo π", "MULTI")
+                emitBenchmarkStart(BenchmarkName.MONTE_CARLO.multiCore(), "MULTI")
                 val multiMonteResult =
-                        safeBenchmarkRun("Multi-Core Monte Carlo π") {
+                        safeBenchmarkRun(BenchmarkName.MONTE_CARLO.multiCore()) {
                                 MultiCoreBenchmarks.monteCarloPi(params)
                         }
                 multiResults.add(multiMonteResult)
                 emitBenchmarkComplete(
-                        "Multi-Core Monte Carlo π",
+                        BenchmarkName.MONTE_CARLO.multiCore(),
                         "MULTI",
                         multiMonteResult.executionTimeMs.toLong(),
                         multiMonteResult.opsPerSecond
                 )
 
                 // JSON Parsing
-                emitBenchmarkStart("Multi-Core JSON Parsing", "MULTI")
+                emitBenchmarkStart(BenchmarkName.JSON_PARSING.multiCore(), "MULTI")
                 val multiJsonResult =
-                        safeBenchmarkRun("Multi-Core JSON Parsing") {
+                        safeBenchmarkRun(BenchmarkName.JSON_PARSING.multiCore()) {
                                 MultiCoreBenchmarks.jsonParsing(params)
                         }
                 multiResults.add(multiJsonResult)
                 emitBenchmarkComplete(
-                        "Multi-Core JSON Parsing",
+                        BenchmarkName.JSON_PARSING.multiCore(),
                         "MULTI",
                         multiJsonResult.executionTimeMs.toLong(),
                         multiJsonResult.opsPerSecond
                 )
 
                 // N-Queens
-                emitBenchmarkStart("Multi-Core N-Queens", "MULTI")
+                emitBenchmarkStart(BenchmarkName.N_QUEENS.multiCore(), "MULTI")
                 val multiNqueensResult =
-                        safeBenchmarkRun("Multi-Core N-Queens") {
+                        safeBenchmarkRun(BenchmarkName.N_QUEENS.multiCore()) {
                                 MultiCoreBenchmarks.nqueens(params)
                         }
                 multiResults.add(multiNqueensResult)
                 emitBenchmarkComplete(
-                        "Multi-Core N-Queens",
+                        BenchmarkName.N_QUEENS.multiCore(),
                         "MULTI",
                         multiNqueensResult.executionTimeMs.toLong(),
                         multiNqueensResult.opsPerSecond

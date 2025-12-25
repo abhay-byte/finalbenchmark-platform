@@ -28,6 +28,13 @@ class HistoryRepository(
     ) {
         benchmarkDao.saveCpuBenchmark(benchmarkResult, cpuDetail)
     }
+
+    suspend fun saveGenericBenchmark(
+        benchmarkResult: BenchmarkResultEntity,
+        genericDetails: List<com.ivarna.finalbenchmark2.data.database.entities.GenericTestDetailEntity>
+    ) {
+        benchmarkDao.saveBenchmark(benchmarkResult, genericDetails)
+    }
     
     suspend fun deleteResultById(id: Long) {
         android.util.Log.d("HistoryRepository", "deleteResultById called with ID: $id")

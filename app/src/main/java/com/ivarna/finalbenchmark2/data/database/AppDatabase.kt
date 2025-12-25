@@ -8,9 +8,11 @@ import com.ivarna.finalbenchmark2.data.database.dao.BenchmarkDao
 import com.ivarna.finalbenchmark2.data.database.entities.BenchmarkResultEntity
 import com.ivarna.finalbenchmark2.data.database.entities.CpuTestDetailEntity
 
+import com.ivarna.finalbenchmark2.data.database.entities.GenericTestDetailEntity
+
 @Database(
-        entities = [BenchmarkResultEntity::class, CpuTestDetailEntity::class],
-        version = 3,
+        entities = [BenchmarkResultEntity::class, CpuTestDetailEntity::class, GenericTestDetailEntity::class],
+        version = 4,
         exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {

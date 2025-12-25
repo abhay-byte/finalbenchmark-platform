@@ -3,6 +3,7 @@ package com.ivarna.finalbenchmark2.data.database.dao
 import androidx.room.*
 import com.ivarna.finalbenchmark2.data.database.entities.BenchmarkResultEntity
 import com.ivarna.finalbenchmark2.data.database.entities.CpuTestDetailEntity
+import com.ivarna.finalbenchmark2.data.database.entities.GenericTestDetailEntity
 import com.ivarna.finalbenchmark2.data.database.entities.BenchmarkWithCpuData
 import kotlinx.coroutines.flow.Flow
 
@@ -14,11 +15,21 @@ interface BenchmarkDao {
     
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertCpuDetail(detail: CpuTestDetailEntity)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertGenericDetails(details: List<GenericTestDetailEntity>)
     
     @Transaction
     suspend fun saveCpuBenchmark(benchmarkResult: BenchmarkResultEntity, cpuDetail: CpuTestDetailEntity) {
         val resultId = insertResult(benchmarkResult)
         insertCpuDetail(cpuDetail.copy(resultId = resultId))
+    }
+
+    @Transaction
+    suspend fun saveBenchmark(benchmarkResult: BenchmarkResultEntity, genericDetails: List<GenericTestDetailEntity>) {
+        val resultId = insertResult(benchmarkResult)
+        val detailsWithId = genericDetails.map { it.copy(resultId = resultId) }
+        insertGenericDetails(detailsWithId)
     }
     
     @Transaction

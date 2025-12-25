@@ -195,8 +195,8 @@ fun MainNavigation(
                         )
                     }
                     HomeScreen(
-                            onStartBenchmark = { preset ->
-                                navController.navigate("benchmark/$preset")
+                            onStartBenchmark = { preset, type ->
+                                navController.navigate("benchmark/$preset/$type")
                             },
                             onNavigateToSettings = { navController.navigate("settings") },
                             historyRepository = historyRepository,
@@ -286,15 +286,16 @@ fun MainNavigation(
                             }
                     )
                 }
-                // Keep the existing benchmark flow - consolidate into one route
+                // Update benchmark route to accept type
                 composable(
-                    route = "benchmark/{preset}",
+                    route = "benchmark/{preset}/{type}",
                     enterTransition = enterTransition,
                     exitTransition = exitTransition,
                     popEnterTransition = popEnterTransition,
                     popExitTransition = popExitTransition
                 ) { backStackEntry ->
                     val preset = backStackEntry.arguments?.getString("preset") ?: "Auto"
+                    val type = backStackEntry.arguments?.getString("type") ?: "CPU"
                     val historyRepository =
                             com.ivarna.finalbenchmark2.data.repository.HistoryRepository(
                                     com.ivarna.finalbenchmark2.data.database.AppDatabase
@@ -304,6 +305,7 @@ fun MainNavigation(
                     val activity = context as? com.ivarna.finalbenchmark2.MainActivity
                     BenchmarkScreen(
                             preset = preset,
+                            benchmarkType = type,
                             onBenchmarkComplete = { summaryJson ->
                                 // URL-encode the JSON to handle special characters properly
                                 val encodedJson = java.net.URLEncoder.encode(summaryJson, "UTF-8")
@@ -344,7 +346,7 @@ fun MainNavigation(
                             summaryJson = summaryJson,
                             onRunAgain = {
                                 navController.popBackStack()
-                                navController.navigate("benchmark/Auto")
+                                navController.navigate("benchmark/Auto/CPU")
                             },
                             onBackToHome = {
                                 navController.popBackStack()

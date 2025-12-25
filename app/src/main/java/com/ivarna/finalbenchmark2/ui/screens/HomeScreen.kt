@@ -94,7 +94,7 @@ import dev.chrisbanes.haze.HazeStyle
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
-        onStartBenchmark: (String) -> Unit,
+        onStartBenchmark: (String, String) -> Unit, // Updated signature: (preset, type)
         onNavigateToSettings: () -> Unit = {},
         historyRepository: HistoryRepository? = null,
         hazeState: dev.chrisbanes.haze.HazeState? = null
@@ -322,6 +322,10 @@ fun HomeScreen(
                                 // =========================================================
                                 // BENCHMARK CONTROLS
                                 // =========================================================
+                                var selectedBenchmarkType by remember { mutableStateOf("CPU") }
+                                val benchmarkTypes = listOf("CPU", "AI")
+                                var isTypeDropdownExpanded by remember { mutableStateOf(false) }
+
                                 com.ivarna.finalbenchmark2.ui.components.AnimatedGlassCard(
                                     modifier = Modifier
                                         .fillMaxWidth()
@@ -367,6 +371,38 @@ fun HomeScreen(
                                             }
                                         }
 
+                                        // Benchmark Type Dropdown
+                                        ExposedDropdownMenuBox(
+                                            expanded = isTypeDropdownExpanded,
+                                            onExpandedChange = { isTypeDropdownExpanded = !isTypeDropdownExpanded },
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            OutlinedTextField(
+                                                value = selectedBenchmarkType,
+                                                onValueChange = {},
+                                                readOnly = true,
+                                                label = { Text("Benchmark Type") },
+                                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isTypeDropdownExpanded) },
+                                                colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                                                modifier = Modifier.menuAnchor().fillMaxWidth(),
+                                                shape = RoundedCornerShape(12.dp)
+                                            )
+                                            ExposedDropdownMenu(
+                                                expanded = isTypeDropdownExpanded,
+                                                onDismissRequest = { isTypeDropdownExpanded = false }
+                                            ) {
+                                                benchmarkTypes.forEach { option ->
+                                                    DropdownMenuItem(
+                                                        text = { Text(option) },
+                                                        onClick = {
+                                                            selectedBenchmarkType = option
+                                                            isTypeDropdownExpanded = false
+                                                        }
+                                                    )
+                                                }
+                                            }
+                                        }
+
                                         // Start Benchmark Button - Glassmorphic Style
                                         Box(
                                             modifier = Modifier
@@ -387,7 +423,7 @@ fun HomeScreen(
                                                         "High Accuracy - Slow" -> "flagship"
                                                         else -> "flagship"
                                                     }
-                                                    onStartBenchmark(deviceTier)
+                                                    onStartBenchmark(deviceTier, selectedBenchmarkType)
                                                 },
                                             contentAlignment = Alignment.Center
                                         ) {

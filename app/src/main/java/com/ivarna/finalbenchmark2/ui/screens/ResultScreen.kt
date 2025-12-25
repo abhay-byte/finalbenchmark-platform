@@ -62,6 +62,7 @@ import org.json.JSONObject
 data class BenchmarkSummary(
         val singleCoreScore: Double,
         val multiCoreScore: Double,
+        val type: String = "CPU",
         val finalScore: Double,
         val normalizedScore: Double,
         val detailedResults: List<BenchmarkResult> = emptyList(),
@@ -180,6 +181,7 @@ fun ResultScreen(
                     val parsedSummary = BenchmarkSummary(
                         singleCoreScore = jsonObject.optDouble("single_core_score", 0.0),
                         multiCoreScore = jsonObject.optDouble("multi_core_score", 0.0),
+                        type = jsonObject.optString("type", "CPU"),
                         finalScore = jsonObject.optDouble("final_score", 0.0),
                         normalizedScore = jsonObject.optDouble("normalized_score", 0.0),
                         detailedResults = detailedResults,
@@ -193,7 +195,12 @@ fun ResultScreen(
                 } catch (e: Exception) {
                     Log.e("ResultScreen", "Error parsing summary JSON async: ${e.message}", e)
                     // Fallback empty summary
-                    summaryState = BenchmarkSummary(0.0, 0.0, 0.0, 0.0) 
+                    summaryState = BenchmarkSummary(
+                        singleCoreScore = 0.0,
+                        multiCoreScore = 0.0,
+                        finalScore = 0.0,
+                        normalizedScore = 0.0
+                    ) 
                 }
             }
         }
@@ -569,7 +576,8 @@ fun ResultScreen(
                                 2 -> RankingsTab(
                                         summary.finalScore,
                                         summary.singleCoreScore,
-                                        summary.multiCoreScore
+                                        summary.multiCoreScore,
+                                        summary.type
                                     )
                             }
                         }
@@ -625,7 +633,7 @@ fun SummaryTab(summary: BenchmarkSummary) {
                                                 horizontalAlignment = Alignment.CenterHorizontally
                                         ) {
                                                 Text(
-                                                        text = "TOTAL BENCHMARK SCORE",
+                                                        text = "${summary.type.uppercase()} BENCHMARK SCORE",
                                                         style = MaterialTheme.typography.labelSmall,
                                                         fontWeight = FontWeight.Black,
                                                         letterSpacing = 2.sp,
@@ -652,8 +660,9 @@ fun SummaryTab(summary: BenchmarkSummary) {
                         }
                 }
 
-                // Single-Core and Multi-Core Scores
-                item {
+                // Single-Core and Multi-Core Scores (Only for CPU)
+                if (summary.type == "CPU") {
+                    item {
                         var targetSingle by remember { mutableStateOf(0f) }
                         var targetMulti by remember { mutableStateOf(0f) }
                         LaunchedEffect(Unit) {
@@ -765,6 +774,7 @@ fun SummaryTab(summary: BenchmarkSummary) {
                                     }
                             }
                         }
+                    }
                 }
 
                 // Efficiency Card - High-Fidelity Glassmorphism
@@ -1164,8 +1174,39 @@ fun BenchmarkResultItem(result: BenchmarkResult) {
 }
 
 @Composable
-private fun RankingsTab(finalScore: Double, singleCoreScore: Double, multiCoreScore: Double) {
+private fun RankingsTab(finalScore: Double, singleCoreScore: Double, multiCoreScore: Double, type: String = "CPU") {
     val scrollState = androidx.compose.foundation.rememberScrollState()
+    
+    // If not CPU, show "Coming Soon" placeholder
+    if (type != "CPU") {
+        Column(
+            modifier = Modifier.fillMaxSize().padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Icon(
+                imageVector = Icons.Rounded.Leaderboard,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                modifier = Modifier.size(64.dp)
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = "${type} Rankings Coming Soon",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "We are currently collecting data to build accurate rankings for this benchmark category.",
+                style = MaterialTheme.typography.bodyMedium,
+                textAlign = TextAlign.Center,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        return
+    }
     
     // Create rankings logic
     val hardcodedReferenceDevices = listOf(

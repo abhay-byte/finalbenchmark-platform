@@ -106,7 +106,7 @@ fun HistoryFilterBar(
         Spacer(modifier = Modifier.height(16.dp))
 
         // Category Chips (Horizontal Scroll)
-        val categories = listOf("All", "CPU", "GPU", "RAM", "Storage", "Full", "Stress")
+        val categories = listOf("All", "CPU", "AI", "GPU", "RAM", "Storage", "Full", "Stress")
         LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             items(categories) { category ->
                 val isSelected = selectedCategory == category
@@ -260,6 +260,7 @@ fun HistoryScreen(viewModel: HistoryViewModel, navController: NavController) {
                                                     "final_score": ${result.finalScore},
                                                     "normalized_score": ${result.normalizedScore},
                                                     "timestamp": ${result.timestamp},
+                                                    "type": "${result.testName}",
                                                     "benchmark_id": ${result.id},
                                                     "performance_metrics": ${if (result.performanceMetricsJson.isNotEmpty()) result.performanceMetricsJson else "{}"},
                                                     "detailed_results": $detailedResultsJson

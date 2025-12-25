@@ -5,11 +5,19 @@ import androidx.room.Relation
 import com.ivarna.finalbenchmark2.data.database.entities.BenchmarkResultEntity
 import com.ivarna.finalbenchmark2.data.database.entities.CpuTestDetailEntity
 
+import com.ivarna.finalbenchmark2.data.database.entities.GenericTestDetailEntity
+
 data class BenchmarkWithCpuData(
     @Embedded val benchmarkResult: BenchmarkResultEntity,
     @Relation(
         parentColumn = "id",
         entityColumn = "result_id"
     )
-    val cpuTestDetail: CpuTestDetailEntity?
+    val cpuTestDetail: CpuTestDetailEntity?,
+    
+    @Relation(
+        parentColumn = "id",
+        entityColumn = "result_id"
+    )
+    val genericTestDetails: List<GenericTestDetailEntity> = emptyList()
 )

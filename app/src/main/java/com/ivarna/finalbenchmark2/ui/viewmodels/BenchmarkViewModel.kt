@@ -253,7 +253,7 @@ class BenchmarkViewModel(
         private var benchmarkJob: Job? = null
 
         // NEW IMPLEMENTATION: Delegate to KotlinBenchmarkManager for Single Source of Truth
-        fun runBenchmarks(preset: String = "Auto") {
+        fun runBenchmarks(preset: String = "Auto", type: String = com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkCategory.CPU.name) {
                 // FIX: Reset state immediately to prevent stale navigation
                 _benchmarkState.value = BenchmarkState.Idle
 
@@ -289,11 +289,15 @@ class BenchmarkViewModel(
                                 performanceMonitor.start()
 
                                 // Initialize Countdown
-                                currentCountdownSeconds = when (preset.lowercase()) {
-                                    "flagship" -> 200 // 3 min 20s
-                                    "mid" -> 120      // 2 min
-                                    "slow" -> 60     // 1 min (Bumped from 45s)
-                                    else -> 120      // 2 min default
+                                currentCountdownSeconds = if (type == "AI") {
+                                    100
+                                } else {
+                                    when (preset.lowercase()) {
+                                        "flagship" -> 200
+                                        "mid" -> 120
+                                        "slow" -> 60
+                                        else -> 120
+                                    }
                                 }
                                 startTimeMillis = System.currentTimeMillis()
 
@@ -304,29 +308,19 @@ class BenchmarkViewModel(
                                 // Do NOT turn off warm-up here. Wait for first test to start.
 
                                 // 1. RESET STATE - Initialize test states
-                                val testNames =
-                                        listOf(
-                                                "Single-Core Prime Generation",
-                                                "Single-Core Fibonacci Iterative",
-                                                "Single-Core Matrix Multiplication",
-                                                "Single-Core Hash Computing",
-                                                "Single-Core String Sorting",
-                                                "Single-Core Ray Tracing",
-                                                "Single-Core Compression",
-                                                "Single-Core Monte Carlo π",
-                                                "Single-Core JSON Parsing",
-                                                "Single-Core N-Queens",
-                                                "Multi-Core Prime Generation",
-                                                "Multi-Core Fibonacci Iterative",
-                                                "Multi-Core Matrix Multiplication",
-                                                "Multi-Core Hash Computing",
-                                                "Multi-Core String Sorting",
-                                                "Multi-Core Ray Tracing",
-                                                "Multi-Core Compression",
-                                                "Multi-Core Monte Carlo π",
-                                                "Multi-Core JSON Parsing",
-                                                "Multi-Core N-Queens"
-                                        )
+                                val category = try {
+                                    com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkCategory.valueOf(type)
+                                } catch (e: Exception) {
+                                    com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkCategory.CPU
+                                }
+                                
+                                val testNames = com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkName.getByCategory(category).flatMap { 
+                                     if (category == com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkCategory.CPU) {
+                                         listOf(it.singleCore(), it.multiCore())
+                                     } else {
+                                         listOf(it.displayName())
+                                     }
+                                }
 
                                 _uiState.update {
                                         it.copy(
@@ -510,7 +504,7 @@ class BenchmarkViewModel(
                                 // Start the benchmark execution
                                 benchmarkJob =
                                         launch(Dispatchers.IO) {
-                                                benchmarkManager.runAllBenchmarks(preset)
+                                                benchmarkManager.runBenchmarks(preset, type)
                                         }
 
                                 // Wait for the completion result (the event from benchmark will be
@@ -613,6 +607,7 @@ class BenchmarkViewModel(
 
                                                 val summaryData =
                                                         mapOf(
+                                                                "type" to type,
                                                                 "single_core_score" to
                                                                         sanitize(
                                                                                 finalResults
@@ -691,11 +686,18 @@ class BenchmarkViewModel(
 
                                 // Save to database with performance metrics
                                 if (historyRepository != null) {
-
+                                    if (type == "CPU") {
                                         saveCpuBenchmarkResult(
-                                                finalResults,
-                                                lastPerformanceMetricsJson
+                                            finalResults,
+                                            lastPerformanceMetricsJson
                                         )
+                                    } else {
+                                        saveGenericBenchmarkResult(
+                                           finalResults,
+                                           type,
+                                           lastPerformanceMetricsJson
+                                        )
+                                    }
                                 }
 
                                 // Stop foreground service
@@ -877,8 +879,8 @@ class BenchmarkViewModel(
         }
 
         // Legacy function kept for compatibility
-        fun startBenchmark(preset: String = "Auto") {
-                runBenchmarks(preset)
+        fun startBenchmark(preset: String = "Auto", type: String = "CPU") {
+                runBenchmarks(preset, type)
         }
 
         fun stopBenchmark() {
@@ -897,90 +899,93 @@ class BenchmarkViewModel(
         }
 
         fun saveCpuBenchmarkResult(results: BenchmarkResults, performanceMetricsJson: String = "") {
-                if (historyRepository == null) {
-                        Log.w(
-                                "BenchmarkViewModel",
-                                "HistoryRepository is null, cannot save results"
-                        )
-                        return
-                }
+                if (historyRepository == null) return
 
                 viewModelScope.launch(Dispatchers.IO) {
                         try {
-                                // 1. Prepare the JSON for the "Individual Test Results" list
                                 val detailedJson = Gson().toJson(results.individualScores)
-
-                                // 2. Create the Parent Entity
                                 val masterEntity =
                                         com.ivarna.finalbenchmark2.data.database.entities
                                                 .BenchmarkResultEntity(
                                                         timestamp = System.currentTimeMillis(),
                                                         type = "CPU",
                                                         deviceModel = android.os.Build.MODEL,
-                                                        totalScore =
-                                                                results.finalWeightedScore, // Ensure this is not 0
+                                                        totalScore = results.finalWeightedScore,
                                                         singleCoreScore = results.singleCoreScore,
                                                         multiCoreScore = results.multiCoreScore,
                                                         normalizedScore = results.normalizedScore,
                                                         detailedResultsJson = detailedJson,
-                                                        performanceMetricsJson =
-                                                                performanceMetricsJson
+                                                        performanceMetricsJson = performanceMetricsJson
                                                 )
 
-                                // 3. Helper to extract scores safely from the new
-                                // List<BenchmarkResult>
                                 fun extractScore(testName: String): Double {
-                                        // Sum Single + Multi ops for the specific test category
                                         return results.individualScores
-                                                .filter {
-                                                        it.name.contains(
-                                                                testName,
-                                                                ignoreCase = true
-                                                        )
-                                                }
+                                                .filter { it.name.contains(testName, ignoreCase = true) }
                                                 .sumOf { it.opsPerSecond }
                                 }
 
-                                // 4. Create the Detail Entity (Mapping specific tests to DB
-                                // columns)
                                 val detailEntity =
                                         com.ivarna.finalbenchmark2.data.database.entities
                                                 .CpuTestDetailEntity(
-                                                        resultId = 0, // Room handles this
+                                                        resultId = 0,
                                                         primeNumberScore = extractScore("Prime"),
                                                         fibonacciScore = extractScore("Fibonacci"),
-                                                        matrixMultiplicationScore =
-                                                                extractScore("Matrix"),
+                                                        matrixMultiplicationScore = extractScore("Matrix"),
                                                         hashComputingScore = extractScore("Hash"),
                                                         stringSortingScore = extractScore("String"),
                                                         rayTracingScore = extractScore("Ray"),
-                                                        compressionScore =
-                                                                extractScore("Compression"),
-                                                        monteCarloScore =
-                                                                extractScore("Monte Carlo"),
+                                                        compressionScore = extractScore("Compression"),
+                                                        monteCarloScore = extractScore("Monte Carlo"),
                                                         jsonParsingScore = extractScore("JSON"),
                                                         nQueensScore = extractScore("Queens")
                                                 )
 
-                                // 5. Commit to Repository
                                 historyRepository.saveCpuBenchmark(masterEntity, detailEntity)
-
-                                Log.d(
-                                        "BenchmarkViewModel",
-                                        "Successfully saved CPU benchmark result to database"
-                                )
-                                Log.d(
-                                        "BenchmarkViewModel",
-                                        "Saved scores - Prime: ${detailEntity.primeNumberScore}, Fibonacci: ${detailEntity.fibonacciScore}, Matrix: ${detailEntity.matrixMultiplicationScore}"
-                                )
                         } catch (e: Exception) {
-                                Log.e(
-                                        "BenchmarkViewModel",
-                                        "Error saving benchmark result to database: ${e.message}",
-                                        e
-                                )
+                                Log.e("BenchmarkViewModel", "Error saving CPU result: ${e.message}", e)
                         }
                 }
+        }
+
+        fun saveGenericBenchmarkResult(
+            results: BenchmarkResults, 
+            type: String, 
+            performanceMetricsJson: String = ""
+        ) {
+            if (historyRepository == null) return
+
+            viewModelScope.launch(Dispatchers.IO) {
+                try {
+                    val detailedJson = Gson().toJson(results.individualScores)
+                    val masterEntity =
+                        com.ivarna.finalbenchmark2.data.database.entities
+                            .BenchmarkResultEntity(
+                                timestamp = System.currentTimeMillis(),
+                                type = type,
+                                deviceModel = android.os.Build.MODEL,
+                                totalScore = results.finalWeightedScore,
+                                singleCoreScore = results.singleCoreScore, // Might be 0 for AI
+                                multiCoreScore = results.multiCoreScore,   // Might be 0 for AI
+                                normalizedScore = results.normalizedScore,
+                                detailedResultsJson = detailedJson,
+                                performanceMetricsJson = performanceMetricsJson
+                            )
+
+                    val genericDetails = results.individualScores.map { result ->
+                        com.ivarna.finalbenchmark2.data.database.entities.GenericTestDetailEntity(
+                            resultId = 0,
+                            testName = result.name,
+                            score = result.opsPerSecond, // Using opsPerSecond as canonical score
+                            metricsJson = result.metricsJson
+                        )
+                    }
+
+                    historyRepository.saveGenericBenchmark(masterEntity, genericDetails)
+                     Log.d("BenchmarkViewModel", "Saved generic benchmark result for type: $type")
+                } catch (e: Exception) {
+                    Log.e("BenchmarkViewModel", "Error saving generic result: ${e.message}", e)
+                }
+            }
         }
 
         companion object {
