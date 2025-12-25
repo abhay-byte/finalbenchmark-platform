@@ -223,15 +223,19 @@ fun CpuComparisonScreen(
                         )
                     }
                     
-                    val singleCoreBaseDelay = 400
+                    val singleCoreBaseDelay = 200
                     val singleCoreBenchmarks = getSingleCoreBenchmarkItems(userDevice, selectedDevice)
                     itemsIndexed(singleCoreBenchmarks) { index, benchmark ->
+                        val isInitiallyVisible = index < 4
+                        val itemDelay = if (isInitiallyVisible) singleCoreBaseDelay + (index * 50) else 0
+                        val itemDuration = if (isInitiallyVisible) 500 else 250
+                        
                         BenchmarkComparisonCard(
                             benchmark = benchmark,
                             userDeviceName = userDevice?.name ?: "Your Device",
                             selectedDeviceName = selectedDevice.name,
-                            // Cap stagger at index 4 (200ms max stagger) so off-screen items appear quickly
-                            delayMillis = singleCoreBaseDelay + (minOf(index, 4) * 50)
+                            delayMillis = itemDelay,
+                            animationDuration = itemDuration
                         )
                     }
                     
@@ -247,15 +251,20 @@ fun CpuComparisonScreen(
                     }
                     
                     // Independent base delay, not waiting for entire single-core list
+                    // Independent base delay, not waiting for entire single-core list
                     val multiCoreBaseDelay = 100 
                     val multiCoreBenchmarks = getMultiCoreBenchmarkItems(userDevice, selectedDevice)
                     itemsIndexed(multiCoreBenchmarks) { index, benchmark ->
+                        val isInitiallyVisible = index < 4
+                        val itemDelay = if (isInitiallyVisible) multiCoreBaseDelay + (index * 50) else 0
+                        val itemDuration = if (isInitiallyVisible) 500 else 250
+
                         BenchmarkComparisonCard(
                             benchmark = benchmark,
                             userDeviceName = userDevice?.name ?: "Your Device",
                             selectedDeviceName = selectedDevice.name,
-                            // Cap stagger at index 4
-                            delayMillis = multiCoreBaseDelay + (minOf(index, 4) * 50)
+                            delayMillis = itemDelay,
+                            animationDuration = itemDuration
                         )
                     }
                 }
@@ -796,7 +805,8 @@ private fun BenchmarkComparisonCard(
     benchmark: BenchmarkComparisonItem,
     userDeviceName: String,
     selectedDeviceName: String,
-    delayMillis: Int = 0
+    delayMillis: Int = 0,
+    animationDuration: Int = 500
 ) {
     val userWins = benchmark.userScore > benchmark.selectedScore
     val maxScore = maxOf(benchmark.userScore, benchmark.selectedScore, 1.0)
@@ -817,7 +827,8 @@ private fun BenchmarkComparisonCard(
         shape = RoundedCornerShape(12.dp),
         containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f),
         borderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f),
-        delayMillis = delayMillis
+        delayMillis = delayMillis,
+        animationDuration = animationDuration
     ) {
         Column(
             modifier = Modifier

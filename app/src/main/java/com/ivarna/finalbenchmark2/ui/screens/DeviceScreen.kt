@@ -67,11 +67,13 @@ fun formatBytesInMB(bytes: Long): String {
 )
 @Composable
 fun DeviceScreen(
-    viewModel: DeviceViewModel = androidx.lifecycle.viewmodel.compose.viewModel(),
-    hazeState: HazeState? = null
+    viewModel: DeviceViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
 ) {
         val context = LocalContext.current
         val deviceInfo by viewModel.deviceInfo.collectAsState()
+        
+        // Local HazeState for this screen to avoid conflict with parent HazeState
+        val deviceScreenHazeState = remember { HazeState() }
 
         // Initialize the ViewModel with context
         LaunchedEffect(context) {
@@ -109,60 +111,66 @@ fun DeviceScreen(
                                                                 ),
                                                         radius = 1000f
                                                 )
-                                        )
-                                        .background(
-                                                androidx.compose.ui.graphics.Brush.verticalGradient(
-                                                        colors =
-                                                                listOf(
-                                                                        MaterialTheme.colorScheme
-                                                                                .background,
-                                                                        MaterialTheme.colorScheme
-                                                                                .surfaceContainerLowest
-                                                                )
-                                                )
-                                        )
-                ) {
-                        // Radial gradient overlay removed as it is now integrated into the main Box
-                        // modifiers
-
-                        Column(modifier = Modifier.fillMaxSize()) {
-                                // Prepare glass effect colors
-                                val surfaceColor = MaterialTheme.colorScheme.surface
-                                val blurBackgroundColor = remember(surfaceColor) { surfaceColor.copy(alpha = 0.2f) }
-
-                                // Frosted Glass Tab Row Container
-                                Box(
-                                        modifier = Modifier
-                                                .fillMaxWidth()
-                                                .padding(
-                                                        start = 16.dp,
-                                                        end = 16.dp,
-                                                        top = 24.dp, // Increased top spacing
-                                                        bottom = 8.dp
-                                                )
-                                                .shadow(
-                                                        elevation = 8.dp,
-                                                        shape = androidx.compose.foundation.shape.RoundedCornerShape(50),
-                                                        spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
-                                                )
-                                                .clip(androidx.compose.foundation.shape.RoundedCornerShape(50))
-                                                .then(
-                                                        if (hazeState != null) {
-                                                                Modifier.hazeChild(state = hazeState) {
-                                                                        backgroundColor = blurBackgroundColor
-                                                                        blurRadius = 30.dp
-                                                                        noiseFactor = 0.05f
-                                                                }
-                                                        } else {
-                                                                Modifier.background(blurBackgroundColor)
-                                                        }
-                                                )
-                                                .border(
-                                                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)),
-                                                        shape = androidx.compose.foundation.shape.RoundedCornerShape(50)
-                                                )
                                 ) {
-                                        ScrollableTabRow(
+                        // Main Content Layer (Source for Blur)
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .haze(state = deviceScreenHazeState)
+                        ) {
+                            Column(modifier = Modifier.fillMaxSize()) {
+                                    // Add spacer at top to push content below the floating tab bar
+                                    Spacer(modifier = Modifier.height(90.dp))
+                                    
+                                    HorizontalPager(
+                                            state = pagerState,
+                                            userScrollEnabled = true,
+                                            modifier = Modifier.weight(1f) // Fill remaining space
+                                    ) { page ->
+                                            when (page) {
+                                                    0 -> DeviceInfoTab(deviceInfo)
+                                                    1 -> CpuTab(deviceInfo)
+                                                    2 -> GpuTab(deviceInfo)
+                                                    3 -> MemoryTab(deviceInfo)
+                                                    4 -> DisplayTab(deviceInfo)
+                                                    5 -> OperatingSystemTab(deviceInfo)
+                                                    6 -> HardwareTab(deviceInfo)
+                                                    7 -> SensorsTab(deviceInfo)
+                                            }
+                                    }
+                            }
+                        }
+
+                        // Floating Tab Bar Layer (The Blur)
+                        // Placed AFTER the content layout in the Box so it z-indexes on top
+                        // Frosted Glass Tab Row Container
+                        Box(
+                                modifier = Modifier
+                                        .align(Alignment.TopCenter) // Align to top
+                                        .fillMaxWidth()
+                                        .padding(
+                                                start = 16.dp,
+                                                end = 16.dp,
+                                                top = 24.dp, 
+                                                bottom = 8.dp
+                                        )
+                                        .shadow(
+                                                elevation = 8.dp,
+                                                shape = androidx.compose.foundation.shape.RoundedCornerShape(50),
+                                                spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                                        )
+                                        .clip(androidx.compose.foundation.shape.RoundedCornerShape(50))
+                                        .hazeChild(state = deviceScreenHazeState) {
+                                                backgroundColor = blurBackgroundColor
+                                                blurRadius = 30.dp
+                                                noiseFactor = 0.05f
+                                        }
+                                        .border(
+                                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)),
+                                                shape = androidx.compose.foundation.shape.RoundedCornerShape(50)
+                                        )
+                        ) {
+                                ScrollableTabRow(
                                                 selectedTabIndex = pagerState.currentPage,
                                                 edgePadding = 16.dp,
                                                 containerColor = Color.Transparent,

@@ -25,6 +25,7 @@ fun AnimatedGlassCard(
     containerColor: Color = androidx.compose.material3.MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.15f),
     borderColor: Color = androidx.compose.material3.MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f),
     delayMillis: Int = 0,
+    animationDuration: Int = 500,
     onClick: (() -> Unit)? = null,
     content: @Composable () -> Unit
 ) {
@@ -38,7 +39,7 @@ fun AnimatedGlassCard(
             scale.animateTo(
                 targetValue = 1f,
                 animationSpec = tween(
-                    durationMillis = 500,
+                    durationMillis = animationDuration,
                     easing = FastOutSlowInEasing
                 )
             )
@@ -48,7 +49,7 @@ fun AnimatedGlassCard(
             alpha.animateTo(
                 targetValue = 1f,
                 animationSpec = tween(
-                    durationMillis = 400
+                    durationMillis = (animationDuration * 0.8).toInt()
                 )
             )
         }
