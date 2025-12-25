@@ -209,7 +209,7 @@ fun MainNavigation(
                     exitTransition = exitTransition,
                     popEnterTransition = popEnterTransition,
                     popExitTransition = popExitTransition
-                ) { DeviceScreen() }
+                ) { DeviceScreen(hazeState = hazeState) }
                 
                 composable(
                     route = "rankings",

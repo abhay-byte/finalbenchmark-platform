@@ -9,6 +9,12 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeChild
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.foundation.border
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -60,7 +66,10 @@ fun formatBytesInMB(bytes: Long): String {
         androidx.compose.foundation.ExperimentalFoundationApi::class
 )
 @Composable
-fun DeviceScreen(viewModel: DeviceViewModel = androidx.lifecycle.viewmodel.compose.viewModel()) {
+fun DeviceScreen(
+    viewModel: DeviceViewModel = androidx.lifecycle.viewmodel.compose.viewModel(),
+    hazeState: HazeState? = null
+) {
         val context = LocalContext.current
         val deviceInfo by viewModel.deviceInfo.collectAsState()
 
@@ -117,19 +126,41 @@ fun DeviceScreen(viewModel: DeviceViewModel = androidx.lifecycle.viewmodel.compo
                         // modifiers
 
                         Column(modifier = Modifier.fillMaxSize()) {
-                                // Glassmorphic Scrollable Tab Row
-                                com.ivarna.finalbenchmark2.ui.components.GlassCard(
-                                        modifier =
-                                                Modifier.fillMaxWidth()
-                                                        .padding(
-                                                                start = 16.dp,
-                                                                end = 16.dp,
-                                                                top = 24.dp, // Increased top spacing
-                                                                bottom = 8.dp
-                                                        ),
-                                        shape =
-                                                androidx.compose.foundation.shape
-                                                        .RoundedCornerShape(50)
+                                // Prepare glass effect colors
+                                val surfaceColor = MaterialTheme.colorScheme.surface
+                                val blurBackgroundColor = remember(surfaceColor) { surfaceColor.copy(alpha = 0.2f) }
+
+                                // Frosted Glass Tab Row Container
+                                Box(
+                                        modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(
+                                                        start = 16.dp,
+                                                        end = 16.dp,
+                                                        top = 24.dp, // Increased top spacing
+                                                        bottom = 8.dp
+                                                )
+                                                .shadow(
+                                                        elevation = 8.dp,
+                                                        shape = androidx.compose.foundation.shape.RoundedCornerShape(50),
+                                                        spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                                                )
+                                                .clip(androidx.compose.foundation.shape.RoundedCornerShape(50))
+                                                .then(
+                                                        if (hazeState != null) {
+                                                                Modifier.hazeChild(state = hazeState) {
+                                                                        backgroundColor = blurBackgroundColor
+                                                                        blurRadius = 30.dp
+                                                                        noiseFactor = 0.05f
+                                                                }
+                                                        } else {
+                                                                Modifier.background(blurBackgroundColor)
+                                                        }
+                                                )
+                                                .border(
+                                                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)),
+                                                        shape = androidx.compose.foundation.shape.RoundedCornerShape(50)
+                                                )
                                 ) {
                                         ScrollableTabRow(
                                                 selectedTabIndex = pagerState.currentPage,
@@ -139,14 +170,14 @@ fun DeviceScreen(viewModel: DeviceViewModel = androidx.lifecycle.viewmodel.compo
                                                 divider = {},
                                                 indicator = { tabPositions ->
                                                         if (pagerState.currentPage <
-                                                                        tabPositions.size
+                                                                         tabPositions.size
                                                         ) {
                                                                 TabRowDefaults.SecondaryIndicator(
                                                                         modifier =
                                                                                 Modifier.tabIndicatorOffset(
                                                                                         tabPositions[
-                                                                                                pagerState
-                                                                                                        .currentPage]
+                                                                                                 pagerState
+                                                                                                         .currentPage]
                                                                                 ),
                                                                         color =
                                                                                 MaterialTheme
@@ -159,7 +190,7 @@ fun DeviceScreen(viewModel: DeviceViewModel = androidx.lifecycle.viewmodel.compo
                                         ) {
                                                 tabs.forEachIndexed { index, title ->
                                                         Tab(
-                                                                modifier = Modifier.height(72.dp), // Increased height (width of bar) by 1.5x
+                                                                modifier = Modifier.height(58.dp), // Reduced height (-20% from 72dp)
                                                                 selected =
                                                                         pagerState.currentPage ==
                                                                                 index,
