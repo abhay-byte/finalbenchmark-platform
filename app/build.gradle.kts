@@ -152,13 +152,12 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
 
-    // AI/ML - TensorFlow Lite (Standard) & Acceleration
-    implementation("org.tensorflow:tensorflow-lite:2.16.1")
-    implementation("org.tensorflow:tensorflow-lite-gpu:2.16.1")
-    implementation("org.tensorflow:tensorflow-lite-gpu-api:2.16.1") // Often needed for delegate options
-    // Start with standard LiteRT and add QNN if we can confirm the repo.
-    // implementation("com.qualcomm.qti:qnn-runtime:2.34.0")
-    // implementation("com.qualcomm.qti:qnn-litert-delegate:2.34.0")
+    // LiteRT (New Google AI Edge) - Replaces TensorFlow Lite
+    // LiteRT (New Google AI Edge) - Replaces TensorFlow Lite
+    implementation("com.google.ai.edge.litert:litert:1.0.1")
+    implementation("com.google.ai.edge.litert:litert-gpu:1.0.1")
+    implementation("com.google.ai.edge.litert:litert-gpu-api:1.0.1")
+    implementation("com.google.mediapipe:tasks-genai:0.10.14")
     
     // Networking
     implementation("com.squareup.okhttp3:okhttp:4.10.0")

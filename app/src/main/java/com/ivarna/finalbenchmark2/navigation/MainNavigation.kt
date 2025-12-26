@@ -295,7 +295,13 @@ fun MainNavigation(
                     popExitTransition = popExitTransition
                 ) { backStackEntry ->
                     val preset = backStackEntry.arguments?.getString("preset") ?: "Auto"
-                    val type = backStackEntry.arguments?.getString("type") ?: "CPU"
+                    val typeString = backStackEntry.arguments?.getString("type") ?: "CPU"
+                    val category = try {
+                        com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkCategory.valueOf(typeString)
+                    } catch (e: Exception) {
+                        com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkCategory.CPU
+                    }
+                    
                     val historyRepository =
                             com.ivarna.finalbenchmark2.data.repository.HistoryRepository(
                                     com.ivarna.finalbenchmark2.data.database.AppDatabase
@@ -305,7 +311,7 @@ fun MainNavigation(
                     val activity = context as? com.ivarna.finalbenchmark2.MainActivity
                     BenchmarkScreen(
                             preset = preset,
-                            benchmarkType = type,
+                            benchmarkCategory = category,
                             onBenchmarkComplete = { summaryJson ->
                                 // URL-encode the JSON to handle special characters properly
                                 val encodedJson = java.net.URLEncoder.encode(summaryJson, "UTF-8")

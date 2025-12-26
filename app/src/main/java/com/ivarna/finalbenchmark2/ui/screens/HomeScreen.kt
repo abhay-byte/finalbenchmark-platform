@@ -90,6 +90,8 @@ import kotlinx.coroutines.delay
 import kotlin.math.abs
 import dev.chrisbanes.haze.hazeChild
 import dev.chrisbanes.haze.HazeStyle
+import kotlinx.coroutines.launch
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -130,6 +132,9 @@ fun HomeScreen(
         // Swipe state for high score card
         var showHighScoreCard by remember { mutableStateOf(true) }
         var highestScoreEntity by remember { mutableStateOf<BenchmarkResultEntity?>(null) }
+        
+        // Dialog State
+        var showDownloadDialog by remember { mutableStateOf(false) }
 
         // Load highest score from database
         LaunchedEffect(historyRepository) {
@@ -322,8 +327,10 @@ fun HomeScreen(
                                 // =========================================================
                                 // BENCHMARK CONTROLS
                                 // =========================================================
-                                var selectedBenchmarkType by remember { mutableStateOf("CPU") }
-                                val benchmarkTypes = listOf("CPU", "AI")
+                                // BENCHMARK CONTROLS
+                                // =========================================================
+                                var selectedBenchmarkCategory by remember { mutableStateOf(com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkCategory.CPU) }
+                                val benchmarkCategories = com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkCategory.entries
                                 var isTypeDropdownExpanded by remember { mutableStateOf(false) }
 
                                 com.ivarna.finalbenchmark2.ui.components.AnimatedGlassCard(
@@ -378,7 +385,7 @@ fun HomeScreen(
                                             modifier = Modifier.fillMaxWidth()
                                         ) {
                                             OutlinedTextField(
-                                                value = selectedBenchmarkType,
+                                                value = selectedBenchmarkCategory.name,
                                                 onValueChange = {},
                                                 readOnly = true,
                                                 label = { Text("Benchmark Type") },
@@ -387,15 +394,16 @@ fun HomeScreen(
                                                 modifier = Modifier.menuAnchor().fillMaxWidth(),
                                                 shape = RoundedCornerShape(12.dp)
                                             )
+                                            
                                             ExposedDropdownMenu(
                                                 expanded = isTypeDropdownExpanded,
                                                 onDismissRequest = { isTypeDropdownExpanded = false }
                                             ) {
-                                                benchmarkTypes.forEach { option ->
+                                                benchmarkCategories.forEach { category ->
                                                     DropdownMenuItem(
-                                                        text = { Text(option) },
+                                                        text = { Text(category.name) },
                                                         onClick = {
-                                                            selectedBenchmarkType = option
+                                                            selectedBenchmarkCategory = category
                                                             isTypeDropdownExpanded = false
                                                         }
                                                     )
@@ -415,6 +423,16 @@ fun HomeScreen(
                                                 )
                                                 .clip(RoundedCornerShape(28.dp))
                                                 .clickable {
+                                                    // Check if AI type is selected and models are missing
+                                                    if (selectedBenchmarkCategory == com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkCategory.AI) {
+                                                        val areModelsReady = com.ivarna.finalbenchmark2.aiBenchmark.ModelDownloader.areAllModelsDownloaded(context)
+                                                        if (!areModelsReady) {
+                                                            // Show download dialog instead of starting
+                                                            showDownloadDialog = true
+                                                            return@clickable
+                                                        }
+                                                    }
+
                                                     val activity = context as? com.ivarna.finalbenchmark2.MainActivity
                                                     activity?.startAllOptimizations()
                                                     val deviceTier = when (selectedWorkload) {
@@ -423,7 +441,7 @@ fun HomeScreen(
                                                         "High Accuracy - Slow" -> "flagship"
                                                         else -> "flagship"
                                                     }
-                                                    onStartBenchmark(deviceTier, selectedBenchmarkType)
+                                                    onStartBenchmark(deviceTier, selectedBenchmarkCategory.name)
                                                 },
                                             contentAlignment = Alignment.Center
                                         ) {
@@ -791,6 +809,51 @@ fun HomeScreen(
 
                                 // Benchmark Tips Card
                                 BenchmarkTipsCard()
+
+                                Spacer(modifier = Modifier.height(16.dp))
+
+                                // AI Resources Card
+                                // var showDownloadDialog removed (hoisted)
+
+                                com.ivarna.finalbenchmark2.ui.components.AnimatedGlassCard(
+                                    modifier = Modifier.fillMaxWidth().clickable { showDownloadDialog = true },
+                                    shape = RoundedCornerShape(24.dp),
+                                    containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.3f),
+                                    borderColor = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.5f),
+                                    delayMillis = 400
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(20.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Rounded.ArrowDropDown,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.tertiary,
+                                            modifier = Modifier.size(32.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(16.dp))
+                                        Column {
+                                            Text(
+                                                text = "AI Models Missing?",
+                                                style = MaterialTheme.typography.titleMedium,
+                                                fontWeight = FontWeight.Bold,
+                                                color = MaterialTheme.colorScheme.onSurface
+                                            )
+                                            Text(
+                                                text = "Tap here to download required AI models.",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
+                                }
+
+                                if (showDownloadDialog) {
+                                    AiDownloadDialog(
+                                        onDismiss = { showDownloadDialog = false }
+                                    )
+                                }
 
 
 
@@ -1660,4 +1723,93 @@ fun SmallStatCard(
             letterSpacing = 1.2.sp
         )
     }
+}
+@Composable
+fun AiDownloadDialog(onDismiss: () -> Unit) {
+    var downloadProgress by remember { mutableStateOf(0f) }
+    var downloadStatus by remember { mutableStateOf("Ready to download") }
+    var isDownloading by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+
+    AlertDialog(
+        onDismissRequest = { if (!isDownloading) onDismiss() },
+        title = { Text("Download AI Models") },
+        text = {
+            Column {
+                Text("To run AI Benchmarks offline, we need to download the following models (~350MB total):\n\n• MobileNet V3 (Image Classification)\n• EfficientDet (Object Detection)\n• MiniLM (Text Embedding)\n• Whisper (Speech-to-Text)\n• Gemma 3 (LLM Inference)")
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                if (isDownloading) {
+                    LinearProgressIndicator(
+                        progress = { downloadProgress },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = downloadStatus,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            if (!isDownloading) {
+                Button(
+                    onClick = {
+                        isDownloading = true
+                        scope.launch {
+                            try {
+                                // 1. MobileNet (Approx 5%)
+                                downloadStatus = "Downloading MobileNet V3..."
+                                com.ivarna.finalbenchmark2.aiBenchmark.ModelDownloader.downloadModel(
+                                    context,
+                                    com.ivarna.finalbenchmark2.aiBenchmark.ModelRepository.MOBILENET_V3_URL,
+                                    com.ivarna.finalbenchmark2.aiBenchmark.ModelRepository.MOBILENET_FILENAME
+                                ) { p -> downloadProgress = p * 0.05f }
+                                
+                                val models = com.ivarna.finalbenchmark2.aiBenchmark.ModelRepository.models
+                                val totalModels = models.size
+
+                                models.forEachIndexed { index, model ->
+                                    downloadStatus = "Downloading ${index + 1}/$totalModels: ${model.title} (${model.sizeMb})..."
+                                    
+                                    // Calculate progress range for this file
+                                    val startProgress = index.toFloat() / totalModels
+                                    val endProgress = (index + 1).toFloat() / totalModels
+                                    
+                                    com.ivarna.finalbenchmark2.aiBenchmark.ModelDownloader.downloadModel(
+                                        context,
+                                        model.url,
+                                        model.filename
+                                    ) { fileProgress ->
+                                        // Map file progress (0..1) to total progress (start..end)
+                                        downloadProgress = startProgress + (fileProgress * (endProgress - startProgress))
+                                    }
+                                }
+
+                                downloadStatus = "All Downloads Complete!"
+                                downloadProgress = 1.0f
+                                delay(1000)
+                                onDismiss()
+                            } catch (e: Exception) {
+                                downloadStatus = "Error: ${e.message}"
+                                isDownloading = false
+                            }
+                        }
+                    }
+                ) {
+                    Text("Download All")
+                }
+            }
+        },
+        dismissButton = {
+            if (!isDownloading) {
+                TextButton(onClick = onDismiss) {
+                    Text("Cancel")
+                }
+            }
+        }
+    )
 }

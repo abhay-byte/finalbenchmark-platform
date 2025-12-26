@@ -115,7 +115,8 @@ fun ResultScreen(
                                     executionTimeMs = resultObj.optDouble("executionTimeMs", 0.0),
                                     opsPerSecond = resultObj.optDouble("opsPerSecond", 0.0),
                                     isValid = resultObj.optBoolean("isValid", false),
-                                    metricsJson = resultObj.optString("metricsJson", "{}")
+                                    metricsJson = resultObj.optString("metricsJson", "{}"),
+                                    accelerationMode = if (resultObj.has("acceleration_mode")) resultObj.getString("acceleration_mode") else null
                                 )
                             )
                         }
@@ -989,11 +990,46 @@ fun DetailedDataTab(summary: BenchmarkSummary) {
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
             // Performance Monitoring Section (Optional/Shared)
+            // AI Score Card (Prominent Top Placement)
             item {
                 AnimatedEntranceContainer(index = 0) {
-                    PerformanceMonitoringSection(
-                            performanceMetricsJson = summary.performanceMetricsJson
-                    )
+                     Card(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+                        shape = RoundedCornerShape(24.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.15f)
+                        ),
+                        elevation = CardDefaults.cardElevation(0.dp),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.25f))
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(24.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column {
+                                Text(
+                                    text = "AI BENCHMARK SCORE",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Black,
+                                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
+                                    letterSpacing = 1.5.sp
+                                )
+                                Text(
+                                    text = "Total Performance",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                )
+                            }
+                            Text(
+                                text = String.format("%.0f", summary.finalScore),
+                                style = MaterialTheme.typography.headlineLarge,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = MaterialTheme.colorScheme.primary,
+                                letterSpacing = (-1).sp
+                            )
+                        }
+                    }
                 }
             }
 
@@ -1001,10 +1037,19 @@ fun DetailedDataTab(summary: BenchmarkSummary) {
             item {
                 AnimatedEntranceContainer(index = 1) {
                     BenchmarkSection(
-                            title = "AI Benchmarks",
+                            title = "Detailed AI Results",
                             score = summary.finalScore,
                             results = summary.detailedResults,
                             isAi = true
+                    )
+                }
+            }
+
+            // Performance Monitoring Section (Moved to bottom)
+            item {
+                AnimatedEntranceContainer(index = 2) {
+                    PerformanceMonitoringSection(
+                            performanceMetricsJson = summary.performanceMetricsJson
                     )
                 }
             }
@@ -1182,8 +1227,33 @@ fun BenchmarkResultItem(result: BenchmarkResult, isAi: Boolean = false) {
                                         color = MaterialTheme.colorScheme.onSurface,
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis,
-                                        modifier = Modifier.weight(1f).padding(end = 8.dp)
+                                        modifier = Modifier.weight(1f, fill = false).padding(end = 8.dp)
                                 )
+                                
+                                // Acceleration Badge
+                                if (result.accelerationMode != null) {
+                                    val badgeColor = when(result.accelerationMode) {
+                                        "NPU" -> Color(0xFF4CAF50) // Green
+                                        "GPU" -> Color(0xFFFF9800) // Orange
+                                        else -> Color.Gray
+                                    }
+                                    
+                                    Box(
+                                        modifier = Modifier
+                                            .padding(end = 8.dp)
+                                            .clip(RoundedCornerShape(4.dp))
+                                            .background(badgeColor.copy(alpha = 0.2f))
+                                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                                    ) {
+                                        Text(
+                                            text = result.accelerationMode,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 9.sp,
+                                            color = badgeColor
+                                        )
+                                    }
+                                }
                                 Text(
                                         text = String.format("%.1f", individualScore),
                                         style = MaterialTheme.typography.titleSmall,
@@ -1728,18 +1798,28 @@ fun AnimatedEntranceContainer(
     index: Int,
     content: @Composable () -> Unit
 ) {
-    var visible by remember { mutableStateOf(false) }
+    val visibleState = remember {
+        MutableTransitionState(false).apply {
+            // If the index is 0, we can start visible immediately to avoid perceived lag
+            // Otherwise start false and animate in
+            targetState = index == 0
+        }
+    }
+
     LaunchedEffect(Unit) {
-        delay(index * 100L)
-        visible = true
+        // Ensure even index 0 gets a trigger if it wasn't already set
+        if (!visibleState.targetState) {
+            delay(index * 50L) // Reduced delay for snappier feel
+            visibleState.targetState = true
+        }
     }
     
     AnimatedVisibility(
-        visible = visible,
-        enter = fadeIn(animationSpec = tween(600)) + 
+        visibleState = visibleState,
+        enter = fadeIn(animationSpec = tween(400)) + 
                 slideInVertically(
-                    initialOffsetY = { it / 3 },
-                    animationSpec = tween(600, easing = FastOutSlowInEasing)
+                    initialOffsetY = { it / 4 }, // Reduced slide distance
+                    animationSpec = tween(400, easing = FastOutSlowInEasing)
                 )
     ) {
         content()

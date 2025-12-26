@@ -189,7 +189,7 @@ class KotlinBenchmarkManager(
                 val fileName = when(benchmark) {
                     BenchmarkName.IMAGE_CLASSIFICATION -> ModelRepository.MOBILENET_FILENAME
                     BenchmarkName.OBJECT_DETECTION -> ModelRepository.EFFICIENTDET_FILENAME
-                    // BenchmarkName.LLM_INFERENCE -> ModelRepository.GEMMA_FILENAME // Requires GenAI Edge SDK
+                    BenchmarkName.LLM_INFERENCE -> ModelRepository.GEMMA_FILENAME 
                     BenchmarkName.TEXT_EMBEDDING -> ModelRepository.MINILM_FILENAME
                     BenchmarkName.SPEECH_TO_TEXT -> ModelRepository.WHISPER_FILENAME
                     else -> ""
@@ -223,6 +223,8 @@ class KotlinBenchmarkManager(
                  
                   emitBenchmarkStart(testName, categoryName)
                   
+                  val startTime = System.currentTimeMillis()
+
                   // Execute via AiBenchmarkManager
                   val result = when(benchmark) {
                     BenchmarkName.IMAGE_CLASSIFICATION -> {
@@ -239,22 +241,29 @@ class KotlinBenchmarkManager(
                     BenchmarkName.SPEECH_TO_TEXT -> {
                          aiManager.runAsr(modelFile)
                     }
+                    BenchmarkName.LLM_INFERENCE -> {
+                         aiManager.runLlmInference(modelFile)
+                    }
                     else -> com.ivarna.finalbenchmark2.aiBenchmark.AiBenchmarkResult(modelFile.name, 0.0, 0.0, "Skipped", false, "Not implemented")
                   }
+                  
+                  val endTime = System.currentTimeMillis()
+                  val totalDurationMs = endTime - startTime
 
                   if (result.success) {
                       val multiplier = SCORING_FACTORS[benchmark] ?: 2.0
                       val score = result.throughput * multiplier
-                      Log.d(TAG, "AI Result - $testName: Throughput=${result.throughput}, Time=${result.inferenceTimeMs}, Score=$score")
+                      Log.d(TAG, "AI Result - $testName: Throughput=${result.throughput}, Time=${result.inferenceTimeMs}, Duration=${totalDurationMs}ms, Score=$score")
                       
                       results.add(BenchmarkResult(
                           name = testName,
-                          executionTimeMs = result.inferenceTimeMs,
+                          executionTimeMs = totalDurationMs.toDouble(), // Use total duration for UI
                           opsPerSecond = result.throughput, 
                           isValid = true,
-                          metricsJson = "{ \"acceleration\": \"${result.accelerationMode}\" }"
+                          metricsJson = "{ \"acceleration\": \"${result.accelerationMode}\", \"avgInferenceTimeMs\": ${result.inferenceTimeMs} }",
+                          accelerationMode = result.accelerationMode
                       ))
-                      emitBenchmarkComplete(testName, categoryName, result.inferenceTimeMs.toLong(), score, result.accelerationMode) 
+                      emitBenchmarkComplete(testName, categoryName, totalDurationMs, score, result.accelerationMode) 
                   } else {
                        Log.e(TAG, "Benchmark $testName failed: ${result.errorMessage}")
                        results.add(BenchmarkResult(testName, 0.0, 0.0, false, "{\"error\": \"${result.errorMessage}\"}"))
@@ -276,6 +285,7 @@ class KotlinBenchmarkManager(
                      put("executionTimeMs", result.executionTimeMs)
                      put("isValid", result.isValid)
                      put("metricsJson", result.metricsJson)
+                     put("acceleration_mode", result.accelerationMode) // Ensure UI receives this
                  })
              }
 

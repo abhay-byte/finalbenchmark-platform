@@ -6,7 +6,8 @@ data class BenchmarkEvent(
         val mode: String, // "SINGLE" | "MULTI"
         val state: String, // "STARTED" | "COMPLETED"
         val timeMs: Long,
-        val score: Double
+        val score: Double,
+        val accelerationMode: String? = null // ADDED: NPU/GPU/CPU
 )
 
 /** Represents the final benchmark summary */
@@ -24,7 +25,8 @@ data class BenchmarkResult(
         val executionTimeMs: Double,
         val opsPerSecond: Double,
         val isValid: Boolean,
-        val metricsJson: String
+        val metricsJson: String,
+        val accelerationMode: String? = null // Added for AI Benchmarks
 )
 
 /** Represents benchmark configuration */

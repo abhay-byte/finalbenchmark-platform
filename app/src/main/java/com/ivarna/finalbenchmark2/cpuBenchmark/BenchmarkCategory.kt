@@ -5,5 +5,7 @@ enum class BenchmarkCategory {
     AI,
     GPU,
     RAM,
-    STORAGE
+    STORAGE,
+    PRODUCTIVITY,
+    EXTERNAL_GPU
 }

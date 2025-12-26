@@ -43,8 +43,11 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.Pending
 import androidx.compose.material.icons.outlined.Timer
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -94,7 +97,7 @@ import com.ivarna.finalbenchmark2.ui.viewmodels.TestStatus
 @Composable
 fun BenchmarkScreen(
     preset: String,
-    benchmarkType: String = "CPU", // Added parameter with default
+    benchmarkCategory: com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkCategory = com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkCategory.CPU, // Changed to Enum
     onBenchmarkComplete: (String) -> Unit,
     onBenchmarkStart: () -> Unit = {},
     onBenchmarkEnd: () -> Unit = {},
@@ -140,8 +143,8 @@ fun BenchmarkScreen(
     LaunchedEffect(Unit) {
         if (!uiState.isRunning && uiState.progress == 0f) {
             onBenchmarkStart()
-            // Pass the benchmark type to the ViewModel
-            viewModel.startBenchmark(preset, benchmarkType)
+            // Pass the benchmark category to the ViewModel
+            viewModel.startBenchmark(preset, benchmarkCategory)
         }
     }
     
@@ -229,10 +232,10 @@ fun BenchmarkScreen(
                         )
                         
                         val configTitle = when (preset.lowercase()) {
-                            "slow" -> "Low Accuracy - Fastest ($benchmarkType)"
-                            "mid" -> "Mid Accuracy - Fast ($benchmarkType)"
-                            "flagship" -> "High Accuracy - Slow ($benchmarkType)"
-                            else -> "${preset.replace("Workload: ", "")} ($benchmarkType)"
+                            "slow" -> "Low Accuracy - Fastest (${benchmarkCategory.name})"
+                            "mid" -> "Mid Accuracy - Fast (${benchmarkCategory.name})"
+                            "flagship" -> "High Accuracy - Slow (${benchmarkCategory.name})"
+                            else -> "${preset.replace("Workload: ", "")} (${benchmarkCategory.name})"
                         }
                         
                         Text(
@@ -318,6 +321,7 @@ fun BenchmarkScreen(
                         }
                     }
 
+
                     // Time Remaining Text (Below Dial)
                     if (uiState.isRunning || isWarmingUp) {
                         GlassTimerPill(
@@ -325,6 +329,57 @@ fun BenchmarkScreen(
                             elapsedTime = uiState.elapsedTime
                         )
                         Spacer(modifier = Modifier.height(24.dp))
+                    }
+                    
+                    // Live AI Results Card (User Request: Below Circle)
+                    val completedAiTests = uiState.testStates.filter { 
+                        it.status == TestStatus.COMPLETED 
+                    }
+                    
+                    if (benchmarkCategory == com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkCategory.AI && completedAiTests.isNotEmpty()) {
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 24.dp)
+                                .padding(bottom = 24.dp), 
+                            shape = RoundedCornerShape(20.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.12f)
+                            ),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Text(
+                                    text = "Completed Tests",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(bottom = 8.dp)
+                                )
+                                
+                                completedAiTests.forEach { test ->
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Text(
+                                            text = test.name,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurface,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                        Text(
+                                            text = test.timeText ?: "0.00 s", 
+                                            style = MaterialTheme.typography.bodySmall,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
 
@@ -346,7 +401,8 @@ fun BenchmarkScreen(
                     if (singleCoreTests.isNotEmpty()) {
                         item { 
                             Box(modifier = Modifier.wheelCurve(scrollState, listCoordinates)) {
-                                SectionHeader("SINGLE CORE OPERATIONS") 
+                                val headerTitle = if (benchmarkCategory == com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkCategory.AI) "AI OPERATIONS" else "SINGLE CORE OPERATIONS"
+                                SectionHeader(headerTitle) 
                             }
                         }
                         items(singleCoreTests) { test ->
@@ -603,6 +659,30 @@ fun TimelineTestRow(test: TestState) {
                     overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f, fill = false)
                 )
+
+                if (test.accelerationMode != null) {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Box(
+                        modifier = Modifier
+                            .background(
+                                color = when(test.accelerationMode) {
+                                    "NPU" -> MaterialTheme.colorScheme.tertiaryContainer
+                                    "GPU" -> MaterialTheme.colorScheme.secondaryContainer
+                                    else -> MaterialTheme.colorScheme.surfaceVariant
+                                },
+                                shape = RoundedCornerShape(4.dp)
+                            )
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                    ) {
+                        Text(
+                            text = test.accelerationMode,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
 
                 if (test.timeText.isNotEmpty()) {
                     Spacer(modifier = Modifier.width(12.dp))

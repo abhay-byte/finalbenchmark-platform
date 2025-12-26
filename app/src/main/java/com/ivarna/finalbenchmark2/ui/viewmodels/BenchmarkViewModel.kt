@@ -35,7 +35,8 @@ data class TestState(
         val status: TestStatus,
         val timeText: String = "", // ADDED: Will contain timing like "342ms"
         val durationMs: Long = 0L, // ADDED: Raw duration for calculation
-        val result: com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkResult? = null
+        val result: com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkResult? = null,
+        val accelerationMode: String? = null // ADDED: NPU/GPU/CPU
 )
 
 enum class TestStatus {
@@ -111,7 +112,10 @@ class BenchmarkViewModel(
         val isWarmingUp: StateFlow<Boolean> = _isWarmingUp
 
         private val benchmarkManager =
-                com.ivarna.finalbenchmark2.cpuBenchmark.KotlinBenchmarkManager()
+                com.ivarna.finalbenchmark2.cpuBenchmark.KotlinBenchmarkManager(
+                    context = application,
+                    aiManager = com.ivarna.finalbenchmark2.aiBenchmark.AiBenchmarkManager(application)
+                )
         private val cpuUtils = CpuUtilizationUtils(application)
         private val powerUtils = PowerUtils(application)
         private val tempUtils = TemperatureUtils(application)
@@ -253,7 +257,7 @@ class BenchmarkViewModel(
         private var benchmarkJob: Job? = null
 
         // NEW IMPLEMENTATION: Delegate to KotlinBenchmarkManager for Single Source of Truth
-        fun runBenchmarks(preset: String = "Auto", type: String = com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkCategory.CPU.name) {
+        fun runBenchmarks(preset: String = "Auto", category: com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkCategory = com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkCategory.CPU) {
                 // FIX: Reset state immediately to prevent stale navigation
                 _benchmarkState.value = BenchmarkState.Idle
 
@@ -289,7 +293,7 @@ class BenchmarkViewModel(
                                 performanceMonitor.start()
 
                                 // Initialize Countdown
-                                currentCountdownSeconds = if (type == "AI") {
+                                currentCountdownSeconds = if (category == com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkCategory.AI) {
                                     100
                                 } else {
                                     when (preset.lowercase()) {
@@ -308,18 +312,14 @@ class BenchmarkViewModel(
                                 // Do NOT turn off warm-up here. Wait for first test to start.
 
                                 // 1. RESET STATE - Initialize test states
-                                val category = try {
-                                    com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkCategory.valueOf(type)
-                                } catch (e: Exception) {
-                                    com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkCategory.CPU
-                                }
+                                // category is already passed in
                                 
-                                val testNames = com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkName.getByCategory(category).flatMap { 
-                                     if (category == com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkCategory.CPU) {
-                                         listOf(it.singleCore(), it.multiCore())
-                                     } else {
-                                         listOf(it.displayName())
-                                     }
+                                val names = com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkName.getByCategory(category)
+                                val testNames = if (category == com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkCategory.CPU) {
+                                     // Group all Single-Core first, then all Multi-Core
+                                     names.map { it.singleCore() } + names.map { it.multiCore() }
+                                } else {
+                                     names.map { it.displayName() }
                                 }
 
                                 _uiState.update {
@@ -407,7 +407,8 @@ class BenchmarkViewModel(
                                                                                                                         it.copy(
                                                                                                                                 status =
                                                                                                                                         TestStatus
-                                                                                                                                                .RUNNING
+                                                                                                                                                .RUNNING,
+                                                                                                                                accelerationMode = event.accelerationMode // Capture mode early
                                                                                                                         )
                                                                                                                 else
                                                                                                                         it
@@ -441,7 +442,8 @@ class BenchmarkViewModel(
                                                                                                                                         event.timeMs /
                                                                                                                                                 1000.0
                                                                                                                                 ),
-                                                                                                                        durationMs = event.timeMs // Capture duration
+                                                                                                                        durationMs = event.timeMs, // Capture duration
+                                                                                                                        accelerationMode = event.accelerationMode // Capture mode
                                                                                                                 )
                                                                                                         else
                                                                                                                 it
@@ -504,7 +506,7 @@ class BenchmarkViewModel(
                                 // Start the benchmark execution
                                 benchmarkJob =
                                         launch(Dispatchers.IO) {
-                                                benchmarkManager.runBenchmarks(preset, type)
+                                                benchmarkManager.runBenchmarks(preset, category)
                                         }
 
                                 // Wait for the completion result (the event from benchmark will be
@@ -607,7 +609,7 @@ class BenchmarkViewModel(
 
                                                 val summaryData =
                                                         mapOf(
-                                                                "type" to type,
+                                                                "type" to category.name,
                                                                 "single_core_score" to
                                                                         sanitize(
                                                                                 finalResults
@@ -686,7 +688,7 @@ class BenchmarkViewModel(
 
                                 // Save to database with performance metrics
                                 if (historyRepository != null) {
-                                    if (type == "CPU") {
+                                    if (category == com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkCategory.CPU) {
                                         saveCpuBenchmarkResult(
                                             finalResults,
                                             lastPerformanceMetricsJson
@@ -694,7 +696,7 @@ class BenchmarkViewModel(
                                     } else {
                                         saveGenericBenchmarkResult(
                                            finalResults,
-                                           type,
+                                           category.name,
                                            lastPerformanceMetricsJson
                                         )
                                     }
@@ -820,6 +822,7 @@ class BenchmarkViewModel(
 
                         // Parse detailed results from the JSON
                         val detailedResultsArray = jsonObject.getJSONArray("detailed_results")
+                        Log.d("BenchmarkViewModel", "parseResultsFromManagerJson: Parsing ${detailedResultsArray.length()} detailed results")
                         val detailedResults =
                                 mutableListOf<
                                         com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkResult>()
@@ -879,8 +882,8 @@ class BenchmarkViewModel(
         }
 
         // Legacy function kept for compatibility
-        fun startBenchmark(preset: String = "Auto", type: String = "CPU") {
-                runBenchmarks(preset, type)
+        fun startBenchmark(preset: String = "Auto", category: com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkCategory = com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkCategory.CPU) {
+                runBenchmarks(preset, category)
         }
 
         fun stopBenchmark() {
