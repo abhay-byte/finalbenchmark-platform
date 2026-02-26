@@ -302,28 +302,50 @@ fun MainNavigation(
                         com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkCategory.CPU
                     }
                     
-                    val historyRepository =
+                    // GPU benchmark gets its own dedicated rendering screen
+                    if (category == com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkCategory.GPU) {
+                        val gpuHistoryRepository = remember {
                             com.ivarna.finalbenchmark2.data.repository.HistoryRepository(
-                                    com.ivarna.finalbenchmark2.data.database.AppDatabase
-                                            .getDatabase(context)
-                                            .benchmarkDao()
+                                com.ivarna.finalbenchmark2.data.database.AppDatabase
+                                    .getDatabase(context)
+                                    .benchmarkDao()
                             )
-                    val activity = context as? com.ivarna.finalbenchmark2.MainActivity
-                    BenchmarkScreen(
+                        }
+                        GpuBenchmarkScreen(
                             preset = preset,
-                            benchmarkCategory = category,
+                            historyRepository = gpuHistoryRepository,
                             onBenchmarkComplete = { summaryJson ->
-                                // URL-encode the JSON to handle special characters properly
                                 val encodedJson = java.net.URLEncoder.encode(summaryJson, "UTF-8")
                                 navController.navigate("result/$encodedJson") {
                                     popUpTo("home") { inclusive = false }
                                 }
                             },
-                            onBenchmarkStart = { activity?.startAllOptimizations() },
-                            onBenchmarkEnd = { activity?.stopAllOptimizations() },
-                            onNavBack = { navController.popBackStack() }, // Pass navigation logic
-                            historyRepository = historyRepository
-                    )
+                            onNavBack = { navController.popBackStack() }
+                        )
+                    } else {
+                        val historyRepository =
+                                com.ivarna.finalbenchmark2.data.repository.HistoryRepository(
+                                        com.ivarna.finalbenchmark2.data.database.AppDatabase
+                                                .getDatabase(context)
+                                                .benchmarkDao()
+                                )
+                        val activity = context as? com.ivarna.finalbenchmark2.MainActivity
+                        BenchmarkScreen(
+                                preset = preset,
+                                benchmarkCategory = category,
+                                onBenchmarkComplete = { summaryJson ->
+                                    // URL-encode the JSON to handle special characters properly
+                                    val encodedJson = java.net.URLEncoder.encode(summaryJson, "UTF-8")
+                                    navController.navigate("result/$encodedJson") {
+                                        popUpTo("home") { inclusive = false }
+                                    }
+                                },
+                                onBenchmarkStart = { activity?.startAllOptimizations() },
+                                onBenchmarkEnd = { activity?.stopAllOptimizations() },
+                                onNavBack = { navController.popBackStack() },
+                                historyRepository = historyRepository
+                        )
+                    }
                 }
                 composable(
                     route = "result/{summaryJson}",

@@ -39,6 +39,11 @@ enum class BenchmarkName(val category: BenchmarkCategory) {
     GPU_PARTICLE_SYSTEM(BenchmarkCategory.GPU),
     GPU_TEXTURE_SAMPLING(BenchmarkCategory.GPU),
     GPU_TESSELLATION(BenchmarkCategory.GPU),
+    GPU_MANDELBROT_DEEP(BenchmarkCategory.GPU),
+    GPU_PHONG_MULTI_LIGHT(BenchmarkCategory.GPU),
+    GPU_RAY_MARCH_SDF(BenchmarkCategory.GPU),
+    GPU_DOMAIN_WARP(BenchmarkCategory.GPU),
+    GPU_SUPER_SAMPLE(BenchmarkCategory.GPU),
 
     // External GPU Benchmarks
     UNITY_SCENE_1(BenchmarkCategory.EXTERNAL_GPU),
@@ -105,6 +110,11 @@ enum class BenchmarkName(val category: BenchmarkCategory) {
             GPU_PARTICLE_SYSTEM -> "Particle System Simulation"
             GPU_TEXTURE_SAMPLING -> "Texture Sampling & Fillrate"
             GPU_TESSELLATION -> "Tessellation & Geometry Shader"
+            GPU_MANDELBROT_DEEP -> "Mandelbrot Deep Zoom (512 iter)"
+            GPU_PHONG_MULTI_LIGHT -> "Phong Multi-Light Array (128 lights)"
+            GPU_RAY_MARCH_SDF -> "Ray Marching SDF Scene"
+            GPU_DOMAIN_WARP -> "Domain Warped Noise Field"
+            GPU_SUPER_SAMPLE -> "Super-Sampled Fractal AA"
 
             // External GPU
             UNITY_SCENE_1 -> "Unity Benchmark Scene 1"

@@ -1054,6 +1054,83 @@ fun DetailedDataTab(summary: BenchmarkSummary) {
                 }
             }
         }
+    } else if (summary.type == "GPU") {
+        // ── GPU benchmark results ─────────────────────────────────────────
+        LazyColumn(
+            modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp)
+        ) {
+            // GPU Score Card
+            item {
+                AnimatedEntranceContainer(index = 0) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+                        shape = RoundedCornerShape(24.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.15f)
+                        ),
+                        elevation = CardDefaults.cardElevation(0.dp),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.25f))
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(24.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column {
+                                Text(
+                                    text = "GPU BENCHMARK SCORE",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Black,
+                                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
+                                    letterSpacing = 1.5.sp
+                                )
+                                Text(
+                                    text = "Rendering Performance",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                )
+                                Spacer(Modifier.height(4.dp))
+                                Text(
+                                    text = "Avg FPS: ${"%.1f".format(summary.multiCoreScore)}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+                                )
+                            }
+                            Text(
+                                text = String.format("%.0f", summary.finalScore),
+                                style = MaterialTheme.typography.headlineLarge,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = MaterialTheme.colorScheme.primary,
+                                letterSpacing = (-1).sp
+                            )
+                        }
+                    }
+                }
+            }
+
+            // GPU Scene Results
+            item {
+                AnimatedEntranceContainer(index = 1) {
+                    BenchmarkSection(
+                        title = "GPU Rendering Results",
+                        score = summary.finalScore,
+                        results = summary.detailedResults,
+                        isAi = false,
+                        isGpu = true
+                    )
+                }
+            }
+
+            // Performance Monitoring Section
+            item {
+                AnimatedEntranceContainer(index = 2) {
+                    PerformanceMonitoringSection(
+                        performanceMetricsJson = summary.performanceMetricsJson
+                    )
+                }
+            }
+        }
     } else {
         // Default CPU Logic
         val singleCoreResults =
@@ -1104,7 +1181,7 @@ fun DetailedDataTab(summary: BenchmarkSummary) {
 }
 
 @Composable
-fun BenchmarkSection(title: String, score: Double, results: List<BenchmarkResult>, isAi: Boolean = false) {
+fun BenchmarkSection(title: String, score: Double, results: List<BenchmarkResult>, isAi: Boolean = false, isGpu: Boolean = false) {
         var expanded by remember { mutableStateOf(true) }
 
         Card(
@@ -1174,7 +1251,7 @@ fun BenchmarkSection(title: String, score: Double, results: List<BenchmarkResult
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                                     results.forEach { result ->
-                                        BenchmarkResultItem(result, isAi)
+                                        BenchmarkResultItem(result, isAi, isGpu)
                                     }
                                 }
                         }
@@ -1183,7 +1260,7 @@ fun BenchmarkSection(title: String, score: Double, results: List<BenchmarkResult
 }
 
 @Composable
-fun BenchmarkResultItem(result: BenchmarkResult, isAi: Boolean = false) {
+fun BenchmarkResultItem(result: BenchmarkResult, isAi: Boolean = false, isGpu: Boolean = false) {
         val cleanName = result.name.replace("Single-Core ", "").replace("Multi-Core ", "")
         val timeInSeconds = result.executionTimeMs / 1000.0
 
@@ -1197,6 +1274,12 @@ fun BenchmarkResultItem(result: BenchmarkResult, isAi: Boolean = false) {
              val scalingFactors = KotlinBenchmarkManager.SCORING_FACTORS
              val benchmarkName = BenchmarkName.fromString(result.name)
              individualScore = benchmarkName?.let { scalingFactors[it]?.times(result.opsPerSecond) } ?: (result.opsPerSecond * 2.0)
+        } else if (isGpu) {
+             // For GPU, opsPerSecond holds avgFps; show FPS and read score from metricsJson
+             displayThroughput = String.format("%.1f FPS  /  %.1f ms", result.opsPerSecond, result.executionTimeMs)
+             individualScore = try {
+                 org.json.JSONObject(result.metricsJson).optDouble("score", result.opsPerSecond * 10.0)
+             } catch (e: Exception) { result.opsPerSecond * 10.0 }
         } else {
              // For CPU, opsPerSecond is usually raw ops, converted to Mops/s
              displayThroughput = String.format("%.2f Mops/s", result.opsPerSecond / 1_000_000.0)

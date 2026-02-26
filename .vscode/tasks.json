@@ -1,0 +1,23 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Build Debug APK",
+			"type": "shell",
+			"command": "./gradlew assembleDebug --no-daemon",
+			"problemMatcher": [
+				"$kotlinc"
+			],
+			"group": "build"
+		},
+		{
+			"label": "Build Debug APK v2",
+			"type": "shell",
+			"command": "./gradlew assembleDebug --no-daemon",
+			"problemMatcher": [
+				"$kotlinc"
+			],
+			"group": "build"
+		}
+	]
+}
