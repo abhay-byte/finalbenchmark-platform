@@ -86,19 +86,24 @@ private val STORAGE_TESTS = StorageTest.values().toList()
  *   MIXED       — 64MB seq read + 500 rand-4K + 50 small files, composite MB/s
  */
 private val STORAGE_REFERENCE = mapOf(
-    // SD 8 Gen 3 + UFS 4.0 targets (Java-level I/O, not raw hardware):
-    //   SEQ_READ:    posix_fadvise(DONTNEED) evicts page cache → real UFS read  ~4000 MB/s
-    //   SEQ_WRITE:   buffered write (no fsync in loop) → OS write-back speed    ~2500 MB/s
-    //   RAND_4K:     RandomAccessFile 4K seeks on 128 MB file (page-cache)      ~750  MB/s
-    //   SMALL_FILES: 300×8 KB create/write/delete                               ~16000 files/s
-    //   SQLITE:      50 INSERTs/txn, WAL                                         ~100  txn/s
-    //   MIXED:       16 MB seq + 200 rand-4K + 50 small files composite         ~2500 MB/s
-    StorageTest.SEQ_READ    to 4_000.0,
-    StorageTest.SEQ_WRITE   to 2_500.0,
-    StorageTest.RAND_4K     to 750.0,
-    StorageTest.SMALL_FILES to 16_000.0,
-    StorageTest.SQLITE      to 100.0,
-    StorageTest.MIXED       to 2_500.0,
+    // Reference = ceiling achievable through the Android buffered file I/O layer
+    // on a top-tier SD 8 Gen 3 + UFS 4.0 device (OnePlus CPH2691 measured values
+    // + ~10% headroom for future improvements or faster kernel scheduling).
+    // Raw UFS 4.0 hardware specs (3500-4000 MB/s seq) are NOT reachable through
+    // the file I/O path even with JNI + posix_fadvise; use these buffered-I/O ceilings.
+    //
+    //   SEQ_READ:    JNI + posix_fadvise(DONTNEED) → buffered read ceiling    ~1200 MB/s
+    //   SEQ_WRITE:   JNI + fdatasync per pass → true flush-to-UFS ceiling     ~750  MB/s
+    //   RAND_4K:     RandomAccessFile 4K seeks, 128 MB file                   ~550  MB/s
+    //   SMALL_FILES: 300×8 KB create/write/delete                             ~10000 files/s
+    //   SQLITE:      50 INSERTs/txn + SELECT, WAL mode                        ~2500 txn/s
+    //   MIXED:       seq + rand-4K + small files composite                    ~1600 MB/s
+    StorageTest.SEQ_READ    to 1_200.0,
+    StorageTest.SEQ_WRITE   to   750.0,
+    StorageTest.RAND_4K     to   550.0,
+    StorageTest.SMALL_FILES to 10_000.0,
+    StorageTest.SQLITE      to 2_500.0,
+    StorageTest.MIXED       to 1_600.0,
 )
 
 private fun StorageTest.displayName() = when (this) {
@@ -119,7 +124,9 @@ private fun StorageTest.unit() = when (this) {
 private fun StorageTest.score(value: Double): Int {
     val ref = STORAGE_REFERENCE[this] ?: return 0
     val ratio = value / ref
-    return (ratio * 100.0).roundToInt().coerceAtLeast(0)
+    // Capped at 100: no single test can exceed 100 pts and inflate the geometric mean.
+    // coerceAtLeast(0) guards against negative values from any measurement error.
+    return (ratio * 100.0).roundToInt().coerceIn(0, 100)
 }
 
 private fun calculateStorageGeometricMean(results: List<StorageTestResult>): Double {
