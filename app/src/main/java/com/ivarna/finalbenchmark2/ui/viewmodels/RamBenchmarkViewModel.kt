@@ -80,12 +80,14 @@ private val RAM_TESTS = RamTest.values().toList()
  * These reference values target SD 8 Gen 3 = 100 pts with native code.
  * Adjust after first run if needed.
  */
+// Reference values calibrated from ACTUAL SD 8 Gen 3 measurements with native code.
+// Targeting SD 8 Gen 3 (LPDDR5X) = 100 pts on each test.
 private val RAM_REFERENCE_NATIVE = mapOf(
-    RamTest.SEQ_READ     to 20_000.0,  // MB/s  (NEON 64B/iter, SD 8 Gen 3 @ 20 GB/s)
-    RamTest.SEQ_WRITE    to 16_000.0,  // MB/s  (NEON store, slightly lower than read)
-    RamTest.RAND_ACCESS  to 200.0,     // ns/op (ptr-chase 16 MB, natives ~150-250 ns/op)
-    RamTest.MEM_COPY     to 15_000.0,  // MB/s  (Bionic memcpy read+write combined)
-    RamTest.MULTI_THREAD to 40_000.0,  // MB/s  (4-core NEON read aggregate)
+    RamTest.SEQ_READ     to 27_000.0,  // MB/s  (measured 26976 on SD 8 Gen 3)
+    RamTest.SEQ_WRITE    to 15_000.0,  // MB/s  (measured 14944 on SD 8 Gen 3)
+    RamTest.RAND_ACCESS  to 120.0,     // ns/op (measured 119.1 on SD 8 Gen 3; lower=better)
+    RamTest.MEM_COPY     to 25_000.0,  // MB/s  (estimate ~25 GB/s after timing fix)
+    RamTest.MULTI_THREAD to 52_000.0,  // MB/s  (measured 51952 on SD 8 Gen 3)
 )
 
 private val RAM_REFERENCE_JVM = mapOf(

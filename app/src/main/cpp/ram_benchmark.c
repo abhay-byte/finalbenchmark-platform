@@ -31,11 +31,24 @@
 
 /* ── Timing ──────────────────────────────────────────────────────────────── */
 
-static inline int64_t now_ns(void) {
+/*
+ * MUST be __attribute__((noinline)).
+ * With -O3, Clang can legally hoist clock_gettime() out of while-loops whose
+ * bodies (memcpy, NEON loads) are provably free of side-effects on the clock.
+ * noinline forces a real call each iteration and defeats that optimisation.
+ */
+static __attribute__((noinline)) int64_t now_ns(void) {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return (int64_t)ts.tv_sec * 1000000000LL + (int64_t)ts.tv_nsec;
 }
+
+/*
+ * COMPILER_BARRIER: prevents the compiler from hoisting now_ns() calls out of
+ * timing loops. The "memory" clobber tells the optimizer that any memory may
+ * have been read or written, forcing re-evaluation of the loop condition.
+ */
+#define COMPILER_BARRIER() __asm__ volatile("" ::: "memory")
 
 /* ── Sequential Read ─────────────────────────────────────────────────────── */
 /*
@@ -59,6 +72,7 @@ Java_com_ivarna_finalbenchmark2_utils_RamNativeBridge_nativeSeqRead(
     uint64_t sink = 0;
 
     while (now_ns() < end_ns) {
+        COMPILER_BARRIER();
 #ifdef __ARM_NEON
         uint64x2_t acc0 = vdupq_n_u64(0), acc1 = vdupq_n_u64(0);
         uint64x2_t acc2 = vdupq_n_u64(0), acc3 = vdupq_n_u64(0);
@@ -75,7 +89,6 @@ Java_com_ivarna_finalbenchmark2_utils_RamNativeBridge_nativeSeqRead(
         sink += vgetq_lane_u64(acc0, 0) + vgetq_lane_u64(acc1, 1) +
                 vgetq_lane_u64(acc2, 0) + vgetq_lane_u64(acc3, 1);
 #else
-        /* Generic: 8-byte word reads — compiler vectorises on x86 with AVX2 */
         volatile uint64_t s = 0;
         const uint64_t *p   = (const uint64_t*)buf;
         const uint64_t *end = (const uint64_t*)(buf + BUF);
@@ -87,6 +100,7 @@ Java_com_ivarna_finalbenchmark2_utils_RamNativeBridge_nativeSeqRead(
         sink += s;
 #endif
         total_bytes += (int64_t)BUF;
+        COMPILER_BARRIER();
     }
 
     free(buf);
@@ -114,6 +128,7 @@ Java_com_ivarna_finalbenchmark2_utils_RamNativeBridge_nativeSeqWrite(
     uint64_t pattern = 1;
 
     while (now_ns() < end_ns) {
+        COMPILER_BARRIER();
 #ifdef __ARM_NEON
         uint64x2_t val = vdupq_n_u64(pattern++);
         uint8_t *p   = buf;
@@ -137,6 +152,7 @@ Java_com_ivarna_finalbenchmark2_utils_RamNativeBridge_nativeSeqWrite(
         }
 #endif
         total_bytes += (int64_t)BUF;
+        COMPILER_BARRIER();
     }
 
     free(buf);
@@ -213,8 +229,10 @@ Java_com_ivarna_finalbenchmark2_utils_RamNativeBridge_nativeMemCopy(
     int64_t total_bytes = 0;
 
     while (now_ns() < end_ns) {
+        COMPILER_BARRIER();
         memcpy(dst, src, BUF);
         total_bytes += (int64_t)BUF;
+        COMPILER_BARRIER();
     }
 
     free(src); free(dst);
@@ -242,6 +260,7 @@ static void* mt_thread(void *arg) {
 #ifdef __ARM_NEON
     uint64x2_t acc0 = vdupq_n_u64(0), acc1 = vdupq_n_u64(0);
     while (now_ns() < a->end_ns) {
+        COMPILER_BARRIER();
         const uint8_t *p   = buf;
         const uint8_t *end = buf + a->buf_size;
         while (p < end) {
@@ -253,16 +272,19 @@ static void* mt_thread(void *arg) {
             p += 64;
         }
         total += (int64_t)a->buf_size;
+        COMPILER_BARRIER();
     }
     sink = vgetq_lane_u64(acc0, 0) + vgetq_lane_u64(acc1, 1);
 #else
     while (now_ns() < a->end_ns) {
+        COMPILER_BARRIER();
         volatile uint64_t s = 0;
         const uint64_t *p   = (const uint64_t*)buf;
         const uint64_t *end = (const uint64_t*)(buf + a->buf_size);
         while (p < end) { s += p[0]+p[1]+p[2]+p[3]+p[4]+p[5]+p[6]+p[7]; p += 8; }
         sink += s;
         total += (int64_t)a->buf_size;
+        COMPILER_BARRIER();
     }
 #endif
 

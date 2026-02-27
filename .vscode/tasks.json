@@ -18,6 +18,27 @@
 				"$kotlinc"
 			],
 			"group": "build"
+		},
+		{
+			"label": "Build Debug APK",
+			"type": "shell",
+			"command": "./gradlew assembleDebug",
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Build Debug APK 2",
+			"type": "shell",
+			"command": "./gradlew assembleDebug",
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Git commit and push",
+			"type": "shell",
+			"command": "git add -A && git commit -m \"fix: COMPILER_BARRIER macro + recalibrate native RAM reference values\\n\\n- Add #define COMPILER_BARRIER() __asm__ volatile(\\\"\\\" ::: \\\"memory\\\") after now_ns()\\n- now_ns() already has __attribute__((noinline)) to defeat -O3 clock hoisting\\n- Add COMPILER_BARRIER() before/after memcpy and NEON loops in all 5 tests\\n- Recalibrate RAM_REFERENCE_NATIVE from actual SD 8 Gen 3 measurements:\\n  SeqRead 27000 (was 20000), SeqWrite 15000 (was 16000),\\n  RandAccess 120 ns (was 200), MemCopy 22000 estimate, MultiThread 52000 (was 40000)\" && git push",
+			"problemMatcher": [],
+			"group": "build"
 		}
 	]
 }
