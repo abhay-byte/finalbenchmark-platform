@@ -1230,6 +1230,93 @@ fun DetailedDataTab(summary: BenchmarkSummary) {
                 }
             }
         }
+    } else if (summary.type == "STORAGE") {
+        // ── Storage benchmark results ─────────────────────────────────────
+        LazyColumn(
+            modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp)
+        ) {
+            // Storage Score Card
+            item {
+                AnimatedEntranceContainer(index = 0) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+                        shape = RoundedCornerShape(24.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.15f)
+                        ),
+                        elevation = CardDefaults.cardElevation(0.dp),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f))
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(20.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column {
+                                Text(
+                                    text = "STORAGE BENCHMARK SCORE",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Black,
+                                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
+                                    letterSpacing = 1.5.sp
+                                )
+                                Text(
+                                    text = "Flash I/O Performance",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                )
+                                Spacer(Modifier.height(4.dp))
+                                Text(
+                                    text = "Avg BW: ${String.format("%.0f", summary.multiCoreScore)} MB/s",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+                                )
+                            }
+                            Text(
+                                text = String.format("%.0f", summary.finalScore),
+                                style = MaterialTheme.typography.headlineLarge,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = MaterialTheme.colorScheme.primary,
+                                letterSpacing = (-1).sp
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Storage Throughput Bar Chart
+            item {
+                AnimatedEntranceContainer(index = 1) {
+                    if (summary.detailedResults.isNotEmpty()) {
+                        StorageThroughputChart(results = summary.detailedResults)
+                    }
+                }
+            }
+
+            // Storage Test Results list
+            item {
+                AnimatedEntranceContainer(index = 2) {
+                    BenchmarkSection(
+                        title = "Storage Test Results",
+                        score = summary.finalScore,
+                        results = summary.detailedResults,
+                        isAi = false,
+                        isGpu = false,
+                        isRam = true  // same metricsJson format: {score, value, unit}
+                    )
+                }
+            }
+
+            // Performance Monitoring
+            item {
+                AnimatedEntranceContainer(index = 3) {
+                    PerformanceMonitoringSection(
+                        performanceMetricsJson = summary.performanceMetricsJson
+                    )
+                }
+            }
+        }
     } else {
         // Default CPU Logic
         val singleCoreResults =
@@ -1581,6 +1668,160 @@ private fun RamBandwidthChart(results: List<BenchmarkResult>) {
 }
 
 @Composable
+private fun StorageThroughputChart(results: List<BenchmarkResult>) {
+    val labelColor = MaterialTheme.colorScheme.onSurface
+    val gridColor  = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
+
+    // Normalise per-unit groups so bars are always comparable within their group
+    val maxValue = results.maxOfOrNull { r ->
+        try { org.json.JSONObject(r.metricsJson).optDouble("value", r.opsPerSecond) } catch (e: Exception) { r.opsPerSecond }
+    }?.coerceAtLeast(1.0)?.toFloat() ?: 1f
+
+    // Colour palette per unit type
+    fun barColor(unit: String): androidx.compose.ui.graphics.Color = when (unit) {
+        "MB/s"    -> androidx.compose.ui.graphics.Color(0xFF4FC3F7)   // light-blue
+        "files/s" -> androidx.compose.ui.graphics.Color(0xFF4DB6AC)   // teal
+        "txn/s"   -> androidx.compose.ui.graphics.Color(0xFFBA68C8)   // purple
+        else      -> androidx.compose.ui.graphics.Color(0xFF66BB6A)   // green
+    }
+
+    Card(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.12f)
+        ),
+        elevation = CardDefaults.cardElevation(0.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f))
+    ) {
+        Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+            Text(
+                text = "Storage Throughput",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.padding(bottom = 4.dp)
+            )
+            Text(
+                text = "Per-test performance  •  blue=MB/s  teal=files/s  purple=txn/s",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
+
+            val barCount = results.size.coerceAtLeast(1)
+            Canvas(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(180.dp)
+            ) {
+                val W = size.width
+                val H = size.height
+                val labelH = 36f
+                val chartH = H - labelH
+                val barW = W / barCount
+
+                listOf(0.25f, 0.5f, 0.75f, 1.0f).forEach { frac ->
+                    val y = chartH - chartH * frac
+                    drawLine(gridColor, Offset(0f, y), Offset(W, y), strokeWidth = 1f)
+                }
+
+                results.forEachIndexed { i, result ->
+                    val metricsObj = try { org.json.JSONObject(result.metricsJson) } catch (e: Exception) { org.json.JSONObject() }
+                    val unit  = metricsObj.optString("unit", "MB/s")
+                    val value = metricsObj.optDouble("value", result.opsPerSecond).toFloat()
+
+                    val frac = (value / maxValue).coerceIn(0.05f, 1f)
+                    val color = barColor(unit)
+
+                    val left   = i * barW + barW * 0.12f
+                    val right  = (i + 1) * barW - barW * 0.12f
+                    val top    = chartH - chartH * frac
+                    val bottom = chartH
+
+                    drawRect(
+                        color = color.copy(alpha = 0.65f),
+                        topLeft = Offset(left, top),
+                        size = Size(right - left, bottom - top)
+                    )
+
+                    val shortLabel = when (unit) {
+                        "MB/s"    -> if (value >= 1000f) "${"%,.0f".format(value / 1000f)}G" else "${"%,.0f".format(value)}M"
+                        "files/s" -> "${"%,.0f".format(value)}f"
+                        "txn/s"   -> "${"%,.0f".format(value)}t"
+                        else      -> "%,.0f".format(value)
+                    }
+                    drawContext.canvas.nativeCanvas.drawText(
+                        shortLabel,
+                        (left + right) / 2f,
+                        (top - 6f).coerceAtLeast(14f),
+                        android.graphics.Paint().apply {
+                            this.color = android.graphics.Color.WHITE
+                            textAlign = android.graphics.Paint.Align.CENTER
+                            textSize = 22f
+                            isFakeBoldText = true
+                            isAntiAlias = true
+                        }
+                    )
+                    drawContext.canvas.nativeCanvas.drawText(
+                        "${i + 1}",
+                        (left + right) / 2f,
+                        H - 6f,
+                        android.graphics.Paint().apply {
+                            this.color = android.graphics.Color.argb(180, 200, 200, 200)
+                            textAlign = android.graphics.Paint.Align.CENTER
+                            textSize = 22f
+                            isAntiAlias = true
+                        }
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+            val half = (results.size + 1) / 2
+            listOf(results.take(half), results.drop(half)).forEachIndexed { rowIdx, row ->
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    row.forEachIndexed { colIdx, result ->
+                        val num = rowIdx * half + colIdx + 1
+                        val metricsObj = try { org.json.JSONObject(result.metricsJson) } catch (e: Exception) { org.json.JSONObject() }
+                        val unit  = metricsObj.optString("unit", "MB/s")
+                        val value = metricsObj.optDouble("value", result.opsPerSecond)
+                        val label = "${"%,.0f".format(value)} $unit"
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Column(modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp)) {
+                                Text(
+                                    text = "#$num  $label",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = androidx.compose.ui.graphics.Color(0xFF4FC3F7),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                Text(
+                                    text = result.name,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontSize = 9.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
 fun BenchmarkSection(title: String, score: Double, results: List<BenchmarkResult>, isAi: Boolean = false, isGpu: Boolean = false, isRam: Boolean = false) {
         var expanded by remember { mutableStateOf(true) }
 
@@ -1681,12 +1922,12 @@ fun BenchmarkResultItem(result: BenchmarkResult, isAi: Boolean = false, isGpu: B
                  org.json.JSONObject(result.metricsJson).optDouble("score", result.opsPerSecond * 10.0)
              } catch (e: Exception) { result.opsPerSecond * 10.0 }
         } else if (isRam) {
-             // For RAM: opsPerSecond holds the value (MB/s or ns/op); read unit and score from metricsJson
+             // For RAM/STORAGE: opsPerSecond holds the value; read unit and score from metricsJson
              val metricsObj = try { org.json.JSONObject(result.metricsJson) } catch (e: Exception) { org.json.JSONObject() }
              val unit = metricsObj.optString("unit", "MB/s")
              val value = metricsObj.optDouble("value", result.opsPerSecond)
              displayThroughput = if (unit == "ns/op") String.format("%.1f ns/op", value)
-                                 else String.format("%.0f MB/s", value)
+                                 else String.format("%.0f %s", value, unit)
              individualScore = metricsObj.optDouble("score", 0.0)
         } else {
              // For CPU, opsPerSecond is usually raw ops, converted to Mops/s
