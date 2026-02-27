@@ -350,7 +350,8 @@ fun HomeScreen(
                                         androidx.compose.animation.AnimatedVisibility(
                                             visible = selectedBenchmarkCategory != com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkCategory.GPU &&
                                                       selectedBenchmarkCategory != com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkCategory.EXTERNAL_GPU &&
-                                                      selectedBenchmarkCategory != com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkCategory.RAM
+                                                      selectedBenchmarkCategory != com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkCategory.RAM &&
+                                                      selectedBenchmarkCategory != com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkCategory.STORAGE
                                         ) {
                                         ExposedDropdownMenuBox(
                                             expanded = isDropdownExpanded,
