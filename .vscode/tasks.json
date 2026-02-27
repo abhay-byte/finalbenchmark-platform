@@ -89,6 +89,26 @@
 			"label": "Get Kotlin compile errors",
 			"type": "shell",
 			"command": "cd /home/flux/repos/finalbenchmark-platform && ./gradlew compileDebugKotlin 2>&1 | grep -A3 'error:' | head -60"
+		},
+		{
+			"label": "Build storage result fix",
+			"type": "shell",
+			"command": "cd /home/flux/repos/finalbenchmark-platform && ./gradlew assembleDebug 2>&1 | tail -10"
+		},
+		{
+			"label": "Get compile errors",
+			"type": "shell",
+			"command": "cd /home/flux/repos/finalbenchmark-platform && ./gradlew compileDebugKotlin 2>&1 | grep '^e:' | head -20"
+		},
+		{
+			"label": "Capture Kotlin errors",
+			"type": "shell",
+			"command": "cd /home/flux/repos/finalbenchmark-platform && ./gradlew compileDebugKotlin 2>/tmp/kerr.txt; cat /tmp/kerr.txt | grep '^e:'"
+		},
+		{
+			"label": "Build deploy commit storage fix",
+			"type": "shell",
+			"command": "cd /home/flux/repos/finalbenchmark-platform && ./gradlew assembleDebug && cp app/build/outputs/apk/debug/app-debug.apk /sdcard/Download/finalbenchmark-debug.apk && echo 'DEPLOYED OK' && git add -A && git commit -m 'fix: add STORAGE branch in DetailedDataTab + StorageThroughputChart + fix unit labels' && git push"
 		}
 	]
 }
