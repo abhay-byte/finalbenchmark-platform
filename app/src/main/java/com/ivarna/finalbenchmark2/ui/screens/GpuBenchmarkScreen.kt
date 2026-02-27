@@ -1,5 +1,7 @@
 package com.ivarna.finalbenchmark2.ui.screens
 
+import android.app.Activity
+import android.content.pm.ActivityInfo
 import android.opengl.GLSurfaceView
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
@@ -84,6 +86,16 @@ fun GpuBenchmarkScreen(
     onNavBack: () -> Unit
 ) {
     val context = LocalContext.current
+    val activity = context as? Activity
+
+    // Lock to landscape while GPU benchmark runs; restore on exit
+    DisposableEffect(Unit) {
+        activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+        onDispose {
+            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+        }
+    }
+
     val application = context.applicationContext as android.app.Application
     val vmFactory = remember(historyRepository) {
         GpuBenchmarkViewModel.factory(historyRepository, application)

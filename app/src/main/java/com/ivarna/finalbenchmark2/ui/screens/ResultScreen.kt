@@ -38,7 +38,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.Canvas
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.material.icons.rounded.*
 import com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkName
@@ -1109,9 +1112,18 @@ fun DetailedDataTab(summary: BenchmarkSummary) {
                 }
             }
 
-            // GPU Scene Results
+            // GPU FPS Per-Scene Graph
             item {
                 AnimatedEntranceContainer(index = 1) {
+                    if (summary.detailedResults.isNotEmpty()) {
+                        GpuFpsBarChart(results = summary.detailedResults)
+                    }
+                }
+            }
+
+            // GPU Scene Results
+            item {
+                AnimatedEntranceContainer(index = 2) {
                     BenchmarkSection(
                         title = "GPU Rendering Results",
                         score = summary.finalScore,
@@ -1122,9 +1134,9 @@ fun DetailedDataTab(summary: BenchmarkSummary) {
                 }
             }
 
-            // Performance Monitoring Section
+            // Performance Monitoring Section (CPU/power/temp graphs)
             item {
-                AnimatedEntranceContainer(index = 2) {
+                AnimatedEntranceContainer(index = 3) {
                     PerformanceMonitoringSection(
                         performanceMetricsJson = summary.performanceMetricsJson
                     )
@@ -1176,6 +1188,152 @@ fun DetailedDataTab(summary: BenchmarkSummary) {
                             )
                         }
                 }
+        }
+    }
+}
+
+@Composable
+private fun GpuFpsBarChart(results: List<BenchmarkResult>) {
+    val barColor       = androidx.compose.ui.graphics.Color(0xFF6CB4FF)
+    val frameColor     = androidx.compose.ui.graphics.Color(0xFFFF8A65)
+    val labelColor     = MaterialTheme.colorScheme.onSurface
+    val gridColor      = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
+    val maxFps         = results.maxOfOrNull { it.opsPerSecond.toFloat() }?.coerceAtLeast(1f) ?: 60f
+
+    Card(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.12f)
+        ),
+        elevation = CardDefaults.cardElevation(0.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f))
+    ) {
+        Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+            Text(
+                text = "FPS Per Scene",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.padding(bottom = 4.dp)
+            )
+            Text(
+                text = "Average frames per second for each rendering workload",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
+
+            val barCount = results.size
+            Canvas(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(180.dp)
+            ) {
+                val W = size.width
+                val H = size.height
+                val labelH = 36f
+                val chartH = H - labelH
+                val barW = W / barCount
+
+                // Grid lines at 25%, 50%, 75%, 100% of maxFps
+                val gridLevels = listOf(0.25f, 0.5f, 0.75f, 1.0f)
+                gridLevels.forEach { frac ->
+                    val y = chartH - chartH * frac
+                    drawLine(gridColor, Offset(0f, y), Offset(W, y), strokeWidth = 1f)
+                }
+
+                results.forEachIndexed { i, result ->
+                    val fps    = result.opsPerSecond.toFloat()
+                    val frac   = (fps / maxFps).coerceIn(0f, 1f)
+                    val left   = i * barW + barW * 0.12f
+                    val right  = (i + 1) * barW - barW * 0.12f
+                    val top    = chartH - chartH * frac
+                    val bottom = chartH
+
+                    // Bar fill
+                    val barAlpha = 0.55f + 0.45f * frac
+                    drawRect(
+                        color = barColor.copy(alpha = barAlpha),
+                        topLeft = Offset(left, top),
+                        size = Size(right - left, bottom - top)
+                    )
+
+                    // FPS value label on bar
+                    if (fps > maxFps * 0.08f) {
+                        drawContext.canvas.nativeCanvas.drawText(
+                            "${"%.0f".format(fps)}",
+                            (left + right) / 2f,
+                            (top - 6f).coerceAtLeast(14f),
+                            android.graphics.Paint().apply {
+                                color = android.graphics.Color.WHITE
+                                textAlign = android.graphics.Paint.Align.CENTER
+                                textSize = 24f
+                                isFakeBoldText = true
+                                isAntiAlias = true
+                            }
+                        )
+                    }
+
+                    // Scene index label below bar
+                    drawContext.canvas.nativeCanvas.drawText(
+                        "${i + 1}",
+                        (left + right) / 2f,
+                        H - 6f,
+                        android.graphics.Paint().apply {
+                            color = android.graphics.Color.argb(180, 200, 200, 200)
+                            textAlign = android.graphics.Paint.Align.CENTER
+                            textSize = 22f
+                            isAntiAlias = true
+                        }
+                    )
+                }
+            }
+
+            // Legend: scene name chips in two rows
+            Spacer(modifier = Modifier.height(8.dp))
+            val half = (results.size + 1) / 2
+            listOf(results.take(half), results.drop(half)).forEachIndexed { rowIdx, row ->
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    row.forEachIndexed { colIdx, result ->
+                        val sceneNum = rowIdx * half + colIdx + 1
+                        val fps = result.opsPerSecond.toFloat()
+                        val fpsColor = when {
+                            fps < 10f -> androidx.compose.ui.graphics.Color(0xFFEF5350)
+                            fps < 20f -> androidx.compose.ui.graphics.Color(0xFFFF9800)
+                            fps < 40f -> androidx.compose.ui.graphics.Color(0xFF66BB6A)
+                            else      -> androidx.compose.ui.graphics.Color(0xFF42A5F5)
+                        }
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Column(modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp)) {
+                                Text(
+                                    text = "#$sceneNum  ${"%.1f".format(fps)} fps",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = fpsColor,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                Text(
+                                    text = result.name,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontSize = 9.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -1937,38 +2095,45 @@ private fun formatBenchmarkShareData(context: Context, summary: BenchmarkSummary
         builder.append("Detailed Results:\n")
         builder.append("--------------------------------\n")
 
-        // Group by Single/Multi
-        val singleCoreResults = summary.detailedResults.filter { it.name.contains("Single-Core") }
-        val multiCoreResults = summary.detailedResults.filter { it.name.contains("Multi-Core") }
-
-        if (singleCoreResults.isNotEmpty()) {
-            builder.append("[Single-Core Benchmarks]\n")
-            singleCoreResults.forEach { result ->
-                val cleanName = result.name.replace("Single-Core ", "")
-                val mopsPerSecond = result.opsPerSecond / 1_000_000.0
-                
-                // Calculate point score
-                val benchmarkName = BenchmarkName.fromString(result.name)
-                val scalingFactor = KotlinBenchmarkManager.SCORING_FACTORS[benchmarkName] ?: 0.0
-                val points = scalingFactor * result.opsPerSecond
-
-                builder.append("$cleanName: ${String.format("%.1f", points)} pts (${String.format("%.2f", mopsPerSecond)} Mops/s)\n")
+        if (summary.type == "GPU") {
+            // GPU scene results — show FPS and score per scene
+            builder.append("[GPU Scene Results]\n")
+            summary.detailedResults.forEach { result ->
+                val fps = result.opsPerSecond
+                val score = try {
+                    org.json.JSONObject(result.metricsJson).optDouble("score", fps * 10.0)
+                } catch (e: Exception) { fps * 10.0 }
+                val frameMs = result.executionTimeMs
+                builder.append("${result.name}: ${String.format("%.1f", score)} pts  |  ${String.format("%.1f", fps)} FPS  |  ${String.format("%.1f", frameMs)} ms\n")
             }
-            builder.append("\n")
-        }
+        } else {
+            // Group by Single/Multi for CPU/AI
+            val singleCoreResults = summary.detailedResults.filter { it.name.contains("Single-Core") }
+            val multiCoreResults = summary.detailedResults.filter { it.name.contains("Multi-Core") }
 
-        if (multiCoreResults.isNotEmpty()) {
-            builder.append("[Multi-Core Benchmarks]\n")
-            multiCoreResults.forEach { result ->
-                val cleanName = result.name.replace("Multi-Core ", "")
-                val mopsPerSecond = result.opsPerSecond / 1_000_000.0
-                
-                // Calculate point score
-                val benchmarkName = BenchmarkName.fromString(result.name)
-                val scalingFactor = KotlinBenchmarkManager.SCORING_FACTORS[benchmarkName] ?: 0.0
-                val points = scalingFactor * result.opsPerSecond
+            if (singleCoreResults.isNotEmpty()) {
+                builder.append("[Single-Core Benchmarks]\n")
+                singleCoreResults.forEach { result ->
+                    val cleanName = result.name.replace("Single-Core ", "")
+                    val mopsPerSecond = result.opsPerSecond / 1_000_000.0
+                    val benchmarkName = BenchmarkName.fromString(result.name)
+                    val scalingFactor = KotlinBenchmarkManager.SCORING_FACTORS[benchmarkName] ?: 0.0
+                    val points = scalingFactor * result.opsPerSecond
+                    builder.append("$cleanName: ${String.format("%.1f", points)} pts (${String.format("%.2f", mopsPerSecond)} Mops/s)\n")
+                }
+                builder.append("\n")
+            }
 
-                builder.append("$cleanName: ${String.format("%.1f", points)} pts (${String.format("%.2f", mopsPerSecond)} Mops/s)\n")
+            if (multiCoreResults.isNotEmpty()) {
+                builder.append("[Multi-Core Benchmarks]\n")
+                multiCoreResults.forEach { result ->
+                    val cleanName = result.name.replace("Multi-Core ", "")
+                    val mopsPerSecond = result.opsPerSecond / 1_000_000.0
+                    val benchmarkName = BenchmarkName.fromString(result.name)
+                    val scalingFactor = KotlinBenchmarkManager.SCORING_FACTORS[benchmarkName] ?: 0.0
+                    val points = scalingFactor * result.opsPerSecond
+                    builder.append("$cleanName: ${String.format("%.1f", points)} pts (${String.format("%.2f", mopsPerSecond)} Mops/s)\n")
+                }
             }
         }
     }

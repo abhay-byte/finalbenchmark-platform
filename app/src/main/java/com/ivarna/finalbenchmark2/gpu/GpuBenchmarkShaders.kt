@@ -113,22 +113,26 @@ void main() {
     m = m * rotZ(u_Time * 0.03 + 10.5);
     vec4 p = m * vec4(uv, 0.2, 1.0);
 
-    // Julia-set iteration (128 iterations — heavy ALU pressure)
+    // Julia-set iteration (128 iterations — always full, no early exit → max ALU pressure)
     vec2 z = uv;
     vec2 c = vec2(0.355 + 0.12 * sin(u_Time * 0.5),
                   0.355 + 0.12 * cos(u_Time * 0.4));
     float iter = 0.0;
+    float escaped = 0.0;
     for (int i = 0; i < 128; i++) {
-        if (dot(z, z) > 4.0) break;
-        z    = vec2(z.x*z.x - z.y*z.y, 2.0*z.x*z.y) + c;
-        iter += 1.0;
+        // Always compute — no break — keeps ALU busy on every pixel
+        float escaped_flag = step(4.0, dot(z, z));
+        vec2 next = vec2(z.x*z.x - z.y*z.y, 2.0*z.x*z.y) + c;
+        z    = mix(next, z, escaped_flag);
+        iter += 1.0 - escaped_flag;
+        escaped = max(escaped, escaped_flag);
     }
 
-    float t = iter / 48.0;
+    float t = iter / 128.0;
     vec3 col = 0.5 + 0.5 * vec3(sin(t * 6.28318 + u_Time),
                                   sin(t * 6.28318 + u_Time + 2.094),
                                   sin(t * 6.28318 + u_Time + 4.189));
-    col = col * 0.7 + abs(p.xyz) * 0.3;
+    col = col * (0.7 + escaped * 0.0) + abs(p.xyz) * 0.3;
     gl_FragColor = vec4(col, 1.0);
 }"""
 
@@ -320,6 +324,7 @@ void main() {
 
     // ─────────────────────────────────────────────────────────────────────
     // SCENE 8 ── Ray March SDF Scene (100 steps, soft shadows, AO)
+    // Objects centered; u_Time-based animation keeps them on screen
     // ─────────────────────────────────────────────────────────────────────
     const val RAY_MARCH_FRAG = """
 precision highp float;
@@ -327,7 +332,7 @@ varying vec2  v_UV;
 uniform float u_Time;
 
 float sdSphere(vec3 p, float r) { return length(p) - r; }
-float sdPlane(vec3 p) { return p.y + 1.0; }
+float sdPlane(vec3 p) { return p.y + 0.9; }
 float sdBox(vec3 p, vec3 b) {
     vec3 d = abs(p) - b;
     return length(max(d, 0.0)) + min(max(d.x, max(d.y, d.z)), 0.0);
@@ -337,11 +342,12 @@ float smin(float a, float b, float k) {
     return mix(b, a, h) - k*h*(1.0-h);
 }
 float scene(vec3 p) {
-    float s1 = sdSphere(p - vec3(sin(u_Time)*0.6, 0.2, 0.0), 0.35);
-    float s2 = sdSphere(p - vec3(-0.5, 0.1+0.3*cos(u_Time*1.3), 0.5), 0.28);
-    float bx = sdBox(p - vec3(0.4, -0.5, -0.3), vec3(0.22));
+    // All objects centered around x=0, y near 0
+    float s1 = sdSphere(p - vec3(sin(u_Time * 0.7) * 0.45, 0.0, 0.0), 0.32);
+    float s2 = sdSphere(p - vec3(-0.5 + 0.1*cos(u_Time*0.5), 0.0, 0.55), 0.24);
+    float bx = sdBox(p - vec3(0.42, -0.3, -0.25), vec3(0.20));
     float pl = sdPlane(p);
-    return smin(smin(s1, smin(s2, bx, 0.15), 0.12), pl, 0.05);
+    return smin(smin(s1, smin(s2, bx, 0.14), 0.11), pl, 0.04);
 }
 vec3 normal(vec3 p) {
     const float e = 0.001;
@@ -371,12 +377,14 @@ float ao(vec3 p, vec3 n) {
     return clamp(1.0 - 3.0 * occ, 0.0, 1.0);
 }
 void main() {
-    vec2  uv  = (v_UV - 0.5) * vec2(1.77, 1.0);
-    vec3  ro  = vec3(0.0, 1.2, 3.0);
-    vec3  rd  = normalize(vec3(uv, -1.6));
-    vec3  ld  = normalize(vec3(0.6, 1.0, 0.5));
+    // Centered UV: (-ar..ar, -1..1) for correct circle/sphere projection
+    vec2  uv  = (v_UV - 0.5) * 2.0;
+    // Camera looks straight at the scene center from directly ahead
+    vec3  ro  = vec3(0.0, 0.6, 2.8);
+    vec3  rd  = normalize(vec3(uv.x, uv.y - 0.1, -1.5));
+    vec3  ld  = normalize(vec3(0.3, 1.0, 0.6));
     float t   = 0.0;
-    vec3  col = vec3(0.12, 0.18, 0.28);
+    vec3  col = vec3(0.10, 0.15, 0.25);
     for (int i = 0; i < 100; i++) {
         vec3  p = ro + rd * t;
         float d = scene(p);

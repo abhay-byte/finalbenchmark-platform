@@ -65,6 +65,38 @@ data class GpuBenchmarkUiState(
 
 private val GPU_SCENES = GpuScene.values().toList()
 
+/**
+ * Reference FPS per scene on Snapdragon 8 Gen 3 / Adreno 750 (baseline = 100 pts).
+ * Derived from measured results on the reference device with 4× draw passes.
+ * Any device matching these FPS values scores exactly 100.
+ */
+private val GPU_REFERENCE_FPS = mapOf(
+    GpuScene.TRIANGLE_RENDERING to 20.0,
+    GpuScene.COMPUTE_MATRIX     to 15.0,  // after branchless Julia fix
+    GpuScene.PARTICLE_SYSTEM    to  7.0,
+    GpuScene.TEXTURE_SAMPLING   to 24.0,
+    GpuScene.WIREFRAME_MESH     to 23.0,
+    GpuScene.MANDELBROT_DEEP    to 16.0,
+    GpuScene.PHONG_MULTI_LIGHT  to  7.0,
+    GpuScene.RAY_MARCH_SDF      to 24.0,
+    GpuScene.DOMAIN_WARP        to 20.0,
+    GpuScene.SUPER_SAMPLE       to  3.5
+)
+
+/**
+ * Computes the geometric mean of per-scene FPS ratios (SUT / reference),
+ * scaled so that SD 8 Gen 3 = 100.  Mirrors the CPU scoring approach.
+ */
+private fun calculateGpuGeometricMean(results: List<GpuTestResult>): Double {
+    val ratios = results.mapNotNull { r ->
+        val ref = GPU_REFERENCE_FPS[r.scene] ?: return@mapNotNull null
+        r.avgFps.toDouble() / ref
+    }
+    if (ratios.isEmpty()) return 0.0
+    val product = ratios.fold(1.0) { acc, v -> acc * v }
+    return Math.pow(product, 1.0 / ratios.size) * 100.0
+}
+
 private fun GpuScene.displayName() = when (this) {
     GpuScene.TRIANGLE_RENDERING -> "Triangle Rendering (10K)"
     GpuScene.COMPUTE_MATRIX     -> "Julia / Matrix Compute"
@@ -180,12 +212,15 @@ class GpuBenchmarkViewModel(
 
             val avgFps = if (fpsCount > 0) (fpsAccum / fpsCount).toFloat() else 30f
             val avgFt  = if (fpsCount > 0) (ftAccum  / fpsCount).toFloat() else (1000f / avgFps)
-            val score  = (avgFps * 10f).roundToInt()
+            // Per-scene score: ratio vs reference × 100 (SD 8 Gen 3 = 100 pts per scene)
+            val refFps = GPU_REFERENCE_FPS[scene] ?: 20.0
+            val score  = ((avgFps.toDouble() / refFps) * 100.0).roundToInt().coerceAtLeast(0)
             results += GpuTestResult(scene, scene.displayName(), avgFps, avgFt, score)
         }
 
         val performanceMetricsJson = performanceMonitor.stop()
-        val totalScore = results.sumOf { it.score }
+        // Final score = geometric mean of per-scene FPS ratios × 100 (SD 8 Gen 3 = 100)
+        val totalScore = calculateGpuGeometricMean(results).roundToInt().coerceAtLeast(0)
 
         _uiState.update {
             it.copy(

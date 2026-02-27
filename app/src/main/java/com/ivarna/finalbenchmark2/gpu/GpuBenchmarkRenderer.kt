@@ -56,7 +56,7 @@ class GpuBenchmarkRenderer(
     private var triVertCount = 0
 
     // Scene 3 - particles
-    private val P_COUNT = 50_000
+    private val P_COUNT = 5_000   // reduced: physics runs on GL thread, keep CPU cost minimal
     private val pX    = FloatArray(P_COUNT); private val pY    = FloatArray(P_COUNT)
     private val pVx   = FloatArray(P_COUNT); private val pVy   = FloatArray(P_COUNT)
     private val pLife = FloatArray(P_COUNT)
@@ -108,16 +108,49 @@ class GpuBenchmarkRenderer(
         when (currentScene) {
             // Scenes 1, 3, 5: low fragment coverage on their own; add a heavy fullscreen
             // pre-pass so the fill-rate + ALU work forces real GPU effort every frame.
-            GpuScene.TRIANGLE_RENDERING -> { drawFull(progDomainWarp, t);  drawTriangleScene(t) }
-            GpuScene.COMPUTE_MATRIX     ->   drawFull(progCompute, t)
-            GpuScene.PARTICLE_SYSTEM    -> { drawFull(progMultiLight, t); drawParticleScene(t) }
-            GpuScene.TEXTURE_SAMPLING   ->   drawFull(progTexture, t)
-            GpuScene.WIREFRAME_MESH     -> { drawFull(progRayMarch, t);   drawMeshScene(t) }
-            GpuScene.MANDELBROT_DEEP    ->   drawFull(progMandelbrot, t)
-            GpuScene.PHONG_MULTI_LIGHT  ->   drawFull(progMultiLight, t)
-            GpuScene.RAY_MARCH_SDF      ->   drawFull(progRayMarch, t)
-            GpuScene.DOMAIN_WARP        ->   drawFull(progDomainWarp, t)
-            GpuScene.SUPER_SAMPLE       ->   drawFull(progSuperSample, t)
+            GpuScene.TRIANGLE_RENDERING -> {
+                // 4 domain-warp passes + triangle overlay
+                repeat(4) { drawFull(progDomainWarp, t) }
+                drawTriangleScene(t)
+            }
+            GpuScene.COMPUTE_MATRIX -> {
+                // 4 compute passes — 16 mat4 chains + 128 Julia each → ~512 mat4 chains/frame
+                repeat(4) { drawFull(progCompute, t) }
+            }
+            GpuScene.PARTICLE_SYSTEM -> {
+                // 4 multi-light passes + particle overlay
+                repeat(4) { drawFull(progMultiLight, t) }
+                drawParticleScene(t)
+            }
+            GpuScene.TEXTURE_SAMPLING -> {
+                // 4 texture/FBM passes — 6×12-octave FBM chains each
+                repeat(4) { drawFull(progTexture, t) }
+            }
+            GpuScene.WIREFRAME_MESH -> {
+                // 4 ray-march passes + mesh overlay
+                repeat(4) { drawFull(progRayMarch, t) }
+                drawMeshScene(t)
+            }
+            GpuScene.MANDELBROT_DEEP -> {
+                // 4 mandelbrot passes — 512 iterations each
+                repeat(4) { drawFull(progMandelbrot, t) }
+            }
+            GpuScene.PHONG_MULTI_LIGHT -> {
+                // 4 multi-light passes — 128 analytic lights each
+                repeat(4) { drawFull(progMultiLight, t) }
+            }
+            GpuScene.RAY_MARCH_SDF -> {
+                // 4 ray-march passes — 100 SDF steps + soft-shadow each
+                repeat(4) { drawFull(progRayMarch, t) }
+            }
+            GpuScene.DOMAIN_WARP -> {
+                // 4 triple-domain-warp passes — 3×12-octave FBM each
+                repeat(4) { drawFull(progDomainWarp, t) }
+            }
+            GpuScene.SUPER_SAMPLE -> {
+                // 4 Newton-fractal super-sample passes — 64 samples × 48 Newton steps each
+                repeat(4) { drawFull(progSuperSample, t) }
+            }
         }
         // Flush GPU pipeline → uncapped accurate render time
         GLES20.glFinish()
