@@ -74,6 +74,7 @@ add_library(
     cpu_info.cpp       # CPU info native implementation
     cpu_affinity.cpp   # CPU affinity control for single-core benchmarks
     ram_benchmark.c    # RAM bandwidth/latency benchmarks (NEON + pthreads)
+    storage_benchmark.c  # Storage UFS benchmarks (posix_fadvise + fdatasync)
 )
 
 # Find required libraries

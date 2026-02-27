@@ -11,6 +11,7 @@ import com.ivarna.finalbenchmark2.data.database.entities.BenchmarkResultEntity
 import com.ivarna.finalbenchmark2.data.database.entities.GenericTestDetailEntity
 import com.ivarna.finalbenchmark2.data.repository.HistoryRepository
 import com.ivarna.finalbenchmark2.utils.PerformanceMonitor
+import com.ivarna.finalbenchmark2.utils.StorageNativeBridge
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
@@ -280,17 +281,23 @@ class StorageBenchmarkViewModel(
      * Returns MB/s.
      */
     private fun benchSeqRead(durationMs: Long): Double {
+        // Use JNI + posix_fadvise(POSIX_FADV_DONTNEED) to evict page cache before
+        // each read pass, giving true UFS 4.0 sequential read speed (~3500-4200 MB/s)
+        // instead of Linux page-cache speed (~6 GB/s).
+        StorageNativeBridge.load()
+        if (StorageNativeBridge.isAvailable) {
+            val path = File(cacheDir, "bench_seqread_jni.bin").absolutePath
+            return StorageNativeBridge.nativeStorageSeqRead(
+                path, SEQ_FILE_MB.toLong() * 1024L * 1024L, SEQ_CHUNK_BYTES, durationMs
+            )
+        }
+        // Fallback: Java (will measure page-cache speed on subsequent runs)
         val buf = ByteArray(SEQ_CHUNK_BYTES)
         var totalBytes = 0L
         val endMs = System.currentTimeMillis() + durationMs
-
         while (System.currentTimeMillis() < endMs) {
-            // Write a fresh file each pass so the kernel has no cached pages for it.
-            // This forces reads from UFS rather than the Linux page cache (~6 GB/s).
-            // Equivalent to posix_fadvise(DONTNEED) without using hidden Android APIs.
             val file = File(cacheDir, "bench_seqread_${System.nanoTime()}.bin")
             createTestFile(file, SEQ_FILE_MB * 1024 * 1024)
-
             FileInputStream(file).use { fis ->
                 var n = 0
                 while (fis.read(buf).also { n = it } != -1 && System.currentTimeMillis() < endMs) {
@@ -311,13 +318,20 @@ class StorageBenchmarkViewModel(
      * Returns MB/s.
      */
     private fun benchSeqWrite(durationMs: Long): Double {
+        // Use JNI + fdatasync() per pass to measure true UFS 4.0 write speed.
+        // fdatasync flushes dirty pages to UFS hardware; without it we only measure
+        // how fast we can fill the Linux page cache (RAM speed).
+        StorageNativeBridge.load()
+        if (StorageNativeBridge.isAvailable) {
+            val path = File(cacheDir, "bench_seqwrite_jni.bin").absolutePath
+            return StorageNativeBridge.nativeStorageSeqWrite(
+                path, SEQ_FILE_MB.toLong() * 1024L * 1024L, SEQ_CHUNK_BYTES, durationMs
+            )
+        }
+        // Fallback: Java
         val buf = ByteArray(SEQ_CHUNK_BYTES).also { fillRandom(it) }
         var totalBytes = 0L
         val endMs = System.currentTimeMillis() + durationMs
-
-        // Write a fresh uniquely-named file each pass.
-        // Reusing the same file lets the OS skip actual writes (no-op dirty page);
-        // a new file forces real UFS writes every pass, giving ~2000+ MB/s on UFS 4.0.
         while (System.currentTimeMillis() < endMs) {
             val file = File(cacheDir, "bench_seqwrite_${System.nanoTime()}.bin")
             FileOutputStream(file).use { fos ->
@@ -327,7 +341,6 @@ class StorageBenchmarkViewModel(
                     fos.write(buf)
                     written += SEQ_CHUNK_BYTES
                 }
-                // No fsync — measure write-back speed, not sync latency
                 fos.flush()
                 totalBytes += written
             }
@@ -417,8 +430,9 @@ class StorageBenchmarkViewModel(
         // WAL and sync PRAGMAs MUST be set before any table creation
         val db = SQLiteDatabase.openOrCreateDatabase(dbFile, null)
         try {
-            db.execSQL("PRAGMA journal_mode=WAL")
-            db.execSQL("PRAGMA synchronous=NORMAL")
+            // PRAGMA journal_mode returns a result row — must use rawQuery, not execSQL
+            db.rawQuery("PRAGMA journal_mode=WAL", null).use { it.moveToFirst() }
+            db.rawQuery("PRAGMA synchronous=NORMAL", null).use { it.moveToFirst() }
             db.execSQL(
                 "CREATE TABLE IF NOT EXISTS items (" +
                 "id INTEGER PRIMARY KEY AUTOINCREMENT," +
