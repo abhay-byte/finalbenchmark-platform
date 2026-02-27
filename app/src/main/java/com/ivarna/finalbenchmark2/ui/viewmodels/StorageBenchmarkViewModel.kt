@@ -45,7 +45,8 @@ data class StorageTestResult(
     val displayName: String,
     val value: Double,   // MB/s for bandwidth tests; files/s for SMALL_FILES; txn/s for SQLITE
     val unit: String,
-    val score: Int       // normalised to reference; reference device = 100 pts
+    val score: Int,      // normalised to reference; reference device = 100 pts
+    val durationMs: Long = 0L  // actual wall-clock time of the measurement phase
 )
 
 data class StorageBenchmarkUiState(
@@ -86,24 +87,22 @@ private val STORAGE_TESTS = StorageTest.values().toList()
  *   MIXED       — 64MB seq read + 500 rand-4K + 50 small files, composite MB/s
  */
 private val STORAGE_REFERENCE = mapOf(
-    // Reference = ceiling achievable through the Android buffered file I/O layer
-    // on a top-tier SD 8 Gen 3 + UFS 4.0 device (OnePlus CPH2691 measured values
-    // + ~10% headroom for future improvements or faster kernel scheduling).
-    // Raw UFS 4.0 hardware specs (3500-4000 MB/s seq) are NOT reachable through
-    // the file I/O path even with JNI + posix_fadvise; use these buffered-I/O ceilings.
-    //
-    //   SEQ_READ:    JNI + posix_fadvise(DONTNEED) → buffered read ceiling    ~1200 MB/s
-    //   SEQ_WRITE:   JNI + fdatasync per pass → true flush-to-UFS ceiling     ~750  MB/s
-    //   RAND_4K:     RandomAccessFile 4K seeks, 128 MB file                   ~550  MB/s
-    //   SMALL_FILES: 300×8 KB create/write/delete                             ~10000 files/s
-    //   SQLITE:      50 INSERTs/txn + SELECT, WAL mode                        ~2500 txn/s
-    //   MIXED:       seq + rand-4K + small files composite                    ~1600 MB/s
-    StorageTest.SEQ_READ    to 1_200.0,
-    StorageTest.SEQ_WRITE   to   750.0,
-    StorageTest.RAND_4K     to   550.0,
-    StorageTest.SMALL_FILES to 10_000.0,
-    StorageTest.SQLITE      to 2_500.0,
-    StorageTest.MIXED       to 1_600.0,
+    // Reference = ~15% above the best measured values on SD 8 Gen 3 + UFS 4.0
+    // (OnePlus CPH2691, Android 16). 15% headroom means this device scores ~85/100;
+    // a meaningfully faster device could score higher, nothing inflates to 100.
+    // Measured → reference:
+    //   SEQ_READ:    1451 MB/s  → 1700 MB/s
+    //   SEQ_WRITE:    939 MB/s  → 1100 MB/s
+    //   RAND_4K:      702 MB/s  →  800 MB/s
+    //   SMALL_FILES: 16900 f/s  → 20000 files/s
+    //   SQLITE:      3636 txn/s →  4500 txn/s
+    //   MIXED:       2576 MB/s  →  3000 MB/s
+    StorageTest.SEQ_READ    to 1_700.0,
+    StorageTest.SEQ_WRITE   to 1_100.0,
+    StorageTest.RAND_4K     to   800.0,
+    StorageTest.SMALL_FILES to 20_000.0,
+    StorageTest.SQLITE      to 4_500.0,
+    StorageTest.MIXED       to 3_000.0,
 )
 
 private fun StorageTest.displayName() = when (this) {
@@ -226,6 +225,7 @@ class StorageBenchmarkViewModel(
                 it.copy(isWarmingUp = false, isRunning = true, statusMessage = "Measuring…")
             }
             val measureSteps = (MEASURE_DUR_MS / TICK_MS).toInt()
+            val measureStartMs = System.currentTimeMillis()
             val value = coroutineScope {
                 val measureJob = async(Dispatchers.IO) { runTest(test, durationMs = MEASURE_DUR_MS) }
                 repeat(measureSteps) { step ->
@@ -242,8 +242,9 @@ class StorageBenchmarkViewModel(
                 }
                 measureJob.await()
             }
+            val elapsedMs = System.currentTimeMillis() - measureStartMs
 
-            val result = StorageTestResult(test, name, value, unit, test.score(value))
+            val result = StorageTestResult(test, name, value, unit, test.score(value), elapsedMs)
             results += result
             _uiState.update { s -> s.copy(currentValue = value, completedTests = results.toList()) }
         }
@@ -680,7 +681,7 @@ class StorageBenchmarkViewModel(
             detailedArray.put(JSONObject().apply {
                 put("name", r.displayName)
                 put("opsPerSecond", r.value)
-                put("executionTimeMs", 0.0)
+                put("executionTimeMs", r.durationMs.toDouble())
                 put("isValid", true)
                 put("metricsJson", """{"score":${r.score},"value":${"%.2f".format(r.value)},"unit":"${r.unit}"}""")
             })
