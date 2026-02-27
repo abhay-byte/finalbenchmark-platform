@@ -6,6 +6,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -42,6 +44,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -66,6 +70,7 @@ private val PROD_TEST_TINT = mapOf(
     ProductivityTest.TEXT_OPS     to Color(0xFF69F0AE),  // green accent
     ProductivityTest.JSON_OPS     to Color(0xFFFFB300),  // amber
     ProductivityTest.COMPRESSION  to Color(0xFFFF4081),  // pink accent
+    ProductivityTest.VIDEO_ENCODE to Color(0xFFE040FB),  // purple A200 — video
 )
 
 @Composable
@@ -82,6 +87,7 @@ fun ProductivityBenchmarkScreen(
     }
     val vm: ProductivityBenchmarkViewModel = viewModel(factory = vmFactory)
     val state by vm.uiState.collectAsStateWithLifecycle()
+    val previewBitmap by vm.previewBitmapFlow.collectAsStateWithLifecycle()
 
     BackHandler(enabled = state.isRunning || state.isWarmingUp) { /* block back during run */ }
 
@@ -114,7 +120,7 @@ fun ProductivityBenchmarkScreen(
 
             Spacer(Modifier.weight(1f))
 
-            ProdLiveValueDisplay(state = state, tint = tint)
+            ProdLiveValueDisplay(state = state, tint = tint, previewBitmap = previewBitmap)
 
             Spacer(Modifier.weight(1f))
 
@@ -247,7 +253,11 @@ private fun ProdTopHud(
 // ── Live value display ────────────────────────────────────────────────────────
 
 @Composable
-private fun ProdLiveValueDisplay(state: ProductivityBenchmarkUiState, tint: Color) {
+private fun ProdLiveValueDisplay(
+    state: ProductivityBenchmarkUiState,
+    tint: Color,
+    previewBitmap: android.graphics.Bitmap? = null
+) {
     val valueText = when {
         state.currentValue <= 0.0 -> "—"
         state.currentUnit == "Mchars/s" -> "${"%.2f".format(state.currentValue)} Mchars/s"
@@ -255,6 +265,7 @@ private fun ProdLiveValueDisplay(state: ProductivityBenchmarkUiState, tint: Colo
         state.currentUnit == "images/s" -> "${"%.0f".format(state.currentValue)} images/s"
         state.currentUnit == "ops/s"    -> "${"%.0f".format(state.currentValue)} ops/s"
         state.currentUnit == "MB/s"     -> "${"%.1f".format(state.currentValue)} MB/s"
+        state.currentUnit == "fps"      -> "${"%.1f".format(state.currentValue)} fps"
         else -> "${"%.1f".format(state.currentValue)} ${state.currentUnit}"
     }
 
@@ -293,6 +304,81 @@ private fun ProdLiveValueDisplay(state: ProductivityBenchmarkUiState, tint: Colo
             color = Color.White.copy(alpha = 0.5f),
             textAlign = TextAlign.Center
         )
+
+        // ── Live preview: image / video frame ─────────────────────────────
+        AnimatedVisibility(
+            visible = previewBitmap != null && !(previewBitmap.isRecycled) &&
+                      (state.isRunning || state.isWarmingUp),
+            enter = fadeIn(tween(300)), exit = fadeOut(tween(300))
+        ) {
+            previewBitmap?.let { bmp ->
+                if (!bmp.isRecycled) {
+                    val imageBitmap = remember(bmp) { bmp.asImageBitmap() }
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .aspectRatio(16f / 9f)
+                            .clip(RoundedCornerShape(14.dp))
+                            .border(1.dp, tint.copy(alpha = 0.4f), RoundedCornerShape(14.dp))
+                    ) {
+                        Image(
+                            bitmap = imageBitmap,
+                            contentDescription = "Current frame being processed",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                        // Bottom gradient so the label is readable over any frame
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(44.dp)
+                                .align(Alignment.BottomCenter)
+                                .background(
+                                    Brush.verticalGradient(
+                                        listOf(Color.Transparent, Color.Black.copy(alpha = 0.65f))
+                                    )
+                                )
+                        )
+                        Text(
+                            text = when (state.currentTest) {
+                                ProductivityTest.IMAGE_FILTER -> "📷 Filter Pass"
+                                ProductivityTest.IMAGE_RESIZE -> "📐 Resize Output"
+                                ProductivityTest.VIDEO_ENCODE -> "🎬 Video Frame"
+                                else -> "🖼️ Preview"
+                            },
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color.White.copy(alpha = 0.9f),
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier
+                                .align(Alignment.BottomStart)
+                                .padding(horizontal = 10.dp, vertical = 6.dp)
+                        )
+                        // Resolution badge top-right
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(6.dp)
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(Color.Black.copy(alpha = 0.55f))
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = when (state.currentTest) {
+                                    ProductivityTest.IMAGE_FILTER -> "4K"
+                                    ProductivityTest.IMAGE_RESIZE -> "4K→QHD"
+                                    ProductivityTest.VIDEO_ENCODE -> "1080p"
+                                    else -> ""
+                                },
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Black,
+                                color = tint,
+                                fontSize = 9.sp
+                            )
+                        }
+                    }
+                }
+            }
+        }
 
         // ── Live operation detail ─────────────────────────────────────────
         // Shows what the benchmark is currently doing, e.g. "Filtering image #247"
@@ -346,6 +432,7 @@ private fun ProdCompletedTestsRow(state: ProductivityBenchmarkUiState) {
                     "Mchars/s" -> "${"%.1f".format(r.value)}M"
                     "docs/s"   -> "${"%.0f".format(r.value / 1_000)}k"
                     "MB/s"     -> "${"%.0f".format(r.value)}"
+                    "fps"      -> "${"%.0f".format(r.value)}f"
                     else       -> "${"%.0f".format(r.value)}"
                 }
                 Text(
@@ -362,6 +449,7 @@ private fun ProdCompletedTestsRow(state: ProductivityBenchmarkUiState) {
                         ProductivityTest.TEXT_OPS     -> "TXT"
                         ProductivityTest.JSON_OPS     -> "JSN"
                         ProductivityTest.COMPRESSION  -> "CMP"
+                        ProductivityTest.VIDEO_ENCODE -> "VID"
                     },
                     style = MaterialTheme.typography.labelSmall,
                     color = Color.White.copy(alpha = 0.5f),

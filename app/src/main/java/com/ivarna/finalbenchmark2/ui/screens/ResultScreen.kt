@@ -1350,7 +1350,7 @@ fun DetailedDataTab(summary: BenchmarkSummary) {
                                     letterSpacing = 1.5.sp
                                 )
                                 Text(
-                                    text = "Canvas  •  Image  •  Text  •  JSON  •  Compression",
+                                    text = "Canvas  •  4K Image  •  Text  •  JSON  •  Compress  •  Video",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                                 )
@@ -1758,13 +1758,14 @@ private fun ProductivityBarChart(results: List<BenchmarkResult>) {
     }?.coerceAtLeast(1) ?: 1
 
     @Composable
-    fun barColor(idx: Int): androidx.compose.ui.graphics.Color = when (idx % 6) {
+    fun barColor(idx: Int): androidx.compose.ui.graphics.Color = when (idx % 7) {
         0    -> androidx.compose.ui.graphics.Color(0xFF7C4DFF)  // deep purple — Canvas
         1    -> androidx.compose.ui.graphics.Color(0xFF00BCD4)  // cyan — Image Filter
         2    -> androidx.compose.ui.graphics.Color(0xFF00E5FF)  // light cyan — Image Resize
         3    -> androidx.compose.ui.graphics.Color(0xFF69F0AE)  // green — Text
         4    -> androidx.compose.ui.graphics.Color(0xFFFFB300)  // amber — JSON
-        else -> androidx.compose.ui.graphics.Color(0xFFFF4081)  // pink — Compression
+        5    -> androidx.compose.ui.graphics.Color(0xFFFF4081)  // pink — Compression
+        else -> androidx.compose.ui.graphics.Color(0xFFE040FB)  // purple A200 — Video
     }
 
     Card(
@@ -1815,13 +1816,14 @@ private fun ProductivityBarChart(results: List<BenchmarkResult>) {
                     val score = metricsObj.optInt("score", 0).toFloat()
                     val frac  = (score / maxScore.toFloat()).coerceIn(0.05f, 1f)
                     // color not composable in Canvas; use raw color values matching barColor()
-                    val rawColor = when (i % 6) {
+                    val rawColor = when (i % 7) {
                         0    -> android.graphics.Color.parseColor("#7C4DFF")
                         1    -> android.graphics.Color.parseColor("#00BCD4")
                         2    -> android.graphics.Color.parseColor("#00E5FF")
                         3    -> android.graphics.Color.parseColor("#69F0AE")
                         4    -> android.graphics.Color.parseColor("#FFB300")
-                        else -> android.graphics.Color.parseColor("#FF4081")
+                        5    -> android.graphics.Color.parseColor("#FF4081")
+                        else -> android.graphics.Color.parseColor("#E040FB")
                     }
                     val composeColor = androidx.compose.ui.graphics.Color(rawColor).copy(alpha = 0.75f)
 
@@ -1880,13 +1882,14 @@ private fun ProductivityBarChart(results: List<BenchmarkResult>) {
                             "MB/s"     -> "${"%.0f".format(value)} MB/s"
                             else       -> "${"%.0f".format(value)} $unit"
                         }
-                        val rawColor = when ((num - 1) % 6) {
+                        val rawColor = when ((num - 1) % 7) {
                             0    -> android.graphics.Color.parseColor("#7C4DFF")
                             1    -> android.graphics.Color.parseColor("#00BCD4")
                             2    -> android.graphics.Color.parseColor("#00E5FF")
                             3    -> android.graphics.Color.parseColor("#69F0AE")
                             4    -> android.graphics.Color.parseColor("#FFB300")
-                            else -> android.graphics.Color.parseColor("#FF4081")
+                            5    -> android.graphics.Color.parseColor("#FF4081")
+                            else -> android.graphics.Color.parseColor("#E040FB")
                         }
                         Surface(
                             shape = RoundedCornerShape(8.dp),
@@ -2880,7 +2883,7 @@ private fun formatBenchmarkShareData(context: Context, summary: BenchmarkSummary
                 builder.append("${result.name}: ${String.format("%.0f", score)} pts  |  $valueStr\n")
             }
         } else if (summary.type == "PRODUCTIVITY") {
-            // Productivity test results — Canvas, Image, Text, JSON, Compression
+            // Productivity test results — Canvas, Image (4K), Text, JSON, Compression, Video
             builder.append("[Productivity Test Results]\n")
             summary.detailedResults.forEach { result ->
                 val metricsObj = try { org.json.JSONObject(result.metricsJson) } catch (e: Exception) { org.json.JSONObject() }
@@ -2890,6 +2893,7 @@ private fun formatBenchmarkShareData(context: Context, summary: BenchmarkSummary
                 val valueStr = when (unit) {
                     "Mchars/s" -> String.format("%.2f Mchars/s", value)
                     "docs/s"   -> String.format("%.0f docs/s", value)
+                    "fps"      -> String.format("%.1f fps", value)
                     else       -> String.format("%.0f %s", value, unit)
                 }
                 builder.append("${result.name}: ${String.format("%.0f", score)} pts  |  $valueStr\n")

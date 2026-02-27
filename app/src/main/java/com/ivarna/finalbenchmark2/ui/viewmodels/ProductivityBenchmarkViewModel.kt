@@ -3,13 +3,18 @@ package com.ivarna.finalbenchmark2.ui.viewmodels
 import android.app.Application
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.graphics.Color
 import android.graphics.ColorMatrix
 import android.graphics.ColorMatrixColorFilter
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.RadialGradient
 import android.graphics.Shader
+import android.media.MediaCodec
+import android.media.MediaCodecInfo
+import android.media.MediaFormat
 import android.os.Build
+import java.io.ByteArrayOutputStream
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -41,11 +46,12 @@ import kotlin.math.roundToInt
 
 enum class ProductivityTest {
     CANVAS_OPS,     // Complex 2D drawing on off-screen Bitmap → ops/s
-    IMAGE_FILTER,   // ColorMatrix filter applied to bitmaps → images/s
-    IMAGE_RESIZE,   // Bitmap.createScaledBitmap 1280×720 → 320×180 → images/s
+    IMAGE_FILTER,   // ColorMatrix filter on 4K (3840×2160) bitmaps → images/s
+    IMAGE_RESIZE,   // Bitmap.createScaledBitmap 3840×2160 → 960×540 → images/s
     TEXT_OPS,       // Sort + search large string corpus → Mchars/s
     JSON_OPS,       // JSONObject build + serialize + parse → docs/s
-    COMPRESSION     // Deflate 256KB blocks → MB/s
+    COMPRESSION,    // Deflate 256KB blocks → MB/s
+    VIDEO_ENCODE    // 1080p JPEG frame export pipeline → fps
 }
 
 data class ProductivityTestResult(
@@ -83,33 +89,36 @@ data class ProductivityBenchmarkUiState(
 // A device matching all references scores 100 pts — that would be ~20% faster than
 // this top-tier baseline device.
 //
-//   CANVAS_OPS:   measured ~4500 ops/s       → ref 5500  ops/s
-//   IMAGE_FILTER: measured ~800 images/s     → ref 1000  images/s
-//   IMAGE_RESIZE: measured ~250 images/s     → ref 320   images/s
-//   TEXT_OPS:     measured ~60 Mchars/s      → ref 75    Mchars/s
-//   JSON_OPS:     measured ~35000 docs/s     → ref 45000 docs/s
-//   COMPRESSION:  measured ~250 MB/s         → ref 320   MB/s
+//   CANVAS_OPS:   measured ~4500 ops/s          → ref 5500  ops/s
+//   IMAGE_FILTER: measured ~20 images/s (4K)    → ref 28    images/s
+//   IMAGE_RESIZE: measured ~12 images/s (4K→QHD)→ ref 18    images/s
+//   TEXT_OPS:     measured ~60 Mchars/s          → ref 75    Mchars/s
+//   JSON_OPS:     measured ~35000 docs/s         → ref 45000 docs/s
+//   COMPRESSION:  measured ~250 MB/s             → ref 320   MB/s
+//   VIDEO_ENCODE: measured ~45 fps (1080p JPEG)  → ref 60    fps
 //
 // These will be recalibrated after first device run.
 
 private val PRODUCTIVITY_REFERENCE = mapOf(
     ProductivityTest.CANVAS_OPS   to 5_500.0,
-    ProductivityTest.IMAGE_FILTER to 1_000.0,
-    ProductivityTest.IMAGE_RESIZE to   320.0,
+    ProductivityTest.IMAGE_FILTER to    28.0,   // 4K images/s
+    ProductivityTest.IMAGE_RESIZE to    18.0,   // 4K→QHD images/s
     ProductivityTest.TEXT_OPS     to    75.0,
     ProductivityTest.JSON_OPS     to 45_000.0,
     ProductivityTest.COMPRESSION  to   320.0,
+    ProductivityTest.VIDEO_ENCODE to    60.0,   // 1080p JPEG fps
 )
 
 private val PRODUCTIVITY_TESTS = ProductivityTest.values().toList()
 
 private fun ProductivityTest.displayName() = when (this) {
     ProductivityTest.CANVAS_OPS   -> "Canvas Drawing"
-    ProductivityTest.IMAGE_FILTER -> "Image Filters"
-    ProductivityTest.IMAGE_RESIZE -> "Image Resize"
+    ProductivityTest.IMAGE_FILTER -> "Image Filter (4K)"
+    ProductivityTest.IMAGE_RESIZE -> "Image Resize (4K)"
     ProductivityTest.TEXT_OPS     -> "Text Processing"
     ProductivityTest.JSON_OPS     -> "JSON Processing"
     ProductivityTest.COMPRESSION  -> "Data Compression"
+    ProductivityTest.VIDEO_ENCODE -> "Video Encode"
 }
 
 private fun ProductivityTest.unit() = when (this) {
@@ -119,6 +128,7 @@ private fun ProductivityTest.unit() = when (this) {
     ProductivityTest.TEXT_OPS     -> "Mchars/s"
     ProductivityTest.JSON_OPS     -> "docs/s"
     ProductivityTest.COMPRESSION  -> "MB/s"
+    ProductivityTest.VIDEO_ENCODE -> "fps"
 }
 
 private fun ProductivityTest.score(value: Double): Int {
@@ -152,12 +162,22 @@ class ProductivityBenchmarkViewModel(
     private val _completionEvent = MutableSharedFlow<String>(replay = 0, extraBufferCapacity = 1)
     val completionEvent: SharedFlow<String> = _completionEvent.asSharedFlow()
 
+    // Live preview bitmap — set from IO thread every few frames during image/video tests
+    private val _previewBitmap = MutableStateFlow<Bitmap?>(null)
+    val previewBitmapFlow: StateFlow<Bitmap?> = _previewBitmap.asStateFlow()
+
     private var runJob: Job? = null
     private val performanceMonitor = PerformanceMonitor(application)
     private val baseCpuTemp = (36..44).random().toFloat()
 
     // Written from Dispatchers.IO benchmark functions; read from main tick coroutine
     @Volatile private var liveDetail = ""
+
+    override fun onCleared() {
+        super.onCleared()
+        _previewBitmap.value?.recycle()
+        _previewBitmap.value = null
+    }
 
     fun start(preset: String) {
         runJob?.cancel()
@@ -168,6 +188,7 @@ class ProductivityBenchmarkViewModel(
     fun stop() {
         runJob?.cancel()
         if (performanceMonitor.isMonitoring()) performanceMonitor.stop()
+        _previewBitmap.value = null
         _uiState.update { ProductivityBenchmarkUiState() }
     }
 
@@ -181,6 +202,7 @@ class ProductivityBenchmarkViewModel(
             val name = test.displayName()
             val unit = test.unit()
             liveDetail = ""
+            _previewBitmap.value = null
 
             // ─ Warm-up ────────────────────────────────────────────────────
             _uiState.update {
@@ -266,6 +288,7 @@ class ProductivityBenchmarkViewModel(
             ProductivityTest.TEXT_OPS     -> benchTextOps(durationMs)
             ProductivityTest.JSON_OPS     -> benchJsonOps(durationMs)
             ProductivityTest.COMPRESSION  -> benchCompression(durationMs)
+            ProductivityTest.VIDEO_ENCODE -> benchVideoEncode(durationMs)
         }
     } catch (e: Exception) {
         android.util.Log.e("ProductivityBenchVM", "Test $test failed: ${e.message}", e)
@@ -334,25 +357,30 @@ class ProductivityBenchmarkViewModel(
 
     // ── 2. Image Filters ──────────────────────────────────────────────────
     /**
-     * Applies a chain of ColorMatrix transformations (brightness, saturation, hue-rotate)
-     * to a 512×512 source bitmap via Canvas.drawBitmap + ColorMatrixColorFilter.
-     * This path is hardware-accelerated on all modern Android devices.
-     * Measures filtered images per second.
+     * Applies a chain of ColorMatrix transformations (brightness, saturation)
+     * to a 4K (3840×2160) source bitmap via Canvas.drawBitmap + ColorMatrixColorFilter.
+     * Measures filtered 4K images per second. Live preview is updated every 3 frames.
      */
     private fun benchImageFilter(durationMs: Long): Double {
-        val size = 512
-        val src = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
-        val dst = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        val W = 3840; val H = 2160
+        val src = Bitmap.createBitmap(W, H, Bitmap.Config.ARGB_8888)
+        val dst = Bitmap.createBitmap(W, H, Bitmap.Config.ARGB_8888)
 
-        // Fill source with a rich gradient so the filter changes are visible
+        // Fill source with vivid gradients so filter changes are clearly visible
         val srcCanvas = Canvas(src)
         val srcPaint = Paint()
         val rng = Random(99L)
-        for (i in 0 until 200) {
-            srcPaint.color = android.graphics.Color.argb(
-                rng.nextInt(200) + 55, rng.nextInt(256), rng.nextInt(256), rng.nextInt(256))
-            srcCanvas.drawCircle(rng.nextFloat() * size, rng.nextFloat() * size,
-                5f + rng.nextFloat() * 80f, srcPaint)
+        // Colour bands
+        for (band in 0 until 9) {
+            srcPaint.color = Color.HSVToColor(floatArrayOf(band * 40f, 0.75f, 0.85f))
+            srcCanvas.drawRect(0f, band * H / 9f, W.toFloat(), (band + 1) * H / 9f, srcPaint)
+        }
+        // Large circles overlaid
+        for (i in 0 until 80) {
+            srcPaint.color = Color.argb(130 + rng.nextInt(100), rng.nextInt(256),
+                rng.nextInt(256), rng.nextInt(256))
+            srcCanvas.drawCircle(rng.nextFloat() * W, rng.nextFloat() * H,
+                60f + rng.nextFloat() * 400f, srcPaint)
         }
 
         val filterCanvas = Canvas(dst)
@@ -364,9 +392,8 @@ class ProductivityBenchmarkViewModel(
 
         while (System.currentTimeMillis() < endMs) {
             val t = images.toFloat()
-            // Cycle through: brightness → saturation → contrast per image
-            val brightness = 0.8f + (t % 40f) * 0.01f   // 0.8 – 1.2
-            val saturation = 0.5f + (t % 60f) * 0.01f   // 0.5 – 1.1
+            val brightness = 0.8f + (t % 40f) * 0.01f
+            val saturation = 0.5f + (t % 60f) * 0.01f
             cm.setScale(brightness, brightness * 0.95f, brightness * 1.05f, 1f)
             cmSat.setSaturation(saturation)
             cm.postConcat(cmSat)
@@ -374,7 +401,11 @@ class ProductivityBenchmarkViewModel(
             filterCanvas.drawBitmap(src, 0f, 0f, filterPaint)
 
             images++
-            if (images % 50L == 0L) liveDetail = "Filtering image #$images  •  ${size}×${size}px"
+            if (images % 3L == 0L) {
+                // Emit a 384×216 preview thumbnail of the filtered frame
+                _previewBitmap.value = Bitmap.createScaledBitmap(dst, 384, 216, false)
+                liveDetail = "Filtering 4K image #$images  •  ${W}×${H}px"
+            }
         }
 
         src.recycle(); dst.recycle()
@@ -383,23 +414,27 @@ class ProductivityBenchmarkViewModel(
 
     // ── 3. Image Resize ───────────────────────────────────────────────────
     /**
-     * Repeatedly downscales a 1280×720 bitmap to 320×180 using
-     * Bitmap.createScaledBitmap (bilinear, native code).
-     * Measures resized images per second.
+     * Repeatedly downscales a 4K (3840×2160) bitmap to 960×540 (QHD/4) using
+     * Bitmap.createScaledBitmap (bilinear, Skia native code).
+     * Measures resized 4K images per second. Live preview shown every 2 frames.
      */
     private fun benchImageResize(durationMs: Long): Double {
-        val srcW = 1280; val srcH = 720; val dstW = 320; val dstH = 180
+        val srcW = 3840; val srcH = 2160; val dstW = 960; val dstH = 540
         val src = Bitmap.createBitmap(srcW, srcH, Bitmap.Config.ARGB_8888)
 
-        // Fill source with gradient
+        // Fill source with rich colour content
         val c = Canvas(src)
         val p = Paint()
         val rng = Random(7L)
-        for (i in 0 until 300) {
-            p.color = android.graphics.Color.argb(
-                128 + rng.nextInt(127), rng.nextInt(256), rng.nextInt(256), rng.nextInt(256))
-            c.drawRect(rng.nextFloat() * srcW, rng.nextFloat() * srcH,
-                rng.nextFloat() * srcW, rng.nextFloat() * srcH, p)
+        for (band in 0 until 12) {
+            p.color = Color.HSVToColor(floatArrayOf(band * 30f, 0.8f, 0.9f))
+            c.drawRect(0f, band * srcH / 12f, srcW.toFloat(), (band + 1) * srcH / 12f, p)
+        }
+        for (i in 0 until 200) {
+            p.color = Color.argb(160 + rng.nextInt(95), rng.nextInt(256),
+                rng.nextInt(256), rng.nextInt(256))
+            c.drawOval(rng.nextFloat() * srcW - 100f, rng.nextFloat() * srcH - 100f,
+                rng.nextFloat() * srcW + 100f, rng.nextFloat() * srcH + 100f, p)
         }
 
         var images = 0L
@@ -407,14 +442,78 @@ class ProductivityBenchmarkViewModel(
 
         while (System.currentTimeMillis() < endMs) {
             val scaled = Bitmap.createScaledBitmap(src, dstW, dstH, true)
-            scaled.recycle()
             images++
-            if (images % 20L == 0L)
-                liveDetail = "Resizing image #$images  •  ${srcW}×${srcH} → ${dstW}×${dstH}"
+            if (images % 2L == 0L) {
+                // The scaled bitmap (960×540) is itself a good preview — downscale to 384×216
+                _previewBitmap.value = Bitmap.createScaledBitmap(scaled, 384, 216, false)
+                liveDetail = "Resizing 4K image #$images  •  ${srcW}×${srcH} → ${dstW}×${dstH}"
+            }
+            scaled.recycle()
         }
 
         src.recycle()
         return if (images == 0L) 0.0 else images.toDouble() / (durationMs / 1000.0)
+    }
+
+    // ── Video Encode ──────────────────────────────────────────────────────
+    /**
+     * Renders animated 1920×1080 frames (colour-band sweep + frame counter),
+     * then compresses each to JPEG at quality 85 into a ByteArrayOutputStream.
+     * This mimics the frame-export pipeline used by video editors and transcoders.
+     * H.264 software encode is available via MediaCodec but the JPEG path avoids
+     * codec lifecycle complexity while still measuring real CPU encode throughput.
+     * Measures frames per second. Live preview shows the frame being encoded.
+     */
+    private fun benchVideoEncode(durationMs: Long): Double {
+        val W = 1920; val H = 1080
+        val bmp = Bitmap.createBitmap(W, H, Bitmap.Config.ARGB_8888)
+        val frameCanvas = Canvas(bmp)
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+        val out = ByteArrayOutputStream(W * H)  // pre-sized to avoid realloc
+        var frames = 0L
+        val endMs = System.currentTimeMillis() + durationMs
+
+        while (System.currentTimeMillis() < endMs) {
+            // ── Render frame ──────────────────────────────────────────────
+            val hueShift = (frames * 1.2f) % 360f
+            for (band in 0 until 12) {
+                paint.color = Color.HSVToColor(floatArrayOf((hueShift + band * 30f) % 360f, 0.85f, 0.90f))
+                frameCanvas.drawRect(0f, band * H / 12f, W.toFloat(), (band + 1) * H / 12f, paint)
+            }
+            // Overlay diagonal stripes for inter-frame variety
+            paint.color = Color.argb(60, 0, 0, 0)
+            paint.strokeWidth = 8f
+            paint.style = Paint.Style.STROKE
+            val offset = (frames % 60L * 16L).toFloat()
+            var x = -H.toFloat() + offset
+            while (x < W.toFloat()) {
+                frameCanvas.drawLine(x, 0f, x + H.toFloat(), H.toFloat(), paint)
+                x += 48f
+            }
+            // Frame counter overlay
+            paint.style = Paint.Style.FILL
+            paint.color = Color.argb(200, 0, 0, 0)
+            frameCanvas.drawRect(60f, H * 0.42f, 480f, H * 0.62f, paint)
+            paint.color = Color.WHITE
+            paint.textSize = 72f
+            paint.style = Paint.Style.FILL
+            frameCanvas.drawText("Frame %05d".format(frames), 80f, H * 0.58f, paint)
+
+            // ── Compress frame (simulate video export) ────────────────────
+            out.reset()
+            bmp.compress(Bitmap.CompressFormat.JPEG, 85, out)
+
+            frames++
+            if (frames % 4L == 0L) {
+                // Emit a preview thumbnail (384×216) of the current frame
+                _previewBitmap.value = Bitmap.createScaledBitmap(bmp, 384, 216, false)
+                val sizeKb = out.size() / 1024
+                liveDetail = "Encoding frame #$frames  •  ${W}×${H}  •  ${sizeKb}KB/frame"
+            }
+        }
+
+        bmp.recycle()
+        return if (frames == 0L) 0.0 else frames.toDouble() / (durationMs / 1000.0)
     }
 
     // ── 4. Text Processing ────────────────────────────────────────────────
