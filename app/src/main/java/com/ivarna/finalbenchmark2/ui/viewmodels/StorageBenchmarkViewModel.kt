@@ -657,7 +657,7 @@ class StorageBenchmarkViewModel(
                     resultId    = 0,
                     testName    = r.displayName,
                     score       = r.value,
-                    metricsJson = """{"score":${r.score},"value":${"%.2f".format(r.value)},"unit":"${r.unit}"}"""
+                metricsJson = """{"score":${r.score},"value":${"%.2f".format(r.value)},"unit":"${r.unit}","durationMs":${r.durationMs}}"""
                 )
             }
             repo.saveGenericBenchmark(entity, details)
@@ -683,7 +683,7 @@ class StorageBenchmarkViewModel(
                 put("opsPerSecond", r.value)
                 put("executionTimeMs", r.durationMs.toDouble())
                 put("isValid", true)
-                put("metricsJson", """{"score":${r.score},"value":${"%.2f".format(r.value)},"unit":"${r.unit}"}""")
+                put("metricsJson", """{"score":${r.score},"value":${"%.2f".format(r.value)},"unit":"${r.unit}","durationMs":${r.durationMs}}""")  
             })
         }
         val perfObj = try { JSONObject(performanceMetricsJson) } catch (e: Exception) { JSONObject() }
