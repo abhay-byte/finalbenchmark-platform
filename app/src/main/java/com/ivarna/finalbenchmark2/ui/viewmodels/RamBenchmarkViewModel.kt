@@ -89,11 +89,11 @@ private val RAM_REFERENCE_NATIVE = mapOf(
 )
 
 private val RAM_REFERENCE_JVM = mapOf(
-    RamTest.SEQ_READ     to 5_500.0,   // MB/s  (LongArray word-read)
-    RamTest.SEQ_WRITE    to 7_000.0,   // MB/s  (Arrays.fill LongArray)
-    RamTest.RAND_ACCESS  to 350.0,     // ns/op (JVM pointer-chase)
-    RamTest.MEM_COPY     to 10_000.0,  // MB/s  (System.arraycopy)
-    RamTest.MULTI_THREAD to 15_000.0,  // MB/s  (4-thread LongArray read)
+    RamTest.SEQ_READ     to 6_500.0,   // MB/s  (LongArray word-read, measured ~6624)
+    RamTest.SEQ_WRITE    to 3_200.0,   // MB/s  (Arrays.fill LongArray, ART gets ~3000-3400 on 64MB)
+    RamTest.RAND_ACCESS  to 530.0,     // ns/op (JVM pointer-chase, measured ~529 ns)
+    RamTest.MEM_COPY     to 11_000.0,  // MB/s  (System.arraycopy, measured ~11488)
+    RamTest.MULTI_THREAD to 11_500.0,  // MB/s  (4-thread LongArray, measured ~11392)
 )
 
 // Selected at runtime based on whether JNI .so loaded successfully
