@@ -64,13 +64,15 @@ private val PROD_GLASS_BORDER = Color(0x33FFFFFF)
 
 // Accent colour per test — purple/cyan/teal palette for "productivity" feel
 private val PROD_TEST_TINT = mapOf(
-    ProductivityTest.CANVAS_OPS   to Color(0xFF7C4DFF),  // deep purple
-    ProductivityTest.IMAGE_FILTER to Color(0xFF00BCD4),  // cyan
-    ProductivityTest.IMAGE_RESIZE to Color(0xFF00E5FF),  // light cyan
-    ProductivityTest.TEXT_OPS     to Color(0xFF69F0AE),  // green accent
-    ProductivityTest.JSON_OPS     to Color(0xFFFFB300),  // amber
-    ProductivityTest.COMPRESSION  to Color(0xFFFF4081),  // pink accent
-    ProductivityTest.VIDEO_ENCODE to Color(0xFFE040FB),  // purple A200 — video
+    ProductivityTest.CANVAS_OPS      to Color(0xFF7C4DFF),  // deep purple
+    ProductivityTest.IMAGE_FILTER    to Color(0xFF00BCD4),  // cyan
+    ProductivityTest.IMAGE_RESIZE    to Color(0xFF00E5FF),  // light cyan
+    ProductivityTest.TEXT_OPS        to Color(0xFF69F0AE),  // green accent
+    ProductivityTest.JSON_OPS        to Color(0xFFFFB300),  // amber
+    ProductivityTest.COMPRESSION     to Color(0xFFFF4081),  // pink accent
+    ProductivityTest.VIDEO_ENCODE    to Color(0xFFE040FB),  // purple A200
+    ProductivityTest.VIDEO_DECODE    to Color(0xFFFF6D00),  // deep orange A400
+    ProductivityTest.VIDEO_TRANSCODE to Color(0xFF00E676),  // green A400
 )
 
 @Composable
@@ -341,9 +343,11 @@ private fun ProdLiveValueDisplay(
                         )
                         Text(
                             text = when (state.currentTest) {
-                                ProductivityTest.IMAGE_FILTER -> "📷 Filter Pass"
-                                ProductivityTest.IMAGE_RESIZE -> "📐 Resize Output"
-                                ProductivityTest.VIDEO_ENCODE -> "🎬 Video Frame"
+                                ProductivityTest.IMAGE_FILTER    -> "📷 Filter Pass"
+                                ProductivityTest.IMAGE_RESIZE    -> "📹 Resize Output"
+                                ProductivityTest.VIDEO_ENCODE    -> "🎬 Video Frame"
+                                ProductivityTest.VIDEO_DECODE    -> "▶️ Decoded Frame"
+                                ProductivityTest.VIDEO_TRANSCODE -> "🔄 Transcoded Frame"
                                 else -> "🖼️ Preview"
                             },
                             style = MaterialTheme.typography.labelSmall,
@@ -364,9 +368,11 @@ private fun ProdLiveValueDisplay(
                         ) {
                             Text(
                                 text = when (state.currentTest) {
-                                    ProductivityTest.IMAGE_FILTER -> "4K"
-                                    ProductivityTest.IMAGE_RESIZE -> "4K→QHD"
-                                    ProductivityTest.VIDEO_ENCODE -> "1080p"
+                                    ProductivityTest.IMAGE_FILTER    -> "4K"
+                                    ProductivityTest.IMAGE_RESIZE    -> "4K→QHD"
+                                    ProductivityTest.VIDEO_ENCODE    -> "1080p"
+                                    ProductivityTest.VIDEO_DECODE    -> "1080p"
+                                    ProductivityTest.VIDEO_TRANSCODE -> "1080→720p"
                                     else -> ""
                                 },
                                 style = MaterialTheme.typography.labelSmall,
@@ -443,13 +449,15 @@ private fun ProdCompletedTestsRow(state: ProductivityBenchmarkUiState) {
                 )
                 Text(
                     text = when (r.test) {
-                        ProductivityTest.CANVAS_OPS   -> "2D"
-                        ProductivityTest.IMAGE_FILTER -> "FLT"
-                        ProductivityTest.IMAGE_RESIZE -> "RSZ"
-                        ProductivityTest.TEXT_OPS     -> "TXT"
-                        ProductivityTest.JSON_OPS     -> "JSN"
-                        ProductivityTest.COMPRESSION  -> "CMP"
-                        ProductivityTest.VIDEO_ENCODE -> "VID"
+                        ProductivityTest.CANVAS_OPS      -> "2D"
+                        ProductivityTest.IMAGE_FILTER    -> "FLT"
+                        ProductivityTest.IMAGE_RESIZE    -> "RSZ"
+                        ProductivityTest.TEXT_OPS        -> "TXT"
+                        ProductivityTest.JSON_OPS        -> "JSN"
+                        ProductivityTest.COMPRESSION     -> "CMP"
+                        ProductivityTest.VIDEO_ENCODE    -> "ENC"
+                        ProductivityTest.VIDEO_DECODE    -> "DEC"
+                        ProductivityTest.VIDEO_TRANSCODE -> "XCD"
                     },
                     style = MaterialTheme.typography.labelSmall,
                     color = Color.White.copy(alpha = 0.5f),

@@ -1758,14 +1758,16 @@ private fun ProductivityBarChart(results: List<BenchmarkResult>) {
     }?.coerceAtLeast(1) ?: 1
 
     @Composable
-    fun barColor(idx: Int): androidx.compose.ui.graphics.Color = when (idx % 7) {
+    fun barColor(idx: Int): androidx.compose.ui.graphics.Color = when (idx % 9) {
         0    -> androidx.compose.ui.graphics.Color(0xFF7C4DFF)  // deep purple — Canvas
         1    -> androidx.compose.ui.graphics.Color(0xFF00BCD4)  // cyan — Image Filter
         2    -> androidx.compose.ui.graphics.Color(0xFF00E5FF)  // light cyan — Image Resize
         3    -> androidx.compose.ui.graphics.Color(0xFF69F0AE)  // green — Text
         4    -> androidx.compose.ui.graphics.Color(0xFFFFB300)  // amber — JSON
         5    -> androidx.compose.ui.graphics.Color(0xFFFF4081)  // pink — Compression
-        else -> androidx.compose.ui.graphics.Color(0xFFE040FB)  // purple A200 — Video
+        6    -> androidx.compose.ui.graphics.Color(0xFFE040FB)  // purple A200 — Video Encode
+        7    -> androidx.compose.ui.graphics.Color(0xFFFF6D00)  // deep orange — Video Decode
+        else -> androidx.compose.ui.graphics.Color(0xFF00E676)  // green A400 — Video Transcode
     }
 
     Card(
@@ -1816,14 +1818,16 @@ private fun ProductivityBarChart(results: List<BenchmarkResult>) {
                     val score = metricsObj.optInt("score", 0).toFloat()
                     val frac  = (score / maxScore.toFloat()).coerceIn(0.05f, 1f)
                     // color not composable in Canvas; use raw color values matching barColor()
-                    val rawColor = when (i % 7) {
+                    val rawColor = when (i % 9) {
                         0    -> android.graphics.Color.parseColor("#7C4DFF")
                         1    -> android.graphics.Color.parseColor("#00BCD4")
                         2    -> android.graphics.Color.parseColor("#00E5FF")
                         3    -> android.graphics.Color.parseColor("#69F0AE")
                         4    -> android.graphics.Color.parseColor("#FFB300")
                         5    -> android.graphics.Color.parseColor("#FF4081")
-                        else -> android.graphics.Color.parseColor("#E040FB")
+                        6    -> android.graphics.Color.parseColor("#E040FB")
+                        7    -> android.graphics.Color.parseColor("#FF6D00")
+                        else -> android.graphics.Color.parseColor("#00E676")
                     }
                     val composeColor = androidx.compose.ui.graphics.Color(rawColor).copy(alpha = 0.75f)
 
@@ -1882,14 +1886,16 @@ private fun ProductivityBarChart(results: List<BenchmarkResult>) {
                             "MB/s"     -> "${"%.0f".format(value)} MB/s"
                             else       -> "${"%.0f".format(value)} $unit"
                         }
-                        val rawColor = when ((num - 1) % 7) {
+                        val rawColor = when ((num - 1) % 9) {
                             0    -> android.graphics.Color.parseColor("#7C4DFF")
                             1    -> android.graphics.Color.parseColor("#00BCD4")
                             2    -> android.graphics.Color.parseColor("#00E5FF")
                             3    -> android.graphics.Color.parseColor("#69F0AE")
                             4    -> android.graphics.Color.parseColor("#FFB300")
                             5    -> android.graphics.Color.parseColor("#FF4081")
-                            else -> android.graphics.Color.parseColor("#E040FB")
+                            6    -> android.graphics.Color.parseColor("#E040FB")
+                            7    -> android.graphics.Color.parseColor("#FF6D00")
+                            else -> android.graphics.Color.parseColor("#00E676")
                         }
                         Surface(
                             shape = RoundedCornerShape(8.dp),

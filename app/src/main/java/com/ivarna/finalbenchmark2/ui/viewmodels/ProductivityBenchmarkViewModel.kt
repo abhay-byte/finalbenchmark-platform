@@ -2,6 +2,7 @@ package com.ivarna.finalbenchmark2.ui.viewmodels
 
 import android.app.Application
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.ColorMatrix
@@ -10,9 +11,6 @@ import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.RadialGradient
 import android.graphics.Shader
-import android.media.MediaCodec
-import android.media.MediaCodecInfo
-import android.media.MediaFormat
 import android.os.Build
 import java.io.ByteArrayOutputStream
 import androidx.lifecycle.AndroidViewModel
@@ -45,13 +43,15 @@ import kotlin.math.roundToInt
 // ── Productivity tests ────────────────────────────────────────────────────────
 
 enum class ProductivityTest {
-    CANVAS_OPS,     // Complex 2D drawing on off-screen Bitmap → ops/s
-    IMAGE_FILTER,   // ColorMatrix filter on 4K (3840×2160) bitmaps → images/s
-    IMAGE_RESIZE,   // Bitmap.createScaledBitmap 3840×2160 → 960×540 → images/s
-    TEXT_OPS,       // Sort + search large string corpus → Mchars/s
-    JSON_OPS,       // JSONObject build + serialize + parse → docs/s
-    COMPRESSION,    // Deflate 256KB blocks → MB/s
-    VIDEO_ENCODE    // 1080p JPEG frame export pipeline → fps
+    CANVAS_OPS,      // Complex 2D drawing on off-screen Bitmap → ops/s
+    IMAGE_FILTER,    // ColorMatrix filter on 4K (3840×2160) bitmaps → images/s
+    IMAGE_RESIZE,    // Bitmap.createScaledBitmap 3840×2160 → 960×540 → images/s
+    TEXT_OPS,        // Sort + search large string corpus → Mchars/s
+    JSON_OPS,        // JSONObject build + serialize + parse → docs/s
+    COMPRESSION,     // Deflate 256KB blocks → MB/s
+    VIDEO_ENCODE,    // 1080p JPEG frame render + compress → fps
+    VIDEO_DECODE,    // 1080p JPEG pre-encoded frames → BitmapFactory decode → fps
+    VIDEO_TRANSCODE  // 1080p JPEG decode → scale to 720p → re-encode → fps
 }
 
 data class ProductivityTestResult(
@@ -89,46 +89,56 @@ data class ProductivityBenchmarkUiState(
 // A device matching all references scores 100 pts — that would be ~20% faster than
 // this top-tier baseline device.
 //
-//   CANVAS_OPS:   measured ~4500 ops/s          → ref 5500  ops/s
-//   IMAGE_FILTER: measured ~20 images/s (4K)    → ref 28    images/s
-//   IMAGE_RESIZE: measured ~12 images/s (4K→QHD)→ ref 18    images/s
-//   TEXT_OPS:     measured ~60 Mchars/s          → ref 75    Mchars/s
-//   JSON_OPS:     measured ~35000 docs/s         → ref 45000 docs/s
-//   COMPRESSION:  measured ~250 MB/s             → ref 320   MB/s
-//   VIDEO_ENCODE: measured ~45 fps (1080p JPEG)  → ref 60    fps
+// Calibrated to OnePlus CPH2691 (SD 8 Gen 3, Android 16) — this device is the
+// 100-point baseline.  A device that beats these numbers will score above 100;
+// refs are set 5% above measured so a perfectly matched device scores ~95.
 //
-// These will be recalibrated after first device run.
+//   CANVAS_OPS:      measured 12400 ops/s          → ref 13000
+//   IMAGE_FILTER:    measured 17   images/s (4K)   → ref 18
+//   IMAGE_RESIZE:    measured 163  images/s (4K→Q) → ref 170
+//   TEXT_OPS:        measured 12.5 Mchars/s         → ref 13
+//   JSON_OPS:        measured 1968 docs/s            → ref 2100
+//   COMPRESSION:     measured 49   MB/s              → ref 52
+//   VIDEO_ENCODE:    measured 32   fps               → ref 34
+//   VIDEO_DECODE:    estimated 130 fps (1080p JPEG)  → ref 140   (recalibrate)
+//   VIDEO_TRANSCODE: estimated 21  fps (1080→720)    → ref 22    (recalibrate)
 
 private val PRODUCTIVITY_REFERENCE = mapOf(
-    ProductivityTest.CANVAS_OPS   to 5_500.0,
-    ProductivityTest.IMAGE_FILTER to    28.0,   // 4K images/s
-    ProductivityTest.IMAGE_RESIZE to    18.0,   // 4K→QHD images/s
-    ProductivityTest.TEXT_OPS     to    75.0,
-    ProductivityTest.JSON_OPS     to 45_000.0,
-    ProductivityTest.COMPRESSION  to   320.0,
-    ProductivityTest.VIDEO_ENCODE to    60.0,   // 1080p JPEG fps
+    ProductivityTest.CANVAS_OPS      to 13_000.0,
+    ProductivityTest.IMAGE_FILTER    to     18.0,
+    ProductivityTest.IMAGE_RESIZE    to    170.0,
+    ProductivityTest.TEXT_OPS        to     13.0,
+    ProductivityTest.JSON_OPS        to  2_100.0,
+    ProductivityTest.COMPRESSION     to     52.0,
+    ProductivityTest.VIDEO_ENCODE    to     34.0,
+    ProductivityTest.VIDEO_DECODE    to    140.0,
+    ProductivityTest.VIDEO_TRANSCODE to     22.0,
 )
 
 private val PRODUCTIVITY_TESTS = ProductivityTest.values().toList()
 
 private fun ProductivityTest.displayName() = when (this) {
-    ProductivityTest.CANVAS_OPS   -> "Canvas Drawing"
-    ProductivityTest.IMAGE_FILTER -> "Image Filter (4K)"
-    ProductivityTest.IMAGE_RESIZE -> "Image Resize (4K)"
-    ProductivityTest.TEXT_OPS     -> "Text Processing"
-    ProductivityTest.JSON_OPS     -> "JSON Processing"
-    ProductivityTest.COMPRESSION  -> "Data Compression"
-    ProductivityTest.VIDEO_ENCODE -> "Video Encode"
+    ProductivityTest.CANVAS_OPS      -> "Canvas Drawing"
+    ProductivityTest.IMAGE_FILTER    -> "Image Filter (4K)"
+    ProductivityTest.IMAGE_RESIZE    -> "Image Resize (4K)"
+    ProductivityTest.TEXT_OPS        -> "Text Processing"
+    ProductivityTest.JSON_OPS        -> "JSON Processing"
+    ProductivityTest.COMPRESSION     -> "Data Compression"
+    ProductivityTest.VIDEO_ENCODE    -> "Video Encode"
+    ProductivityTest.VIDEO_DECODE    -> "Video Decode"
+    ProductivityTest.VIDEO_TRANSCODE -> "Video Transcode"
 }
 
 private fun ProductivityTest.unit() = when (this) {
-    ProductivityTest.CANVAS_OPS   -> "ops/s"
-    ProductivityTest.IMAGE_FILTER -> "images/s"
-    ProductivityTest.IMAGE_RESIZE -> "images/s"
-    ProductivityTest.TEXT_OPS     -> "Mchars/s"
-    ProductivityTest.JSON_OPS     -> "docs/s"
-    ProductivityTest.COMPRESSION  -> "MB/s"
-    ProductivityTest.VIDEO_ENCODE -> "fps"
+    ProductivityTest.CANVAS_OPS      -> "ops/s"
+    ProductivityTest.IMAGE_FILTER    -> "images/s"
+    ProductivityTest.IMAGE_RESIZE    -> "images/s"
+    ProductivityTest.TEXT_OPS        -> "Mchars/s"
+    ProductivityTest.JSON_OPS        -> "docs/s"
+    ProductivityTest.COMPRESSION     -> "MB/s"
+    ProductivityTest.VIDEO_ENCODE    -> "fps"
+    ProductivityTest.VIDEO_DECODE    -> "fps"
+    ProductivityTest.VIDEO_TRANSCODE -> "fps"
 }
 
 private fun ProductivityTest.score(value: Double): Int {
@@ -282,13 +292,15 @@ class ProductivityBenchmarkViewModel(
 
     private fun runTest(test: ProductivityTest, durationMs: Long): Double = try {
         when (test) {
-            ProductivityTest.CANVAS_OPS   -> benchCanvasOps(durationMs)
-            ProductivityTest.IMAGE_FILTER -> benchImageFilter(durationMs)
-            ProductivityTest.IMAGE_RESIZE -> benchImageResize(durationMs)
-            ProductivityTest.TEXT_OPS     -> benchTextOps(durationMs)
-            ProductivityTest.JSON_OPS     -> benchJsonOps(durationMs)
-            ProductivityTest.COMPRESSION  -> benchCompression(durationMs)
-            ProductivityTest.VIDEO_ENCODE -> benchVideoEncode(durationMs)
+            ProductivityTest.CANVAS_OPS      -> benchCanvasOps(durationMs)
+            ProductivityTest.IMAGE_FILTER    -> benchImageFilter(durationMs)
+            ProductivityTest.IMAGE_RESIZE    -> benchImageResize(durationMs)
+            ProductivityTest.TEXT_OPS        -> benchTextOps(durationMs)
+            ProductivityTest.JSON_OPS        -> benchJsonOps(durationMs)
+            ProductivityTest.COMPRESSION     -> benchCompression(durationMs)
+            ProductivityTest.VIDEO_ENCODE    -> benchVideoEncode(durationMs)
+            ProductivityTest.VIDEO_DECODE    -> benchVideoDecode(durationMs)
+            ProductivityTest.VIDEO_TRANSCODE -> benchVideoTranscode(durationMs)
         }
     } catch (e: Exception) {
         android.util.Log.e("ProductivityBenchVM", "Test $test failed: ${e.message}", e)
@@ -513,6 +525,121 @@ class ProductivityBenchmarkViewModel(
         }
 
         bmp.recycle()
+        return if (frames == 0L) 0.0 else frames.toDouble() / (durationMs / 1000.0)
+    }
+
+    // ── 7. Video Decode ───────────────────────────────────────────────────
+    /**
+     * Pre-encodes 12 distinct 1920×1080 JPEG keyframes during setup
+     * (hue-shifted colour bands), then repeatedly decodes them using
+     * BitmapFactory.decodeByteArray — the same path used by real video players
+     * and thumbnailing pipelines on Android.
+     * Measures decoded frames per second. Live preview shows the decoded bitmap.
+     */
+    private fun benchVideoDecode(durationMs: Long): Double {
+        val W = 1920; val H = 1080
+        val keyframeCount = 12
+
+        // ─ Setup: encode the keyframe pool ────────────────────────────────
+        val encoded = Array(keyframeCount) { fi ->
+            val bmp = Bitmap.createBitmap(W, H, Bitmap.Config.ARGB_8888)
+            val c = Canvas(bmp)
+            val p = Paint()
+            val hueBase = fi * 360f / keyframeCount
+            for (band in 0 until 10) {
+                p.color = Color.HSVToColor(floatArrayOf((hueBase + band * 36f) % 360f, 0.85f, 0.90f))
+                c.drawRect(0f, band * H / 10f, W.toFloat(), (band + 1) * H / 10f, p)
+            }
+            // Geometric shapes per keyframe for variety
+            p.color = Color.argb(160, (fi * 31) % 256, (fi * 73) % 256, (fi * 137) % 256)
+            for (s in 0 until 20) {
+                c.drawOval(
+                    (s * 97 % W).toFloat(), (s * 61 % H).toFloat(),
+                    ((s * 97 + 120) % W).toFloat(), ((s * 61 + 80) % H).toFloat(), p
+                )
+            }
+            val out = ByteArrayOutputStream(200 * 1024)
+            bmp.compress(Bitmap.CompressFormat.JPEG, 85, out)
+            bmp.recycle()
+            out.toByteArray()
+        }
+
+        var frames = 0L
+        val endMs = System.currentTimeMillis() + durationMs
+
+        while (System.currentTimeMillis() < endMs) {
+            val idx = (frames % keyframeCount).toInt()
+            val bytes = encoded[idx]
+            val decoded = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+            frames++
+            if (frames % 8L == 0L && decoded != null && !decoded.isRecycled) {
+                _previewBitmap.value = Bitmap.createScaledBitmap(decoded, 384, 216, false)
+                liveDetail = "Decoded frame #$frames  •  ${decoded.width}×${decoded.height}  •  ${bytes.size / 1024}KB JPEG"
+            }
+            decoded?.recycle()
+        }
+
+        return if (frames == 0L) 0.0 else frames.toDouble() / (durationMs / 1000.0)
+    }
+
+    // ── 8. Video Transcode ────────────────────────────────────────────────
+    /**
+     * Simulates a full video transcode pipeline per frame:
+     *   1. Decode a 1920×1080 JPEG keyframe  →  Bitmap  (BitmapFactory)
+     *   2. Scale to 1280×720  (Bitmap.createScaledBitmap)
+     *   3. Re-encode as JPEG at quality 80  (compress)
+     * This mirrors the per-frame work done by video transcoding apps.
+     * Measures transcoded frames per second. Live preview shows the 720p output.
+     */
+    private fun benchVideoTranscode(durationMs: Long): Double {
+        val srcW = 1920; val srcH = 1080; val dstW = 1280; val dstH = 720
+        val keyframeCount = 8
+
+        // ─ Setup: encode keyframe pool ────────────────────────────────────
+        val encoded = Array(keyframeCount) { fi ->
+            val bmp = Bitmap.createBitmap(srcW, srcH, Bitmap.Config.ARGB_8888)
+            val c = Canvas(bmp)
+            val p = Paint()
+            val hueBase = fi * 45f
+            for (band in 0 until 8) {
+                p.color = Color.HSVToColor(floatArrayOf((hueBase + band * 45f) % 360f, 0.80f, 0.85f))
+                c.drawRect(0f, band * srcH / 8f, srcW.toFloat(), (band + 1) * srcH / 8f, p)
+            }
+            p.textSize = 80f; p.color = Color.WHITE
+            c.drawText("FRAME %02d  1080p".format(fi), 60f, srcH * 0.55f, p)
+            val out = ByteArrayOutputStream(200 * 1024)
+            bmp.compress(Bitmap.CompressFormat.JPEG, 85, out)
+            bmp.recycle()
+            out.toByteArray()
+        }
+
+        val out720 = ByteArrayOutputStream(100 * 1024)
+        var frames = 0L
+        val endMs = System.currentTimeMillis() + durationMs
+
+        while (System.currentTimeMillis() < endMs) {
+            val idx = (frames % keyframeCount).toInt()
+            val bytes = encoded[idx]
+
+            // 1. Decode 1080p
+            val src = BitmapFactory.decodeByteArray(bytes, 0, bytes.size) ?: continue
+
+            // 2. Scale to 720p
+            val dst = Bitmap.createScaledBitmap(src, dstW, dstH, true)
+            src.recycle()
+
+            // 3. Re-encode to JPEG at q80
+            out720.reset()
+            dst.compress(Bitmap.CompressFormat.JPEG, 80, out720)
+
+            frames++
+            if (frames % 4L == 0L && !dst.isRecycled) {
+                _previewBitmap.value = Bitmap.createScaledBitmap(dst, 384, 216, false)
+                liveDetail = "Transcoded frame #$frames  •  ${srcW}×${srcH} \u2192 ${dstW}×${dstH}  •  ${out720.size() / 1024}KB out"
+            }
+            dst.recycle()
+        }
+
         return if (frames == 0L) 0.0 else frames.toDouble() / (durationMs / 1000.0)
     }
 
