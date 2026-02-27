@@ -468,8 +468,9 @@ fun ResultScreen(
                                         val sendIntent = Intent(Intent.ACTION_SEND).apply {
                                             putExtra(Intent.EXTRA_TEXT, shareText)
                                             type = "text/plain"
+                                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                                         }
-                                        context.startActivity(Intent.createChooser(sendIntent, "Share Benchmark Results"))
+                                        context.startActivity(Intent.createChooser(sendIntent, "Share Benchmark Results").apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) })
                                     },
                                     modifier = Modifier
                                         .size(40.dp)
@@ -2607,6 +2608,17 @@ private fun formatBenchmarkShareData(context: Context, summary: BenchmarkSummary
                 val score = metricsObj.optDouble("score", 0.0)
                 val valueStr = if (unit == "ns/op") String.format("%.1f ns/op", value)
                                else String.format("%.0f MB/s", value)
+                builder.append("${result.name}: ${String.format("%.0f", score)} pts  |  $valueStr\n")
+            }
+        } else if (summary.type == "STORAGE") {
+            // Storage test results — show value + unit and score per test
+            builder.append("[Storage Test Results]\n")
+            summary.detailedResults.forEach { result ->
+                val metricsObj = try { org.json.JSONObject(result.metricsJson) } catch (e: Exception) { org.json.JSONObject() }
+                val unit  = metricsObj.optString("unit", "MB/s")
+                val value = metricsObj.optDouble("value", result.opsPerSecond)
+                val score = metricsObj.optDouble("score", 0.0)
+                val valueStr = String.format("%.0f %s", value, unit)
                 builder.append("${result.name}: ${String.format("%.0f", score)} pts  |  $valueStr\n")
             }
         } else {
