@@ -85,15 +85,14 @@ private val STORAGE_TESTS = StorageTest.values().toList()
  *   MIXED       — 64MB seq read + 500 rand-4K + 50 small files, composite MB/s
  */
 private val STORAGE_REFERENCE = mapOf(
-    // Java-level (not hardware) I/O rates on SD 8 Gen 3 + UFS 4.0 = 100 pts.
-    // FileInputStream/FileOutputStream throughput is limited by JVM + syscall overhead,
-    // not raw UFS 4.0 hardware speed.
-    StorageTest.SEQ_READ    to 2_500.0,   // MB/s  (FileInputStream 1MB-chunk, hot page-cache)
-    StorageTest.SEQ_WRITE   to 900.0,     // MB/s  (FileOutputStream 1MB-chunk + fsync)
-    StorageTest.RAND_4K     to 40.0,      // MB/s  (RandomAccessFile seek overhead limits true IOPS)
-    StorageTest.SMALL_FILES to 100.0,     // files/s (300×8KB create+write+delete, cacheDir)
-    StorageTest.SQLITE      to 8.0,       // txn/s (each txn = 1000 INSERTs, WAL mode)
-    StorageTest.MIXED       to 250.0,     // MB/s  (16MB seq + 200 rand-4K + 50 small files composite)
+    // Calibrated from actual SD 8 Gen 3 + UFS 4.0 measurements (Java-level I/O).
+    // These are page-cache dominated reads and fsync-limited writes — not raw UFS hardware speed.
+    StorageTest.SEQ_READ    to 6_500.0,   // MB/s  (FileInputStream 1MB-chunk; measured 6646)
+    StorageTest.SEQ_WRITE   to 850.0,     // MB/s  (FileOutputStream + fsync; measured 853)
+    StorageTest.RAND_4K     to 750.0,     // MB/s  (RandomAccessFile 4K seeks; measured 774, page-cache)
+    StorageTest.SMALL_FILES to 16_000.0,  // files/s (300×8KB batch; measured 16477)
+    StorageTest.SQLITE      to 100.0,     // txn/s  (each txn = 50 INSERTs, WAL; ~100 expected)
+    StorageTest.MIXED       to 2_500.0,   // MB/s  (composite; measured 2491)
 )
 
 private fun StorageTest.displayName() = when (this) {
@@ -138,7 +137,7 @@ private const val SEQ_CHUNK_BYTES = 1024 * 1024          // 1 MB chunk
 private const val RAND_4K        = 4096                  // 4 KB random block
 private const val SMALL_FILE_SIZE = 8 * 1024             // 8 KB per small file
 private const val SMALL_FILE_COUNT = 300                  // files per batch
-private const val SQLITE_ROWS    = 1_000                 // rows per INSERT batch
+private const val SQLITE_ROWS    = 50                    // rows per INSERT batch (1000 caused >durationMs per txn → 0 result)
 
 // ── ViewModel ─────────────────────────────────────────────────────────────────
 
@@ -405,35 +404,41 @@ class StorageBenchmarkViewModel(
 
         // Open a raw SQLite database at the given path (avoids SQLiteOpenHelper
         // path-handling inconsistencies across API levels).
+        // WAL and sync PRAGMAs MUST be set before any table creation
         val db = SQLiteDatabase.openOrCreateDatabase(dbFile, null)
-        db.execSQL(
-            "CREATE TABLE items (" +
-            "id INTEGER PRIMARY KEY AUTOINCREMENT," +
-            "name TEXT NOT NULL," +
-            "value REAL," +
-            "ts INTEGER)"
-        )
-        db.execSQL("CREATE INDEX idx_ts ON items(ts)")
-        db.execSQL("PRAGMA journal_mode=WAL")
-        db.execSQL("PRAGMA synchronous=NORMAL")
+        try {
+            db.execSQL("PRAGMA journal_mode=WAL")
+            db.execSQL("PRAGMA synchronous=NORMAL")
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS items (" +
+                "id INTEGER PRIMARY KEY AUTOINCREMENT," +
+                "name TEXT NOT NULL," +
+                "value REAL," +
+                "ts INTEGER)"
+            )
+            db.execSQL("CREATE INDEX IF NOT EXISTS idx_ts ON items(ts)")
+        } catch (e: Exception) {
+            android.util.Log.e("StorageBenchmarkVM", "SQLite setup failed: ${e.message}", e)
+            db.close(); dbFile.delete()
+            return 0.0
+        }
+
         var txns = 0L
         val endMs = System.currentTimeMillis() + durationMs
+        // Pre-compile statement once outside the loop
+        val insertStmt = db.compileStatement("INSERT INTO items(name,value,ts) VALUES(?,?,?)")
 
         try {
             while (System.currentTimeMillis() < endMs) {
-                // INSERT transaction
+                // INSERT batch transaction
                 db.beginTransaction()
                 try {
-                    val stmt = db.compileStatement(
-                        "INSERT INTO items(name,value,ts) VALUES(?,?,?)"
-                    )
                     for (i in 0 until SQLITE_ROWS) {
-                        stmt.bindString(1, "item_$i")
-                        stmt.bindDouble(2, i * 1.5)
-                        stmt.bindLong(3, System.currentTimeMillis())
-                        stmt.executeInsert()
+                        insertStmt.bindString(1, "item_$i")
+                        insertStmt.bindDouble(2, i * 1.5)
+                        insertStmt.bindLong(3, System.currentTimeMillis())
+                        insertStmt.executeInsert()
                     }
-                    stmt.close()
                     db.setTransactionSuccessful()
                     txns++
                 } finally {
@@ -444,14 +449,20 @@ class StorageBenchmarkViewModel(
                 // SELECT transaction (indexed query)
                 db.beginTransaction()
                 try {
-                    db.rawQuery("SELECT COUNT(*) FROM items WHERE value > 500", null).use { }
+                    db.rawQuery("SELECT COUNT(*) FROM items WHERE value > 500", null).use { c -> c.moveToFirst() }
                     db.setTransactionSuccessful()
                     txns++
                 } finally {
                     db.endTransaction()
                 }
+
+                // Keep table small to avoid unbounded growth slowing inserts
+                if (txns % 20L == 0L) {
+                    db.execSQL("DELETE FROM items")
+                }
             }
         } finally {
+            insertStmt.close()
             db.close()
             dbFile.delete()
         }
