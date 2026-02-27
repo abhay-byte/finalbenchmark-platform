@@ -1318,6 +1318,87 @@ fun DetailedDataTab(summary: BenchmarkSummary) {
                 }
             }
         }
+    } else if (summary.type == "PRODUCTIVITY") {
+        // ── Productivity benchmark results ────────────────────────────────────
+        LazyColumn(
+            modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp)
+        ) {
+            // Score Card
+            item {
+                AnimatedEntranceContainer(index = 0) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+                        shape = RoundedCornerShape(24.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.15f)
+                        ),
+                        elevation = CardDefaults.cardElevation(0.dp),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f))
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(20.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column {
+                                Text(
+                                    text = "PRODUCTIVITY SCORE",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Black,
+                                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
+                                    letterSpacing = 1.5.sp
+                                )
+                                Text(
+                                    text = "Canvas  •  Image  •  Text  •  JSON  •  Compression",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                )
+                            }
+                            Text(
+                                text = String.format("%.0f", summary.finalScore),
+                                style = MaterialTheme.typography.headlineLarge,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = MaterialTheme.colorScheme.primary,
+                                letterSpacing = (-1).sp
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Productivity Bar Chart
+            item {
+                AnimatedEntranceContainer(index = 1) {
+                    if (summary.detailedResults.isNotEmpty()) {
+                        ProductivityBarChart(results = summary.detailedResults)
+                    }
+                }
+            }
+
+            // Productivity Test Results list
+            item {
+                AnimatedEntranceContainer(index = 2) {
+                    BenchmarkSection(
+                        title = "Productivity Test Results",
+                        score = summary.finalScore,
+                        results = summary.detailedResults,
+                        isAi = false,
+                        isGpu = false,
+                        isRam = true  // same metricsJson format: {score, value, unit}
+                    )
+                }
+            }
+
+            // Performance Monitoring
+            item {
+                AnimatedEntranceContainer(index = 3) {
+                    PerformanceMonitoringSection(
+                        performanceMetricsJson = summary.performanceMetricsJson
+                    )
+                }
+            }
+        }
     } else {
         // Default CPU Logic
         val singleCoreResults =
@@ -1662,6 +1743,183 @@ private fun RamBandwidthChart(results: List<BenchmarkResult>) {
                             }
                         }
                     }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ProductivityBarChart(results: List<BenchmarkResult>) {
+    val gridColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
+
+    val maxScore = results.maxOfOrNull { r ->
+        try { org.json.JSONObject(r.metricsJson).optInt("score", 0) } catch (e: Exception) { 0 }
+    }?.coerceAtLeast(1) ?: 1
+
+    @Composable
+    fun barColor(idx: Int): androidx.compose.ui.graphics.Color = when (idx % 6) {
+        0    -> androidx.compose.ui.graphics.Color(0xFF7C4DFF)  // deep purple — Canvas
+        1    -> androidx.compose.ui.graphics.Color(0xFF00BCD4)  // cyan — Image Filter
+        2    -> androidx.compose.ui.graphics.Color(0xFF00E5FF)  // light cyan — Image Resize
+        3    -> androidx.compose.ui.graphics.Color(0xFF69F0AE)  // green — Text
+        4    -> androidx.compose.ui.graphics.Color(0xFFFFB300)  // amber — JSON
+        else -> androidx.compose.ui.graphics.Color(0xFFFF4081)  // pink — Compression
+    }
+
+    Card(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.12f)
+        ),
+        elevation = CardDefaults.cardElevation(0.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f))
+    ) {
+        Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+            Text(
+                text = "Productivity Scores",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.padding(bottom = 4.dp)
+            )
+            Text(
+                text = "Score per test  •  max = 100 pts  •  geometric mean → total",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
+
+            val barCount = results.size.coerceAtLeast(1)
+            Canvas(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(180.dp)
+            ) {
+                val W = size.width
+                val H = size.height
+                val labelH = 36f
+                val chartH = H - labelH
+                val barW = W / barCount
+
+                // Grid lines at 25 / 50 / 75 / 100
+                listOf(0.25f, 0.5f, 0.75f, 1.0f).forEach { frac ->
+                    val y = chartH - chartH * frac
+                    drawLine(gridColor, androidx.compose.ui.geometry.Offset(0f, y),
+                        androidx.compose.ui.geometry.Offset(W, y), strokeWidth = 1f)
+                }
+
+                results.forEachIndexed { i, result ->
+                    val metricsObj = try { org.json.JSONObject(result.metricsJson) } catch (e: Exception) { org.json.JSONObject() }
+                    val score = metricsObj.optInt("score", 0).toFloat()
+                    val frac  = (score / maxScore.toFloat()).coerceIn(0.05f, 1f)
+                    // color not composable in Canvas; use raw color values matching barColor()
+                    val rawColor = when (i % 6) {
+                        0    -> android.graphics.Color.parseColor("#7C4DFF")
+                        1    -> android.graphics.Color.parseColor("#00BCD4")
+                        2    -> android.graphics.Color.parseColor("#00E5FF")
+                        3    -> android.graphics.Color.parseColor("#69F0AE")
+                        4    -> android.graphics.Color.parseColor("#FFB300")
+                        else -> android.graphics.Color.parseColor("#FF4081")
+                    }
+                    val composeColor = androidx.compose.ui.graphics.Color(rawColor).copy(alpha = 0.75f)
+
+                    val left   = i * barW + barW * 0.12f
+                    val right  = (i + 1) * barW - barW * 0.12f
+                    val top    = chartH - chartH * frac
+                    val bottom = chartH
+
+                    drawRect(
+                        color = composeColor,
+                        topLeft = androidx.compose.ui.geometry.Offset(left, top),
+                        size = androidx.compose.ui.geometry.Size(right - left, bottom - top)
+                    )
+                    drawContext.canvas.nativeCanvas.drawText(
+                        score.toInt().toString(),
+                        (left + right) / 2f,
+                        (top - 6f).coerceAtLeast(14f),
+                        android.graphics.Paint().apply {
+                            color = android.graphics.Color.WHITE
+                            textAlign = android.graphics.Paint.Align.CENTER
+                            textSize = 22f
+                            isFakeBoldText = true
+                            isAntiAlias = true
+                        }
+                    )
+                    drawContext.canvas.nativeCanvas.drawText(
+                        "${i + 1}",
+                        (left + right) / 2f,
+                        H - 6f,
+                        android.graphics.Paint().apply {
+                            color = android.graphics.Color.argb(180, 200, 200, 200)
+                            textAlign = android.graphics.Paint.Align.CENTER
+                            textSize = 22f
+                            isAntiAlias = true
+                        }
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+            val half = (results.size + 1) / 2
+            listOf(results.take(half), results.drop(half)).forEachIndexed { rowIdx, row ->
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    row.forEachIndexed { colIdx, result ->
+                        val num = rowIdx * half + colIdx + 1
+                        val metricsObj = try { org.json.JSONObject(result.metricsJson) } catch (e: Exception) { org.json.JSONObject() }
+                        val score = metricsObj.optInt("score", 0)
+                        val unit  = metricsObj.optString("unit", "")
+                        val value = metricsObj.optDouble("value", result.opsPerSecond)
+                        val label = when (unit) {
+                            "Mchars/s" -> "${"%.1f".format(value)} Mc/s"
+                            "docs/s"   -> "${"%.0f".format(value / 1_000)}k docs/s"
+                            "MB/s"     -> "${"%.0f".format(value)} MB/s"
+                            else       -> "${"%.0f".format(value)} $unit"
+                        }
+                        val rawColor = when ((num - 1) % 6) {
+                            0    -> android.graphics.Color.parseColor("#7C4DFF")
+                            1    -> android.graphics.Color.parseColor("#00BCD4")
+                            2    -> android.graphics.Color.parseColor("#00E5FF")
+                            3    -> android.graphics.Color.parseColor("#69F0AE")
+                            4    -> android.graphics.Color.parseColor("#FFB300")
+                            else -> android.graphics.Color.parseColor("#FF4081")
+                        }
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Column(modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp)) {
+                                Text(
+                                    text = "#$num  $score pts",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = androidx.compose.ui.graphics.Color(rawColor),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                Text(
+                                    text = result.name,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                Text(
+                                    text = label,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+                    }
+                    if (row.size < half) { Box(modifier = Modifier.weight(1f)) }
                 }
             }
         }
@@ -2619,6 +2877,21 @@ private fun formatBenchmarkShareData(context: Context, summary: BenchmarkSummary
                 val value = metricsObj.optDouble("value", result.opsPerSecond)
                 val score = metricsObj.optDouble("score", 0.0)
                 val valueStr = String.format("%.0f %s", value, unit)
+                builder.append("${result.name}: ${String.format("%.0f", score)} pts  |  $valueStr\n")
+            }
+        } else if (summary.type == "PRODUCTIVITY") {
+            // Productivity test results — Canvas, Image, Text, JSON, Compression
+            builder.append("[Productivity Test Results]\n")
+            summary.detailedResults.forEach { result ->
+                val metricsObj = try { org.json.JSONObject(result.metricsJson) } catch (e: Exception) { org.json.JSONObject() }
+                val unit  = metricsObj.optString("unit", "ops/s")
+                val value = metricsObj.optDouble("value", result.opsPerSecond)
+                val score = metricsObj.optDouble("score", 0.0)
+                val valueStr = when (unit) {
+                    "Mchars/s" -> String.format("%.2f Mchars/s", value)
+                    "docs/s"   -> String.format("%.0f docs/s", value)
+                    else       -> String.format("%.0f %s", value, unit)
+                }
                 builder.append("${result.name}: ${String.format("%.0f", score)} pts  |  $valueStr\n")
             }
         } else {

@@ -362,6 +362,26 @@ fun MainNavigation(
                             },
                             onNavBack = { navController.popBackStack() }
                         )
+                    } else if (category == com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkCategory.PRODUCTIVITY) {
+                        // Productivity benchmark — CPU-bound tasks: canvas, image, text, JSON, compression
+                        val productivityHistoryRepository = remember {
+                            com.ivarna.finalbenchmark2.data.repository.HistoryRepository(
+                                com.ivarna.finalbenchmark2.data.database.AppDatabase
+                                    .getDatabase(context)
+                                    .benchmarkDao()
+                            )
+                        }
+                        com.ivarna.finalbenchmark2.ui.screens.ProductivityBenchmarkScreen(
+                            preset = preset,
+                            historyRepository = productivityHistoryRepository,
+                            onBenchmarkComplete = { summaryJson ->
+                                val encodedJson = java.net.URLEncoder.encode(summaryJson, "UTF-8")
+                                navController.navigate("result/$encodedJson") {
+                                    popUpTo("home") { inclusive = false }
+                                }
+                            },
+                            onNavBack = { navController.popBackStack() }
+                        )
                     } else {
                         val historyRepository =
                                 com.ivarna.finalbenchmark2.data.repository.HistoryRepository(
