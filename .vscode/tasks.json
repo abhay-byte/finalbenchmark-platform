@@ -84,6 +84,11 @@
 			"label": "Build, deploy, commit storage benchmark",
 			"type": "shell",
 			"command": "cd /home/flux/repos/finalbenchmark-platform && ./gradlew assembleDebug 2>&1 | grep -E 'error:|BUILD|FAILED|warning:.*StorageBenchmark' | head -30 && echo '---' && cp app/build/outputs/apk/debug/app-debug.apk /sdcard/Download/finalbenchmark-debug.apk && echo 'DEPLOYED OK' && git add -A && git commit -m 'feat: Storage benchmark (6 tests: SeqRead/Write, Rand4K, SmallFiles, SQLite, Mixed)\\n\\n- StorageBenchmarkViewModel: pure-Kotlin I/O tests on Dispatchers.IO\\n  - SEQ_READ:    256MB FileInputStream 1MB-chunk timed loop (MB/s)\\n  - SEQ_WRITE:   256MB FileOutputStream + fsync per pass (MB/s)\\n  - RAND_4K:     RandomAccessFile LCG-random 4KB seeks on 128MB file (MB/s)\\n  - SMALL_FILES: 300x8KB create/write/delete batch (files/s)\\n  - SQLITE:      WAL-mode 1000-row INSERT + indexed SELECT txns (txn/s)\\n  - MIXED:       16MB seq + 200 rand-4K + 50 small files composite (MB/s)\\n  - Reference values targeting SD 8 Gen 3 (UFS 4.0) = 100 pts (needs calibration)\\n  - Geometric-mean total score matching RAM benchmark pattern\\n  - Full DB save + result JSON matching existing schema\\n- StorageBenchmarkScreen: Compose UI with amber/orange and test-keyed accent colours\\n- MainNavigation: STORAGE case routes to StorageBenchmarkScreen\\n- HomeScreen: STORAGE added to preset-hidden categories\\n- docs/benchmark/ram_implementation.md: complete RAM benchmark implementation reference' && git push"
+		},
+		{
+			"label": "Get Kotlin compile errors",
+			"type": "shell",
+			"command": "cd /home/flux/repos/finalbenchmark-platform && ./gradlew compileDebugKotlin 2>&1 | grep -A3 'error:' | head -60"
 		}
 	]
 }

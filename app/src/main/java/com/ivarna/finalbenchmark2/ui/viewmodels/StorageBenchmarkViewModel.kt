@@ -284,7 +284,7 @@ class StorageBenchmarkViewModel(
 
         while (System.currentTimeMillis() < endMs) {
             FileInputStream(file).use { fis ->
-                var n: Int
+                var n = 0
                 while (fis.read(buf).also { n = it } != -1 && System.currentTimeMillis() < endMs) {
                     totalBytes += n
                 }
@@ -489,7 +489,7 @@ class StorageBenchmarkViewModel(
             // (a) Read 16 MB sequentially
             var seqRead = 0
             FileInputStream(seqFile).use { fis ->
-                var n: Int
+                var n = 0
                 while (seqRead < 16 * 1024 * 1024 &&
                     fis.read(seqBuf).also { n = it } != -1 &&
                     System.currentTimeMillis() < endMs) {
