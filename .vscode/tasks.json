@@ -39,6 +39,41 @@
 			"command": "git add -A && git commit -m \"fix: COMPILER_BARRIER macro + recalibrate native RAM reference values\\n\\n- Add #define COMPILER_BARRIER() __asm__ volatile(\\\"\\\" ::: \\\"memory\\\") after now_ns()\\n- now_ns() already has __attribute__((noinline)) to defeat -O3 clock hoisting\\n- Add COMPILER_BARRIER() before/after memcpy and NEON loops in all 5 tests\\n- Recalibrate RAM_REFERENCE_NATIVE from actual SD 8 Gen 3 measurements:\\n  SeqRead 27000 (was 20000), SeqWrite 15000 (was 16000),\\n  RandAccess 120 ns (was 200), MemCopy 22000 estimate, MultiThread 52000 (was 40000)\" && git push",
 			"problemMatcher": [],
 			"group": "build"
+		},
+		{
+			"label": "Build and Deploy APK v3",
+			"type": "shell",
+			"command": "cd /home/flux/repos/finalbenchmark-platform && ./gradlew assembleDebug && cp app/build/outputs/apk/debug/app-debug.apk /sdcard/Download/finalbenchmark-debug.apk && echo 'DEPLOYED OK'"
+		},
+		{
+			"label": "Clean CMake and Build v4",
+			"type": "shell",
+			"command": "cd /home/flux/repos/finalbenchmark-platform && git diff HEAD -- app/src/main/cpp/ram_benchmark.c | head -20 && echo '---GREP---' && grep -n 'COMPILER_BARRIER' app/src/main/cpp/ram_benchmark.c && echo '---CLEAN---' && rm -rf app/.cxx/Release/3olm638o && ./gradlew assembleDebug 2>&1 | grep -E 'BUILD|error:' | head -20 && cp app/build/outputs/apk/debug/app-debug.apk /sdcard/Download/finalbenchmark-debug.apk && echo 'DEPLOYED OK'"
+		},
+		{
+			"label": "Inspect define line",
+			"type": "shell",
+			"command": "cd /home/flux/repos/finalbenchmark-platform && sed -n '46,56p' app/src/main/cpp/ram_benchmark.c | cat -A"
+		},
+		{
+			"label": "Hex dump define",
+			"type": "shell",
+			"command": "cd /home/flux/repos/finalbenchmark-platform && sed -n '46,56p' app/src/main/cpp/ram_benchmark.c | xxd | head -30"
+		},
+		{
+			"label": "Debug COMPILER_BARRIER",
+			"type": "shell",
+			"command": "cd /home/flux/repos/finalbenchmark-platform && python3 -c \"\nimport re\nwith open('app/src/main/cpp/ram_benchmark.c', 'r', encoding='utf-8') as f:\n    content = f.read()\nold = re.search(r'#define COMPILER_BARRIER\\(\\).*?\\n', content, re.DOTALL)\nif old:\n    print('FOUND:', repr(old.group()[:80]))\nelse:\n    print('NOT FOUND')\n    # Print surrounding lines\n    for i, line in enumerate(content.splitlines(), 1):\n        if 'COMPILER_BARRIER' in line and '#define' in line:\n            print(f'Line {i}:', repr(line))\n\""
+		},
+		{
+			"label": "Fix COMPILER_BARRIER macro",
+			"type": "shell",
+			"command": "python3 << 'PYEOF'\nimport re\npath = 'app/src/main/cpp/ram_benchmark.c'\nwith open(path, 'r', encoding='utf-8') as f:\n    content = f.read()\n# Remove any existing broken or correct #define COMPILER_BARRIER line(s)\ncontent = re.sub(r'#define COMPILER_BARRIER[^\\n]*\\n(?:e\\([^\\n]*\\n)?', '', content)\n# Insert clean define after the now_ns closing brace block\n# Find the end of the now_ns function and the following blank line\ninsert_after = '    return (int64_t)ts.tv_sec * 1000000000LL + (int64_t)ts.tv_nsec;\\n}\\n'\nclean_define = insert_after + '\\n/* COMPILER_BARRIER: memory clobber prevents -O3 from hoisting clock reads */\\n#define COMPILER_BARRIER() do { __asm__ volatile(\"\" ::: \"memory\"); } while (0)\\n'\ncontent = content.replace(insert_after, clean_define, 1)\nwith open(path, 'w', encoding='utf-8') as f:\n    f.write(content)\nprint('Done - verify:')\nimport subprocess\nresult = subprocess.run(['grep', '-n', 'COMPILER_BARRIER', path], capture_output=True, text=True)\nprint(result.stdout[:500])\nPYEOF"
+		},
+		{
+			"label": "Rebuild and commit MemCopy fix",
+			"type": "shell",
+			"command": "cd /home/flux/repos/finalbenchmark-platform && ./gradlew assembleDebug 2>&1 | tail -5 && cp app/build/outputs/apk/debug/app-debug.apk /sdcard/Download/finalbenchmark-debug.apk && echo 'DEPLOYED OK' && git add -A && git commit -m 'fix: nativeMemCopy dead-store elim via noinline do_memcpy_once wrapper\n\n- Clang -O3 inlines memcpy(dst, src, CONST) and eliminates it as dead store\n  since dst is never read back, causing 875 TB/s bogus result\n- Add __attribute__((noinline)) do_memcpy_once() wrapper with asm r(dst)\n  constraint to force compiler to treat destination as observable\n- Switch from unreliable while(now_ns()<end_ns) to calibrated fixed-REPS\n  block timing to eliminate the spin-if-memcpy-is-nop failure mode\n- Also fix COMPILER_BARRIER() to do{...}while(0) form' && git push"
 		}
 	]
 }

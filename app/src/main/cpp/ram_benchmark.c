@@ -43,12 +43,14 @@ static __attribute__((noinline)) int64_t now_ns(void) {
     return (int64_t)ts.tv_sec * 1000000000LL + (int64_t)ts.tv_nsec;
 }
 
+/* COMPILER_BARRIER: memory clobber prevents -O3 from hoisting clock reads */
+#define COMPILER_BARRIER() do { __asm__ volatile("" ::: "memory"); } while (0)
+
 /*
  * COMPILER_BARRIER: prevents the compiler from hoisting now_ns() calls out of
  * timing loops. The "memory" clobber tells the optimizer that any memory may
  * have been read or written, forcing re-evaluation of the loop condition.
  */
-#define COMPILER_BARRIER() __asm__ volatile("" ::: "memory")
 
 /* ── Sequential Read ─────────────────────────────────────────────────────── */
 /*
@@ -213,7 +215,29 @@ Java_com_ivarna_finalbenchmark2_utils_RamNativeBridge_nativeRandAccess(
 /*
  * Uses Bionic's libc memcpy which is hand-written NEON on arm64.
  * Returns MB/s.
+ *
+ * WHY __attribute__((noinline)) wrapper?
+ * With -O3, Clang inlines memcpy(dst, src, CONSTANT) into a NEON inner loop.
+ * Because dst is never read back (just freed), the compiler may prove the
+ * writes are dead and eliminate the entire call — even across COMPILER_BARRIER.
+ * A noinline wrapper defeats inlining, and the "r"(dst) asm input constraint
+ * forces the compiler to treat the written buffer as observable, preventing
+ * dead-store elimination.
+ *
+ * WHY fixed-repetition block timing (no outer while loop)?
+ * The outer while(now_ns() < end_ns) loop, combined with an inlined no-op
+ * memcpy, would spin for the full durationMs and accumulate a bogus count.
+ * Measuring a fixed REPS block removes that failure mode entirely.
  */
+__attribute__((noinline)) static void do_memcpy_once(
+        void *dst, const void *src, size_t n)
+{
+    memcpy(dst, src, n);
+    /* Force compiler to consider the destination buffer as "read" here,
+     * preventing dead-store elimination of the entire copy. */
+    __asm__ volatile("" :: "r"(dst) : "memory");
+}
+
 JNIEXPORT jdouble JNICALL
 Java_com_ivarna_finalbenchmark2_utils_RamNativeBridge_nativeMemCopy(
         JNIEnv *env, jclass cls, jlong durationMs)
@@ -225,18 +249,34 @@ Java_com_ivarna_finalbenchmark2_utils_RamNativeBridge_nativeMemCopy(
     memset(src, 0xDE, BUF);
     memset(dst, 0,    BUF);
 
-    const int64_t end_ns = now_ns() + (int64_t)durationMs * 1000000LL;
-    int64_t total_bytes = 0;
+    /* Warm-up: fault all pages before the timed section */
+    do_memcpy_once(dst, src, BUF);
 
-    while (now_ns() < end_ns) {
-        COMPILER_BARRIER();
-        memcpy(dst, src, BUF);
-        total_bytes += (int64_t)BUF;
-        COMPILER_BARRIER();
+    /* Estimate how many reps fit in durationMs using a calibration run */
+    const int64_t cal_t0 = now_ns();
+    do_memcpy_once(dst, src, BUF);
+    const int64_t one_copy_ns = now_ns() - cal_t0;
+
+    /* Clamp reps to [4, 64] so we get a stable average without hanging */
+    int reps = (one_copy_ns > 0)
+               ? (int)((int64_t)durationMs * 1000000LL / one_copy_ns)
+               : 8;
+    if (reps < 4)  reps = 4;
+    if (reps > 64) reps = 64;
+
+    COMPILER_BARRIER();
+    const int64_t t0 = now_ns();
+    for (int i = 0; i < reps; i++) {
+        do_memcpy_once(dst, src, BUF);
     }
+    const int64_t elapsed_ns = now_ns() - t0;
+    COMPILER_BARRIER();
 
     free(src); free(dst);
-    return (double)total_bytes / ((double)durationMs / 1000.0) / (1024.0 * 1024.0);
+    if (elapsed_ns <= 0) return 0.0;
+
+    const double total_bytes = (double)BUF * reps;
+    return total_bytes / ((double)elapsed_ns / 1.0e9) / (1024.0 * 1024.0);
 }
 
 /* ── Multi-threaded Bandwidth ─────────────────────────────────────────────── */
