@@ -299,10 +299,11 @@ class RamBenchmarkViewModel(
 
     /** Multi-threaded sequential read across all available cores (capped at 8). Returns total MB/s. */
     private fun benchMultiThread(durationMs: Long): Double {
-        val threads = Runtime.getRuntime().availableProcessors().coerceIn(2, 8)
-        val sizePerThread = 32 * 1024 * 1024
+        val threads = Runtime.getRuntime().availableProcessors().coerceIn(2, 4)
+        val sizePerThread = 8 * 1024 * 1024   // 8 MB per thread — safe on Android heap
         val buffers = Array(threads) { t -> ByteArray(sizePerThread) { ((it + t * 7) % 251).toByte() } }
         val byteCounts = LongArray(threads)
+        // Compute endNs AFTER allocation so slow GC/init doesn't eat the window
         val endNs = System.nanoTime() + durationMs * 1_000_000L
         val latch = java.util.concurrent.CountDownLatch(threads)
         for (ti in 0 until threads) {
