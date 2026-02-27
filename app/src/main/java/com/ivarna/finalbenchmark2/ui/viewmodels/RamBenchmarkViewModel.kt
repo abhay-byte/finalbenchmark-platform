@@ -9,6 +9,7 @@ import com.ivarna.finalbenchmark2.data.database.entities.BenchmarkResultEntity
 import com.ivarna.finalbenchmark2.data.database.entities.GenericTestDetailEntity
 import com.ivarna.finalbenchmark2.data.repository.HistoryRepository
 import com.ivarna.finalbenchmark2.utils.PerformanceMonitor
+import com.ivarna.finalbenchmark2.utils.RamNativeBridge
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
@@ -64,29 +65,39 @@ data class RamBenchmarkUiState(
 private val RAM_TESTS = RamTest.values().toList()
 
 /**
- * Reference values calibrated to Snapdragon 8 Gen 3 / LPDDR5X (baseline = 100 pts).
+ * Reference values calibrated for NATIVE (JNI/NEON) code on SD 8 Gen 3 / LPDDR5X.
  *
- * Methodology (JVM-safe, no JNI):
- *   SeqRead  – LongArray word-reads (8 bytes/iter, fills past all caches)
- *   SeqWrite – java.util.Arrays.fill() on LongArray (JVM intrinsic, vectorised by ART)
- *   RandAccess – pointer-chase through 16 MB IntArray (defeats prefetcher, hits DRAM)
- *   MemCopy  – System.arraycopy() on 64 MB ByteArray (JVM intrinsic)
- *   MultiThread – LongArray word-reads spread across perf cores
+ * Methodology:
+ *   SeqRead  – 64 MB, 64 B/iter NEON vld1q_u64 × 4 + prefetch (single thread)
+ *   SeqWrite – 64 MB, 64 B/iter NEON vst1q_u64 × 4 (single thread)
+ *   RandAccess – 16 MB Knuth-shuffled int32 pointer-chase (no JVM bounds-checks)
+ *   MemCopy  – Bionic libc memcpy (hand-written NEON in Android's libc)
+ *   MultiThread – same NEON read loop spread over 4 perf cores via pthreads
  *
- * Bandwidth tests: higher MB/s is better.
- * RAND_ACCESS: lower ns/op is better (scoring is inverted).
+ * JVM fallback (used if .so fails to load) keeps the old JVM values.
  *
- * SD 8 Gen 3 measured results with this code ≈ 100 pts each:
- *   SeqRead ~5 500 MB/s | SeqWrite ~7 000 MB/s | RandAccess ~350 ns/op
- *   MemCopy ~10 000 MB/s | MultiThread ~15 000 MB/s
+ * LPDDR5X peak: 76.8 GB/s.  Native single-thread effective BW typically 20-35 GB/s.
+ * These reference values target SD 8 Gen 3 = 100 pts with native code.
+ * Adjust after first run if needed.
  */
-private val RAM_REFERENCE = mapOf(
-    RamTest.SEQ_READ     to 5_500.0,   // MB/s  (LongArray word-read, SD 8 Gen 3 baseline)
-    RamTest.SEQ_WRITE    to 7_000.0,   // MB/s  (Arrays.fill LongArray, SD 8 Gen 3 baseline)
-    RamTest.RAND_ACCESS  to 350.0,     // ns/op (pointer-chase 16 MB, lower = better)
-    RamTest.MEM_COPY     to 10_000.0,  // MB/s  (System.arraycopy, already validated)
-    RamTest.MULTI_THREAD to 15_000.0,  // MB/s  (4-thread LongArray read, SD 8 Gen 3 baseline)
+private val RAM_REFERENCE_NATIVE = mapOf(
+    RamTest.SEQ_READ     to 20_000.0,  // MB/s  (NEON 64B/iter, SD 8 Gen 3 @ 20 GB/s)
+    RamTest.SEQ_WRITE    to 16_000.0,  // MB/s  (NEON store, slightly lower than read)
+    RamTest.RAND_ACCESS  to 200.0,     // ns/op (ptr-chase 16 MB, natives ~150-250 ns/op)
+    RamTest.MEM_COPY     to 15_000.0,  // MB/s  (Bionic memcpy read+write combined)
+    RamTest.MULTI_THREAD to 40_000.0,  // MB/s  (4-core NEON read aggregate)
 )
+
+private val RAM_REFERENCE_JVM = mapOf(
+    RamTest.SEQ_READ     to 5_500.0,   // MB/s  (LongArray word-read)
+    RamTest.SEQ_WRITE    to 7_000.0,   // MB/s  (Arrays.fill LongArray)
+    RamTest.RAND_ACCESS  to 350.0,     // ns/op (JVM pointer-chase)
+    RamTest.MEM_COPY     to 10_000.0,  // MB/s  (System.arraycopy)
+    RamTest.MULTI_THREAD to 15_000.0,  // MB/s  (4-thread LongArray read)
+)
+
+// Selected at runtime based on whether JNI .so loaded successfully
+private var RAM_REFERENCE = RAM_REFERENCE_JVM
 
 private fun RamTest.displayName() = when (this) {
     RamTest.SEQ_READ     -> "Sequential Read"
@@ -135,6 +146,14 @@ class RamBenchmarkViewModel(
     private var runJob: Job? = null
     private val performanceMonitor = PerformanceMonitor(application)
     private val baseCpuTemp = (38..45).random().toFloat()
+    private val nativeAvailable: Boolean
+
+    init {
+        nativeAvailable = RamNativeBridge.load()
+        if (nativeAvailable) {
+            RAM_REFERENCE = RAM_REFERENCE_NATIVE
+        }
+    }
 
     fun start(preset: String) {
         runJob?.cancel()
@@ -223,12 +242,27 @@ class RamBenchmarkViewModel(
 
     // ── Benchmark implementations (called on Dispatchers.Default) ─────────
 
-    private fun runTest(test: RamTest, durationMs: Long): Double = when (test) {
-        RamTest.SEQ_READ     -> benchSeqRead(durationMs)
-        RamTest.SEQ_WRITE    -> benchSeqWrite(durationMs)
-        RamTest.RAND_ACCESS  -> benchRandAccess(durationMs)
-        RamTest.MEM_COPY     -> benchMemCopy(durationMs)
-        RamTest.MULTI_THREAD -> benchMultiThread(durationMs)
+    private fun runTest(test: RamTest, durationMs: Long): Double {
+        // Use native NEON/pthreads path when the .so is available (arm64 devices);
+        // fall back gracefully to JVM LongArray/arraycopy on ART-only targets.
+        if (nativeAvailable) {
+            return when (test) {
+                RamTest.SEQ_READ     -> RamNativeBridge.nativeSeqRead(durationMs)
+                RamTest.SEQ_WRITE    -> RamNativeBridge.nativeSeqWrite(durationMs)
+                RamTest.RAND_ACCESS  -> RamNativeBridge.nativeRandAccess(durationMs)
+                RamTest.MEM_COPY     -> RamNativeBridge.nativeMemCopy(durationMs)
+                RamTest.MULTI_THREAD -> RamNativeBridge.nativeMultiThread(
+                    Runtime.getRuntime().availableProcessors().coerceIn(2, 4), durationMs
+                )
+            }
+        }
+        return when (test) {
+            RamTest.SEQ_READ     -> benchSeqRead(durationMs)
+            RamTest.SEQ_WRITE    -> benchSeqWrite(durationMs)
+            RamTest.RAND_ACCESS  -> benchRandAccess(durationMs)
+            RamTest.MEM_COPY     -> benchMemCopy(durationMs)
+            RamTest.MULTI_THREAD -> benchMultiThread(durationMs)
+        }
     }
 
     /**

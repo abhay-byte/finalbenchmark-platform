@@ -71,8 +71,9 @@ add_library(
     vulkan_native
     SHARED
     vulkan_info.cpp
-    cpu_info.cpp  # Added CPU info native implementation
-    cpu_affinity.cpp  # Added CPU affinity control for single-core benchmarks
+    cpu_info.cpp       # CPU info native implementation
+    cpu_affinity.cpp   # CPU affinity control for single-core benchmarks
+    ram_benchmark.c    # RAM bandwidth/latency benchmarks (NEON + pthreads)
 )
 
 # Find required libraries
