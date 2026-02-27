@@ -85,12 +85,15 @@ private val STORAGE_TESTS = StorageTest.values().toList()
  *   MIXED       — 64MB seq read + 500 rand-4K + 50 small files, composite MB/s
  */
 private val STORAGE_REFERENCE = mapOf(
-    StorageTest.SEQ_READ    to 3_000.0,   // MB/s  (UFS 4.0 cached sequential read)
-    StorageTest.SEQ_WRITE   to 1_200.0,   // MB/s  (UFS 4.0 sequential write + fsync)
-    StorageTest.RAND_4K     to 150.0,     // MB/s  (~40K IOPS × 4KB on UFS 4.0)
-    StorageTest.SMALL_FILES to 3_000.0,   // files/s
-    StorageTest.SQLITE      to 12_000.0,  // txn/s (WAL mode, in-app SQLite)
-    StorageTest.MIXED       to 800.0,     // MB/s (composite)
+    // Java-level (not hardware) I/O rates on SD 8 Gen 3 + UFS 4.0 = 100 pts.
+    // FileInputStream/FileOutputStream throughput is limited by JVM + syscall overhead,
+    // not raw UFS 4.0 hardware speed.
+    StorageTest.SEQ_READ    to 2_500.0,   // MB/s  (FileInputStream 1MB-chunk, hot page-cache)
+    StorageTest.SEQ_WRITE   to 900.0,     // MB/s  (FileOutputStream 1MB-chunk + fsync)
+    StorageTest.RAND_4K     to 40.0,      // MB/s  (RandomAccessFile seek overhead limits true IOPS)
+    StorageTest.SMALL_FILES to 100.0,     // files/s (300×8KB create+write+delete, cacheDir)
+    StorageTest.SQLITE      to 8.0,       // txn/s (each txn = 1000 INSERTs, WAL mode)
+    StorageTest.MIXED       to 250.0,     // MB/s  (16MB seq + 200 rand-4K + 50 small files composite)
 )
 
 private fun StorageTest.displayName() = when (this) {
