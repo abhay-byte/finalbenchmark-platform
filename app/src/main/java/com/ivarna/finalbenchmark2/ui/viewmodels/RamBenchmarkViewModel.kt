@@ -86,8 +86,8 @@ private val RAM_REFERENCE_NATIVE = mapOf(
     RamTest.SEQ_READ     to 27_000.0,  // MB/s  (measured 26976 on SD 8 Gen 3)
     RamTest.SEQ_WRITE    to 15_000.0,  // MB/s  (measured 14944 on SD 8 Gen 3)
     RamTest.RAND_ACCESS  to 120.0,     // ns/op (measured 119.1 on SD 8 Gen 3; lower=better)
-    RamTest.MEM_COPY     to 25_000.0,  // MB/s  (estimate ~25 GB/s after timing fix)
-    RamTest.MULTI_THREAD to 52_000.0,  // MB/s  (measured 51952 on SD 8 Gen 3)
+    RamTest.MEM_COPY     to 15_000.0,  // MB/s  (measured 15339 on SD 8 Gen 3 after DSE fix)
+    RamTest.MULTI_THREAD to 58_000.0,  // MB/s  (measured 57864 on SD 8 Gen 3)
 )
 
 private val RAM_REFERENCE_JVM = mapOf(

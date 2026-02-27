@@ -74,6 +74,11 @@
 			"label": "Rebuild and commit MemCopy fix",
 			"type": "shell",
 			"command": "cd /home/flux/repos/finalbenchmark-platform && ./gradlew assembleDebug 2>&1 | tail -5 && cp app/build/outputs/apk/debug/app-debug.apk /sdcard/Download/finalbenchmark-debug.apk && echo 'DEPLOYED OK' && git add -A && git commit -m 'fix: nativeMemCopy dead-store elim via noinline do_memcpy_once wrapper\n\n- Clang -O3 inlines memcpy(dst, src, CONST) and eliminates it as dead store\n  since dst is never read back, causing 875 TB/s bogus result\n- Add __attribute__((noinline)) do_memcpy_once() wrapper with asm r(dst)\n  constraint to force compiler to treat destination as observable\n- Switch from unreliable while(now_ns()<end_ns) to calibrated fixed-REPS\n  block timing to eliminate the spin-if-memcpy-is-nop failure mode\n- Also fix COMPILER_BARRIER() to do{...}while(0) form' && git push"
+		},
+		{
+			"label": "Recalibrate refs and deploy",
+			"type": "shell",
+			"command": "cd /home/flux/repos/finalbenchmark-platform && ./gradlew assembleDebug 2>&1 | tail -5 && cp app/build/outputs/apk/debug/app-debug.apk /sdcard/Download/finalbenchmark-debug.apk && echo 'DEPLOYED OK' && git add -A && git commit -m 'fix: recalibrate MemCopy and MultiThread reference values from actual measurements\n\nMEM_COPY: 25000 -> 15000 (measured 15339 MB/s after dead-store-elim fix)\nMULTI_THREAD: 52000 -> 58000 (measured 57864 MB/s on SD 8 Gen 3)' && git push"
 		}
 	]
 }
