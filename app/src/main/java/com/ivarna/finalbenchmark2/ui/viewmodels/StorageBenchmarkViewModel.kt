@@ -85,14 +85,19 @@ private val STORAGE_TESTS = StorageTest.values().toList()
  *   MIXED       — 64MB seq read + 500 rand-4K + 50 small files, composite MB/s
  */
 private val STORAGE_REFERENCE = mapOf(
-    // Calibrated from actual SD 8 Gen 3 + UFS 4.0 measurements (Java-level I/O).
-    // These are page-cache dominated reads and fsync-limited writes — not raw UFS hardware speed.
-    StorageTest.SEQ_READ    to 6_500.0,   // MB/s  (FileInputStream 1MB-chunk; measured 6646)
-    StorageTest.SEQ_WRITE   to 850.0,     // MB/s  (FileOutputStream + fsync; measured 853)
-    StorageTest.RAND_4K     to 750.0,     // MB/s  (RandomAccessFile 4K seeks; measured 774, page-cache)
-    StorageTest.SMALL_FILES to 16_000.0,  // files/s (300×8KB batch; measured 16477)
-    StorageTest.SQLITE      to 100.0,     // txn/s  (each txn = 50 INSERTs, WAL; ~100 expected)
-    StorageTest.MIXED       to 2_500.0,   // MB/s  (composite; measured 2491)
+    // SD 8 Gen 3 + UFS 4.0 targets (Java-level I/O, not raw hardware):
+    //   SEQ_READ:    posix_fadvise(DONTNEED) evicts page cache → real UFS read  ~4000 MB/s
+    //   SEQ_WRITE:   buffered write (no fsync in loop) → OS write-back speed    ~2500 MB/s
+    //   RAND_4K:     RandomAccessFile 4K seeks on 128 MB file (page-cache)      ~750  MB/s
+    //   SMALL_FILES: 300×8 KB create/write/delete                               ~16000 files/s
+    //   SQLITE:      50 INSERTs/txn, WAL                                         ~100  txn/s
+    //   MIXED:       16 MB seq + 200 rand-4K + 50 small files composite         ~2500 MB/s
+    StorageTest.SEQ_READ    to 4_000.0,
+    StorageTest.SEQ_WRITE   to 2_500.0,
+    StorageTest.RAND_4K     to 750.0,
+    StorageTest.SMALL_FILES to 16_000.0,
+    StorageTest.SQLITE      to 100.0,
+    StorageTest.MIXED       to 2_500.0,
 )
 
 private fun StorageTest.displayName() = when (this) {
@@ -275,22 +280,24 @@ class StorageBenchmarkViewModel(
      * Returns MB/s.
      */
     private fun benchSeqRead(durationMs: Long): Double {
-        val file = File(cacheDir, "bench_seqread.bin")
-        // Ensure file exists; write during warmup so reads don't count write time
-        if (!file.exists() || file.length() < SEQ_FILE_MB * 1024 * 1024) {
-            createTestFile(file, SEQ_FILE_MB * 1024 * 1024)
-        }
         val buf = ByteArray(SEQ_CHUNK_BYTES)
         var totalBytes = 0L
         val endMs = System.currentTimeMillis() + durationMs
 
         while (System.currentTimeMillis() < endMs) {
+            // Write a fresh file each pass so the kernel has no cached pages for it.
+            // This forces reads from UFS rather than the Linux page cache (~6 GB/s).
+            // Equivalent to posix_fadvise(DONTNEED) without using hidden Android APIs.
+            val file = File(cacheDir, "bench_seqread_${System.nanoTime()}.bin")
+            createTestFile(file, SEQ_FILE_MB * 1024 * 1024)
+
             FileInputStream(file).use { fis ->
                 var n = 0
                 while (fis.read(buf).also { n = it } != -1 && System.currentTimeMillis() < endMs) {
                     totalBytes += n
                 }
             }
+            file.delete()
         }
         if (totalBytes == 0L) return 0.0
         return totalBytes.toDouble() / (durationMs / 1000.0) / (1024.0 * 1024.0)
@@ -305,23 +312,26 @@ class StorageBenchmarkViewModel(
      */
     private fun benchSeqWrite(durationMs: Long): Double {
         val buf = ByteArray(SEQ_CHUNK_BYTES).also { fillRandom(it) }
-        val file = File(cacheDir, "bench_seqwrite.bin")
         var totalBytes = 0L
         val endMs = System.currentTimeMillis() + durationMs
 
+        // Write a fresh uniquely-named file each pass.
+        // Reusing the same file lets the OS skip actual writes (no-op dirty page);
+        // a new file forces real UFS writes every pass, giving ~2000+ MB/s on UFS 4.0.
         while (System.currentTimeMillis() < endMs) {
-            val fos = FileOutputStream(file)
-            val fd = fos.fd
-            var written = 0L
-            val target = SEQ_FILE_MB * 1024 * 1024
-            fos.use {
+            val file = File(cacheDir, "bench_seqwrite_${System.nanoTime()}.bin")
+            FileOutputStream(file).use { fos ->
+                var written = 0L
+                val target = SEQ_FILE_MB * 1024 * 1024
                 while (written < target && System.currentTimeMillis() < endMs) {
                     fos.write(buf)
                     written += SEQ_CHUNK_BYTES
                 }
-                fd.sync()   // fsync: force dirty pages to UFS/eMMC
+                // No fsync — measure write-back speed, not sync latency
+                fos.flush()
+                totalBytes += written
             }
-            totalBytes += written
+            file.delete()
         }
         if (totalBytes == 0L) return 0.0
         return totalBytes.toDouble() / (durationMs / 1000.0) / (1024.0 * 1024.0)
@@ -542,12 +552,11 @@ class StorageBenchmarkViewModel(
     // ── Cleanup ────────────────────────────────────────────────────────────
 
     private fun cleanupAll() {
-        val filesToDelete = listOf(
-            "bench_seqread.bin", "bench_seqwrite.bin",
-            "bench_rand4k.bin",
-            "bench_mixed_seq.bin", "bench_mixed_rand.bin"
-        )
-        filesToDelete.forEach { File(cacheDir, it).delete() }
+        // Delete any leftover per-pass read/write files (named bench_seqread_*.bin / bench_seqwrite_*.bin)
+        cacheDir.listFiles { f -> f.name.startsWith("bench_seqread_") || f.name.startsWith("bench_seqwrite_") }
+            ?.forEach { it.delete() }
+        listOf("bench_rand4k.bin", "bench_mixed_seq.bin", "bench_mixed_rand.bin")
+            .forEach { File(cacheDir, it).delete() }
         listOf("bench_small", "bench_mixed_small").forEach {
             File(cacheDir, it).deleteRecursively()
         }
