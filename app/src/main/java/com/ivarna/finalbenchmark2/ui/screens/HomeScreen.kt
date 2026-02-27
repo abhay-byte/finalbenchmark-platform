@@ -346,10 +346,11 @@ fun HomeScreen(
                                         modifier = Modifier.padding(16.dp),
                                         verticalArrangement = Arrangement.spacedBy(16.dp)
                                     ) {
-                                        // Workload Dropdown – hidden for GPU (no intensity tiers)
+                                        // Workload Dropdown – hidden for GPU/EXTERNAL_GPU/RAM (no intensity tiers)
                                         androidx.compose.animation.AnimatedVisibility(
                                             visible = selectedBenchmarkCategory != com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkCategory.GPU &&
-                                                      selectedBenchmarkCategory != com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkCategory.EXTERNAL_GPU
+                                                      selectedBenchmarkCategory != com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkCategory.EXTERNAL_GPU &&
+                                                      selectedBenchmarkCategory != com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkCategory.RAM
                                         ) {
                                         ExposedDropdownMenuBox(
                                             expanded = isDropdownExpanded,

@@ -330,6 +330,7 @@ void main() {
 precision highp float;
 varying vec2  v_UV;
 uniform float u_Time;
+uniform float u_Aspect;   // vpW / vpH — corrects sphere shape on landscape
 
 float sdSphere(vec3 p, float r) { return length(p) - r; }
 float sdPlane(vec3 p) { return p.y + 0.9; }
@@ -377,9 +378,8 @@ float ao(vec3 p, vec3 n) {
     return clamp(1.0 - 3.0 * occ, 0.0, 1.0);
 }
 void main() {
-    // Centered UV: (-ar..ar, -1..1) for correct circle/sphere projection
     vec2  uv  = (v_UV - 0.5) * 2.0;
-    // Camera looks straight at the scene center from directly ahead
+    uv.x *= u_Aspect;   // aspect-ratio correction — circles stay circular
     vec3  ro  = vec3(0.0, 0.6, 2.8);
     vec3  rd  = normalize(vec3(uv.x, uv.y - 0.1, -1.5));
     vec3  ld  = normalize(vec3(0.3, 1.0, 0.6));

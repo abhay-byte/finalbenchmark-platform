@@ -218,6 +218,8 @@ class GpuBenchmarkRenderer(
         GLES20.glUseProgram(p); quadBuf.position(0)
         val aPos = GLES20.glGetAttribLocation(p, "a_Pos")
         GLES20.glUniform1f(GLES20.glGetUniformLocation(p, "u_Time"), t)
+        // u_Aspect: safe to set for every shader — glUniform1f silently ignores location=-1
+        GLES20.glUniform1f(GLES20.glGetUniformLocation(p, "u_Aspect"), vpW.toFloat() / vpH.toFloat().coerceAtLeast(1f))
         if (aPos >= 0) { GLES20.glEnableVertexAttribArray(aPos); GLES20.glVertexAttribPointer(aPos, 2, GLES20.GL_FLOAT, false, 0, quadBuf) }
         GLES20.glDrawArrays(GLES20.GL_TRIANGLES, 0, 6)
         if (aPos >= 0) GLES20.glDisableVertexAttribArray(aPos)
