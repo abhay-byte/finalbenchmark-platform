@@ -102,28 +102,29 @@ data class ProductivityBenchmarkUiState(
 //
 // Calibrated to OnePlus CPH2691 (SD 8 Gen 3, Android 16) — this device is the
 // 100-point baseline.  A device that beats these numbers will score above 100;
-// refs are set 5% above measured so a perfectly matched device scores ~95.
+// Refs calibrated from SD8 Gen3 (Adreno 750) measured results, set ~18% above
+// measured so top-end device scores ~85 pts per test.
 //
-//   CANVAS_OPS:      measured 12400 ops/s          → ref 13000
-//   IMAGE_FILTER:    measured 17   images/s (4K)   → ref 18
-//   IMAGE_RESIZE:    measured 163  images/s (4K→Q) → ref 170
-//   TEXT_OPS:        measured 12.5 Mchars/s         → ref 13
-//   JSON_OPS:        measured 1968 docs/s            → ref 2100
-//   COMPRESSION:     measured 49   MB/s              → ref 52
-//   VIDEO_ENCODE:    measured 32   fps               → ref 34
-//   VIDEO_DECODE:    estimated 130 fps (1080p JPEG)  → ref 140   (recalibrate)
-//   VIDEO_TRANSCODE: estimated 21  fps (1080→720)    → ref 22    (recalibrate)
+//   CANVAS_OPS:      measured  334 ops/s            → ref  400
+//   IMAGE_FILTER:    measured  239 imgs/s (AGSL 4K) → ref  285
+//   IMAGE_RESIZE:    measured  148 imgs/s (GPU RT)  → ref  175
+//   TEXT_OPS:        measured ~1.7 Mchars/s (5K)   → ref  2.0
+//   JSON_OPS:        measured   78 docs/s           → ref   90
+//   COMPRESSION:     measured   19 MB/s             → ref   22
+//   VIDEO_ENCODE:    measured  256 fps (H.264 HW)   → ref  305
+//   VIDEO_DECODE:    measured  595 fps (H.264 HW)   → ref  700
+//   VIDEO_TRANSCODE: measured  192 fps (HW pipeline)→ ref  230
 
 private val PRODUCTIVITY_REFERENCE = mapOf(
-    ProductivityTest.CANVAS_OPS      to  6_000.0,  // GPU: HardwareRenderer HWUI ~5K-10K ops/s
-    ProductivityTest.IMAGE_FILTER    to     18.0,  // GPU: RuntimeShader AGSL 4K ~15-25 imgs/s
-    ProductivityTest.IMAGE_RESIZE    to     40.0,  // GPU: HardwareRenderer bilinear 4K RT ~30-55 rt/s
-    ProductivityTest.TEXT_OPS        to      6.0,  // CPU: 50K sort + Lev×20 + regex ~5-8 Mchars/s
-    ProductivityTest.JSON_OPS        to    100.0,  // CPU: 200-field 3-level measured 70/s → ref 100
-    ProductivityTest.COMPRESSION     to     22.0,  // CPU: measured 17 MB/s → ref 22
-    ProductivityTest.VIDEO_ENCODE    to     80.0,  // HW: MediaCodec H.264 1080p ~60-120 fps
-    ProductivityTest.VIDEO_DECODE    to    120.0,  // HW: MediaCodec H.264 1080p ~80-150 fps
-    ProductivityTest.VIDEO_TRANSCODE to     40.0,  // HW: decode+process+encode pipeline ~30-60 fps
+    ProductivityTest.CANVAS_OPS      to    400.0,  // GPU: HardwareRenderer HWUI measured 334 ops/s
+    ProductivityTest.IMAGE_FILTER    to    285.0,  // GPU: RuntimeShader AGSL 4K measured 239 imgs/s
+    ProductivityTest.IMAGE_RESIZE    to    175.0,  // GPU: HardwareRenderer bilinear measured 148 rt/s
+    ProductivityTest.TEXT_OPS        to      2.0,  // CPU: 5K sort + Lev×20 + regex, expected ~1.7 Mchars/s
+    ProductivityTest.JSON_OPS        to     90.0,  // CPU: 200-field 3-level measured 78 docs/s
+    ProductivityTest.COMPRESSION     to     22.0,  // CPU: measured 19 MB/s
+    ProductivityTest.VIDEO_ENCODE    to    305.0,  // HW: MediaCodec H.264 measured 256 fps
+    ProductivityTest.VIDEO_DECODE    to    700.0,  // HW: MediaCodec H.264 measured 595 fps
+    ProductivityTest.VIDEO_TRANSCODE to    230.0,  // HW: decode+AGSL+encode measured 192 fps
 )
 
 private val PRODUCTIVITY_TESTS = ProductivityTest.values().toList()
@@ -966,14 +967,13 @@ class ProductivityBenchmarkViewModel(
 
     // ── 4. Text Processing (HARD) ─────────────────────────────────────────
     /**
-     * 50 000-word corpus. Per pass:
-     *   1. Sort entire corpus (Timsort on String[] × 50K elements)
+     * 5 000-word corpus. Per pass:
+     *   1. Sort entire corpus (Timsort on String[] × 5K elements)
      *   2. Levenshtein edit-distance for 20 random pairs (O(m×n) DP per pair)
      *   3. Regex replace with 5 compiled patterns over a 500-word join
-     * ~6× more words + DP + regex vs. the easy version.
      */
     private fun benchTextOps(durationMs: Long): Double {
-        val wordCount = 50_000
+        val wordCount = 5_000
         val rng = Random(54321L)
         val chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
         val corpus = Array(wordCount) {
