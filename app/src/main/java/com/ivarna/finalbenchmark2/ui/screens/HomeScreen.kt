@@ -86,6 +86,7 @@ import com.ivarna.finalbenchmark2.ui.viewmodels.RankingItem
 import com.ivarna.finalbenchmark2.utils.CpuUtilizationUtils
 import com.ivarna.finalbenchmark2.utils.PowerUtils
 import com.ivarna.finalbenchmark2.utils.TemperatureUtils
+import com.ivarna.finalbenchmark2.cpuBenchmark.displayLabel
 import kotlinx.coroutines.delay
 import kotlin.math.abs
 import dev.chrisbanes.haze.hazeChild
@@ -330,7 +331,9 @@ fun HomeScreen(
                                 // BENCHMARK CONTROLS
                                 // =========================================================
                                 var selectedBenchmarkCategory by remember { mutableStateOf(com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkCategory.CPU) }
+                                // EXTERNAL_GPU requires a separate APK; exclude from this dropdown
                                 val benchmarkCategories = com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkCategory.entries
+                                    .filter { it != com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkCategory.EXTERNAL_GPU }
                                 var isTypeDropdownExpanded by remember { mutableStateOf(false) }
 
                                 com.ivarna.finalbenchmark2.ui.components.AnimatedGlassCard(
@@ -346,12 +349,13 @@ fun HomeScreen(
                                         modifier = Modifier.padding(16.dp),
                                         verticalArrangement = Arrangement.spacedBy(16.dp)
                                     ) {
-                                        // Workload Dropdown – hidden for GPU/EXTERNAL_GPU/RAM (no intensity tiers)
+                                        // Workload Dropdown – hidden for GPU/EXTERNAL_GPU/RAM/STORAGE/FULL (no intensity tiers)
                                         androidx.compose.animation.AnimatedVisibility(
                                             visible = selectedBenchmarkCategory != com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkCategory.GPU &&
                                                       selectedBenchmarkCategory != com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkCategory.EXTERNAL_GPU &&
                                                       selectedBenchmarkCategory != com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkCategory.RAM &&
-                                                      selectedBenchmarkCategory != com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkCategory.STORAGE
+                                                      selectedBenchmarkCategory != com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkCategory.STORAGE &&
+                                                      selectedBenchmarkCategory != com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkCategory.FULL
                                         ) {
                                         ExposedDropdownMenuBox(
                                             expanded = isDropdownExpanded,
@@ -392,7 +396,7 @@ fun HomeScreen(
                                             modifier = Modifier.fillMaxWidth()
                                         ) {
                                             OutlinedTextField(
-                                                value = selectedBenchmarkCategory.name,
+                                                value = selectedBenchmarkCategory.displayLabel(),
                                                 onValueChange = {},
                                                 readOnly = true,
                                                 label = { Text("Benchmark Type") },
@@ -408,7 +412,22 @@ fun HomeScreen(
                                             ) {
                                                 benchmarkCategories.forEach { category ->
                                                     DropdownMenuItem(
-                                                        text = { Text(category.name) },
+                                                        text = {
+                                                            Column {
+                                                                Text(
+                                                                    text = category.displayLabel(),
+                                                                    fontWeight = if (category == com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkCategory.FULL)
+                                                                        androidx.compose.ui.text.font.FontWeight.Bold else androidx.compose.ui.text.font.FontWeight.Normal
+                                                                )
+                                                                if (category == com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkCategory.FULL) {
+                                                                    Text(
+                                                                        text = "CPU · RAM · Storage · GPU · Productivity  (~15–30 min)",
+                                                                        style = MaterialTheme.typography.labelSmall,
+                                                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                                                    )
+                                                                }
+                                                            }
+                                                        },
                                                         onClick = {
                                                             selectedBenchmarkCategory = category
                                                             isTypeDropdownExpanded = false

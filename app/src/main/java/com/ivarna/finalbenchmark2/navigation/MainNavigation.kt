@@ -322,6 +322,26 @@ fun MainNavigation(
                             },
                             onNavBack = { navController.popBackStack() }
                         )
+                    } else if (category == com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkCategory.FULL) {
+                        // ── Full Benchmark ─ runs all categories sequentially ──────────
+                        val fullHistoryRepository = remember {
+                            com.ivarna.finalbenchmark2.data.repository.HistoryRepository(
+                                com.ivarna.finalbenchmark2.data.database.AppDatabase
+                                    .getDatabase(context)
+                                    .benchmarkDao()
+                            )
+                        }
+                        com.ivarna.finalbenchmark2.ui.screens.FullBenchmarkScreen(
+                            preset = preset,
+                            historyRepository = fullHistoryRepository,
+                            onBenchmarkComplete = { summaryJson ->
+                                val encodedJson = java.net.URLEncoder.encode(summaryJson, "UTF-8")
+                                navController.navigate("result/$encodedJson") {
+                                    popUpTo("home") { inclusive = false }
+                                }
+                            },
+                            onNavBack = { navController.popBackStack() }
+                        )
                     } else if (category == com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkCategory.STORAGE) {
                         // Storage benchmark — dedicated screen with I/O throughput tests
                         val storageHistoryRepository = remember {
