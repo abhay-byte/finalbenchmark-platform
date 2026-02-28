@@ -109,6 +109,13 @@
 			"label": "Build deploy commit storage fix",
 			"type": "shell",
 			"command": "cd /home/flux/repos/finalbenchmark-platform && ./gradlew assembleDebug && cp app/build/outputs/apk/debug/app-debug.apk /sdcard/Download/finalbenchmark-debug.apk && echo 'DEPLOYED OK' && git add -A && git commit -m 'fix: add STORAGE branch in DetailedDataTab + StorageThroughputChart + fix unit labels' && git push"
+		},
+		{
+			"label": "Build and Deploy APK",
+			"type": "shell",
+			"command": "cd /home/flux/repos/finalbenchmark-platform && ./gradlew assembleDebug && cp app/build/outputs/apk/debug/app-debug.apk /sdcard/Download/finalbenchmark-debug.apk && echo 'APK copied to /sdcard/Download/finalbenchmark-debug.apk'",
+			"problemMatcher": [],
+			"group": "build"
 		}
 	]
 }
