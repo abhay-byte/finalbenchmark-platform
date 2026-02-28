@@ -55,25 +55,21 @@ class FullBenchmarkViewModel(application: Application) : AndroidViewModel(applic
 
     companion object {
         /**
-         * Category weights — docs specify:
+         * Category weights match docs exactly:
          *   CPU 20%, AI 15%, GPU 20%, RAM 10%, Storage 10%, Productivity 25%
-         *
-         * AI is not yet implemented in the app, so its 15% is redistributed
-         * proportionally across the remaining 5 categories (÷ 85 × 100):
-         *   CPU ≈ 23.5%,  GPU ≈ 23.5%,  RAM ≈ 11.8%,
-         *   Storage ≈ 11.8%,  Productivity ≈ 29.4%
          *
          * maxScore = expected maximum of `normalized_score` for each category
          * (sum of per-test scores where each test is 0-100):
-         *   CPU: 10 tests → 1000,  GPU: 5 → 500,  RAM: 5 → 500,
-         *   Storage: 6 → 600,  Productivity: 9 → 900
+         *   CPU: 10 tests → 1000,  AI: 5 tests → 500,  GPU: 5 → 500,
+         *   RAM: 5 → 500,  Storage: 6 → 600,  Productivity: 9 → 900
          */
         val PHASES = listOf(
-            FullBenchmarkPhase(BenchmarkCategory.CPU,          "CPU Performance",     0.235f, 1000.0),
-            FullBenchmarkPhase(BenchmarkCategory.RAM,          "RAM Performance",     0.118f,  500.0),
-            FullBenchmarkPhase(BenchmarkCategory.STORAGE,      "Storage Performance", 0.118f,  600.0),
-            FullBenchmarkPhase(BenchmarkCategory.GPU,          "GPU Performance",     0.235f,  500.0),
-            FullBenchmarkPhase(BenchmarkCategory.PRODUCTIVITY, "Productivity",        0.294f,  900.0),
+            FullBenchmarkPhase(BenchmarkCategory.CPU,          "CPU Performance",     0.20f, 1000.0),
+            FullBenchmarkPhase(BenchmarkCategory.AI,           "AI / ML",             0.15f,  500.0),
+            FullBenchmarkPhase(BenchmarkCategory.RAM,          "RAM Performance",     0.10f,  500.0),
+            FullBenchmarkPhase(BenchmarkCategory.STORAGE,      "Storage Performance", 0.10f,  600.0),
+            FullBenchmarkPhase(BenchmarkCategory.GPU,          "GPU Performance",     0.20f,  500.0),
+            FullBenchmarkPhase(BenchmarkCategory.PRODUCTIVITY, "Productivity",        0.25f,  900.0),
         )
 
         /** Grade thresholds (0–1000 scale). */

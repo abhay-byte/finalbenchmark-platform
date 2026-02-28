@@ -126,9 +126,9 @@ private fun PhaseSubScreen(
     onNavBack: () -> Unit
 ) {
     when (phase.category) {
-        BenchmarkCategory.CPU -> BenchmarkScreen(
+        BenchmarkCategory.CPU, BenchmarkCategory.AI -> BenchmarkScreen(
             preset              = preset,
-            benchmarkCategory   = BenchmarkCategory.CPU,
+            benchmarkCategory   = phase.category,
             onBenchmarkComplete = onComplete,
             onNavBack           = onNavBack,
             historyRepository   = historyRepo
@@ -246,8 +246,7 @@ private fun PhasePill(
     }
     val abbrev = when (phase.category) {
         BenchmarkCategory.CPU         -> "CPU"
-        BenchmarkCategory.RAM         -> "RAM"
-        BenchmarkCategory.STORAGE     -> "STO"
+            BenchmarkCategory.AI          -> "AI"
         BenchmarkCategory.GPU         -> "GPU"
         BenchmarkCategory.PRODUCTIVITY -> "PRO"
         else                          -> phase.category.name.take(3)
@@ -481,6 +480,7 @@ private fun CategoryScoreRow(
 
     val barColor = when (phase.category) {
         BenchmarkCategory.CPU         -> Color(0xFF6C63FF)
+        BenchmarkCategory.AI          -> Color(0xFFE91E63)
         BenchmarkCategory.RAM         -> Color(0xFF00BCD4)
         BenchmarkCategory.STORAGE     -> Color(0xFF8BC34A)
         BenchmarkCategory.GPU         -> Color(0xFFFF5722)
@@ -570,8 +570,8 @@ private fun ScoringNoteCard() {
             )
             Text(
                 text = "Each category normalised 0–100%, then weighted per docs: " +
-                       "CPU 23.5% · GPU 23.5% · RAM 11.8% · Storage 11.8% · Productivity 29.4%. " +
-                       "AI/ML (15%) excluded — not yet implemented.",
+                       "CPU 20% · AI/ML 15% · GPU 20% · RAM 10% · Storage 10% · Productivity 25%. " +
+                       "Final score 0–1000.",
                 color = Color.White.copy(alpha = 0.4f),
                 fontSize = 10.sp,
                 lineHeight = 14.sp
