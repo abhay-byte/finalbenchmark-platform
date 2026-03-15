@@ -1514,10 +1514,7 @@ fun DetailedDataTab(summary: BenchmarkSummary) {
                         val pct = (rawScore / cat.maxScore).coerceIn(0.0, 1.0)
                         val weightedPts = pct * cat.weight * 1000.0
                         val accentColor = catAccentColors[i]
-                        val catEmoji = when (cat.key) {
-                            "CPU" -> "🧠"; "AI" -> "🤖"; "GPU" -> "🎮"
-                            "RAM" -> "💾"; "STORAGE" -> "📀"; else -> "⚡"
-                        }
+                        val catInitial = cat.key.take(2)
 
                         Card(
                             modifier = Modifier.fillMaxWidth(),
@@ -1542,7 +1539,12 @@ fun DetailedDataTab(summary: BenchmarkSummary) {
                                                 .background(accentColor.copy(alpha = 0.15f)),
                                             contentAlignment = Alignment.Center
                                         ) {
-                                            Text(text = catEmoji, fontSize = 20.sp)
+                                            Text(
+                                                text = catInitial,
+                                                fontSize = 13.sp,
+                                                fontWeight = FontWeight.Black,
+                                                color = accentColor
+                                            )
                                         }
                                         Spacer(modifier = Modifier.width(12.dp))
                                         Column {
@@ -2559,8 +2561,40 @@ fun BenchmarkResultItem(result: BenchmarkResult, isAi: Boolean = false, isGpu: B
 private fun RankingsTab(finalScore: Double, singleCoreScore: Double, multiCoreScore: Double, type: String = "CPU") {
     val scrollState = androidx.compose.foundation.rememberScrollState()
     
-    // FULL benchmark: show a full-system ranking against known reference devices
+    // FULL benchmark: show Coming Soon (insufficient data for accurate full benchmark rankings)
     if (type == "FULL") {
+        Column(
+            modifier = Modifier.fillMaxSize().padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Icon(
+                imageVector = Icons.Rounded.Leaderboard,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                modifier = Modifier.size(64.dp)
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = "Full Benchmark Rankings",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "Global device comparisons for the full benchmark are coming in a future update. Run individual benchmarks (CPU, GPU, RAM, Storage) to see per-category rankings.",
+                style = MaterialTheme.typography.bodyMedium,
+                textAlign = TextAlign.Center,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        return
+    }
+
+    // If not CPU and not FULL, show "Coming Soon" placeholder
+    @Suppress("KotlinConstantConditions")
+    if (false) { // dead leaderboard intentionally removed — future data
         val fullReferenceDevices = listOf(
             RankingItem(name = "Snapdragon 8 Elite",         normalizedScore = 920, singleCore = 0, multiCore = 0, tag = "Flagship 2024"),
             RankingItem(name = "Snapdragon 8 Gen 3",         normalizedScore = 780, singleCore = 0, multiCore = 0, tag = "Flagship 2023"),
@@ -3412,8 +3446,12 @@ private fun formatBenchmarkShareData(context: Context, summary: BenchmarkSummary
     builder.append("TOTAL SCORE: ${String.format("%.0f", summary.finalScore)}\n")
     builder.append("(Normalized: ${String.format("%.0f", summary.normalizedScore)})\n\n")
 
-    builder.append("Single-Core Score: ${String.format("%.0f", summary.singleCoreScore)}\n")
-    builder.append("Multi-Core Score: ${String.format("%.0f", summary.multiCoreScore)}\n\n")
+    if (summary.type == "FULL") {
+        builder.append("Overall Score: ${String.format("%.0f", summary.finalScore)} / 1000\n\n")
+    } else {
+        builder.append("Single-Core Score: ${String.format("%.0f", summary.singleCoreScore)}\n")
+        builder.append("Multi-Core Score: ${String.format("%.0f", summary.multiCoreScore)}\n\n")
+    }
 
     // Detailed Results
     if (summary.detailedResults.isNotEmpty()) {

@@ -49,6 +49,8 @@ import com.ivarna.finalbenchmark2.ui.viewmodels.FullBenchmarkPhase
 import com.ivarna.finalbenchmark2.ui.viewmodels.FullBenchmarkState
 import com.ivarna.finalbenchmark2.ui.viewmodels.FullBenchmarkViewModel
 import com.ivarna.finalbenchmark2.ui.viewmodels.PhaseStatus
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 // ── Main Screen ───────────────────────────────────────────────────────────────
@@ -70,6 +72,7 @@ fun FullBenchmarkScreen(
 ) {
     val viewModel: FullBenchmarkViewModel = viewModel()
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val coroutineScope = rememberCoroutineScope()
 
     // ── Final results ────────────────────────────────────────────────────────
     AnimatedVisibility(
@@ -79,7 +82,29 @@ fun FullBenchmarkScreen(
     ) {
         FullBenchmarkResultScreen(
             state = state,
-            onDone = { onBenchmarkComplete(viewModel.buildFinalSummaryJson()) }
+            onDone = {
+                // Save FULL benchmark result to history before navigating away
+                val summaryJson = viewModel.buildFinalSummaryJson()
+                coroutineScope.launch {
+                    try {
+                        val entity = com.ivarna.finalbenchmark2.data.database.entities.BenchmarkResultEntity(
+                            type                   = "FULL",
+                            totalScore             = state.overallScore.toDouble(),
+                            timestamp              = System.currentTimeMillis(),
+                            deviceModel            = "${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}",
+                            singleCoreScore        = 0.0,
+                            multiCoreScore         = state.overallScore.toDouble(),
+                            normalizedScore        = state.overallScore.toDouble(),
+                            detailedResultsJson    = "[]",
+                            performanceMetricsJson = org.json.JSONObject(summaryJson).optJSONObject("category_scores")?.toString() ?: "{}"
+                        )
+                        historyRepository.saveGenericBenchmark(entity, emptyList())
+                    } catch (e: Exception) {
+                        android.util.Log.e("FullBenchmarkScreen", "Failed to save to history: ${e.message}", e)
+                    }
+                }
+                onBenchmarkComplete(summaryJson)
+            }
         )
     }
 
