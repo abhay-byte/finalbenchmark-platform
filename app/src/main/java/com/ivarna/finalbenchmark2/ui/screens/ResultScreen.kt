@@ -71,7 +71,9 @@ data class BenchmarkSummary(
         val detailedResults: List<BenchmarkResult> = emptyList(),
         val deviceSummary: BenchmarkDeviceSummary? = null,
         val timestamp: Long = System.currentTimeMillis(),
-        val performanceMetricsJson: String = ""
+        val performanceMetricsJson: String = "",
+        /** Populated for FULL benchmark: maps category key (CPU/AI/GPU/RAM/STORAGE/PRODUCTIVITY) to raw normalized_score. */
+        val categoryScores: Map<String, Double> = emptyMap()
 )
 
 @OptIn(
@@ -181,7 +183,16 @@ fun ResultScreen(
 
                     // Parse Score metrics
                     val performanceMetricsJson = jsonObject.opt("performance_metrics")?.toString() ?: "{}"
-                    
+
+                    // Parse per-category scores for FULL benchmark type
+                    val categoryScores = mutableMapOf<String, Double>()
+                    val catScoresObj = jsonObject.optJSONObject("category_scores")
+                    if (catScoresObj != null) {
+                        catScoresObj.keys().forEach { key ->
+                            categoryScores[key] = catScoresObj.optDouble(key, 0.0)
+                        }
+                    }
+
                     val parsedSummary = BenchmarkSummary(
                         singleCoreScore = jsonObject.optDouble("single_core_score", 0.0),
                         multiCoreScore = jsonObject.optDouble("multi_core_score", 0.0),
@@ -191,7 +202,8 @@ fun ResultScreen(
                         detailedResults = detailedResults,
                         deviceSummary = deviceSummary,
                         timestamp = jsonObject.optLong("timestamp", System.currentTimeMillis()),
-                        performanceMetricsJson = performanceMetricsJson
+                        performanceMetricsJson = performanceMetricsJson,
+                        categoryScores = categoryScores
                     )
                     
                     summaryState = parsedSummary
@@ -1399,6 +1411,255 @@ fun DetailedDataTab(summary: BenchmarkSummary) {
                 }
             }
         }
+    } else if (summary.type == "FULL") {
+        // ── Full benchmark results (all 6 categories) ─────────────────────────────
+        val catScores = summary.categoryScores
+
+        // Phase config: key, displayName, weight, maxScore
+        data class CatConfig(val key: String, val displayName: String, val weight: Float, val maxScore: Double)
+        val categories = listOf(
+            CatConfig("CPU",          "CPU Performance",     0.20f, 1000.0),
+            CatConfig("AI",           "AI / ML",             0.15f,  500.0),
+            CatConfig("GPU",          "GPU Performance",     0.20f,  500.0),
+            CatConfig("RAM",          "RAM Performance",     0.10f,  500.0),
+            CatConfig("STORAGE",      "Storage Performance", 0.10f,  600.0),
+            CatConfig("PRODUCTIVITY", "Productivity",        0.25f,  900.0),
+        )
+        val catAccentColors = listOf(
+            androidx.compose.ui.graphics.Color(0xFF7C4DFF),
+            androidx.compose.ui.graphics.Color(0xFF00BCD4),
+            androidx.compose.ui.graphics.Color(0xFFF44336),
+            androidx.compose.ui.graphics.Color(0xFF4CAF50),
+            androidx.compose.ui.graphics.Color(0xFFFF9800),
+            androidx.compose.ui.graphics.Color(0xFFFFD700),
+        )
+
+        LazyColumn(
+            modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // Overall score card
+            item {
+                AnimatedEntranceContainer(index = 0) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+                        shape = RoundedCornerShape(24.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.15f)
+                        ),
+                        elevation = CardDefaults.cardElevation(0.dp),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.25f))
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(24.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column {
+                                Text(
+                                    text = "FULL BENCHMARK SCORE",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Black,
+                                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
+                                    letterSpacing = 1.5.sp
+                                )
+                                Text(
+                                    text = "Combined System Performance  ·  0–1000",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                )
+                            }
+                            Text(
+                                text = String.format("%.0f", summary.finalScore),
+                                style = MaterialTheme.typography.headlineLarge,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = MaterialTheme.colorScheme.primary,
+                                letterSpacing = (-1).sp
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Section header
+            item {
+                AnimatedEntranceContainer(index = 1) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.Speed,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "CATEGORY BREAKDOWN",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = 2.sp,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                        )
+                    }
+                }
+            }
+
+            // Per-category cards
+            categories.forEachIndexed { i, cat ->
+                item {
+                    AnimatedEntranceContainer(index = i + 2) {
+                        val rawScore = catScores[cat.key] ?: 0.0
+                        val pct = (rawScore / cat.maxScore).coerceIn(0.0, 1.0)
+                        val weightedPts = pct * cat.weight * 1000.0
+                        val accentColor = catAccentColors[i]
+                        val catEmoji = when (cat.key) {
+                            "CPU" -> "🧠"; "AI" -> "🤖"; "GPU" -> "🎮"
+                            "RAM" -> "💾"; "STORAGE" -> "📀"; else -> "⚡"
+                        }
+
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(20.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.12f)
+                            ),
+                            elevation = CardDefaults.cardElevation(0.dp),
+                            border = BorderStroke(1.dp, accentColor.copy(alpha = 0.3f))
+                        ) {
+                            Column(modifier = Modifier.fillMaxWidth().padding(20.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(42.dp)
+                                                .clip(CircleShape)
+                                                .background(accentColor.copy(alpha = 0.15f)),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Text(text = catEmoji, fontSize = 20.sp)
+                                        }
+                                        Spacer(modifier = Modifier.width(12.dp))
+                                        Column {
+                                            Text(
+                                                text = cat.displayName,
+                                                style = MaterialTheme.typography.titleSmall,
+                                                fontWeight = FontWeight.Bold,
+                                                color = MaterialTheme.colorScheme.onSurface
+                                            )
+                                            Text(
+                                                text = "Weight: ${(cat.weight * 100).toInt()}%  ·  Max: ${cat.maxScore.toInt()} pts",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                            )
+                                        }
+                                    }
+                                    Column(horizontalAlignment = Alignment.End) {
+                                        Text(
+                                            text = String.format("%.0f", weightedPts),
+                                            style = MaterialTheme.typography.titleLarge,
+                                            fontWeight = FontWeight.Black,
+                                            color = accentColor
+                                        )
+                                        Text(
+                                            text = "pts",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontSize = 9.sp,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                                        )
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.height(12.dp))
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text(
+                                        text = "Raw: ${String.format("%.0f", rawScore)} / ${cat.maxScore.toInt()}",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                    )
+                                    Text(
+                                        text = "${String.format("%.1f", pct * 100)}%",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = accentColor
+                                    )
+                                }
+
+                                Spacer(modifier = Modifier.height(8.dp))
+
+                                var animTarget by remember { mutableStateOf(0f) }
+                                LaunchedEffect(Unit) { animTarget = pct.toFloat() }
+                                val animPct by animateFloatAsState(
+                                    targetValue = animTarget,
+                                    animationSpec = tween(1200, easing = FastOutSlowInEasing),
+                                    label = "catPct_${cat.key}"
+                                )
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(8.dp)
+                                        .clip(CircleShape)
+                                        .background(MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.4f))
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth(animPct)
+                                            .fillMaxHeight()
+                                            .clip(CircleShape)
+                                            .background(
+                                                Brush.horizontalGradient(
+                                                    listOf(accentColor.copy(alpha = 0.7f), accentColor)
+                                                )
+                                            )
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Scoring methodology note
+            item {
+                AnimatedEntranceContainer(index = 8) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(20.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.08f)
+                        ),
+                        elevation = CardDefaults.cardElevation(0.dp),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.12f))
+                    ) {
+                        Column(modifier = Modifier.fillMaxWidth().padding(20.dp)) {
+                            Text(
+                                text = "Scoring Methodology",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "Each category score is normalised against its maximum (0–100%), then weighted: CPU 20% · AI 15% · GPU 20% · RAM 10% · Storage 10% · Productivity 25%. Final score is on a 0–1000 scale.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                            )
+                        }
+                    }
+                }
+            }
+
+            item { Spacer(modifier = Modifier.height(32.dp)) }
+        }
     } else {
         // Default CPU Logic
         val singleCoreResults =
@@ -2298,7 +2559,312 @@ fun BenchmarkResultItem(result: BenchmarkResult, isAi: Boolean = false, isGpu: B
 private fun RankingsTab(finalScore: Double, singleCoreScore: Double, multiCoreScore: Double, type: String = "CPU") {
     val scrollState = androidx.compose.foundation.rememberScrollState()
     
-    // If not CPU, show "Coming Soon" placeholder
+    // FULL benchmark: show a full-system ranking against known reference devices
+    if (type == "FULL") {
+        val fullReferenceDevices = listOf(
+            RankingItem(name = "Snapdragon 8 Elite",         normalizedScore = 920, singleCore = 0, multiCore = 0, tag = "Flagship 2024"),
+            RankingItem(name = "Snapdragon 8 Gen 3",         normalizedScore = 780, singleCore = 0, multiCore = 0, tag = "Flagship 2023"),
+            RankingItem(name = "Dimensity 9300+",            normalizedScore = 750, singleCore = 0, multiCore = 0),
+            RankingItem(name = "Dimensity 9300",             normalizedScore = 720, singleCore = 0, multiCore = 0),
+            RankingItem(name = "Snapdragon 8s Gen 3",        normalizedScore = 650, singleCore = 0, multiCore = 0, tag = "Upper-Mid"),
+            RankingItem(name = "Dimensity 9200+",            normalizedScore = 620, singleCore = 0, multiCore = 0),
+            RankingItem(name = "Snapdragon 7+ Gen 3",        normalizedScore = 480, singleCore = 0, multiCore = 0),
+            RankingItem(name = "Dimensity 8300",             normalizedScore = 420, singleCore = 0, multiCore = 0, tag = "Mid-Range"),
+            RankingItem(name = "Snapdragon 7s Gen 3",        normalizedScore = 350, singleCore = 0, multiCore = 0),
+            RankingItem(name = "Dimensity 6300",             normalizedScore = 200, singleCore = 0, multiCore = 0, tag = "Budget"),
+        )
+        val userItem = RankingItem(
+            name = "Your Device (${android.os.Build.MODEL})",
+            normalizedScore = finalScore.toInt(),
+            singleCore = singleCoreScore.toInt(),
+            multiCore = multiCoreScore.toInt(),
+            isCurrentUser = true
+        )
+        val allDevices = (fullReferenceDevices + userItem).sortedByDescending { it.normalizedScore }
+            .mapIndexed { idx, item -> item.copy(rank = idx + 1) }
+        val userRankFull = allDevices.indexOfFirst { it.isCurrentUser }
+        val totalFull = allDevices.size
+        val beatsPctFull = if (totalFull > 1) {
+            ((totalFull - userRankFull - 1).toFloat() / (totalFull - 1) * 100).toInt()
+        } else 100
+        val topScoreMaxFull = 1000
+
+        Column(
+            modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 24.dp)
+                .verticalScroll(scrollState),
+            verticalArrangement = Arrangement.spacedBy(20.dp)
+        ) {
+            // Score card
+            AnimatedEntranceContainer(index = 0) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(24.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.15f)
+                    ),
+                    elevation = CardDefaults.cardElevation(0.dp),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.25f))
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(24.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text(
+                                text = "FULL BENCHMARK SCORE",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Black,
+                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
+                                letterSpacing = 1.5.sp
+                            )
+                            Text(
+                                text = "Combined System Rank",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                            )
+                        }
+                        Text(
+                            text = String.format("%.0f", finalScore),
+                            style = MaterialTheme.typography.headlineLarge,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = MaterialTheme.colorScheme.primary,
+                            letterSpacing = (-1).sp
+                        )
+                    }
+                }
+            }
+
+            // Percentile card
+            AnimatedEntranceContainer(index = 1) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(28.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.12f)
+                    ),
+                    elevation = CardDefaults.cardElevation(0.dp),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
+                ) {
+                    Column(modifier = Modifier.padding(24.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.Bottom
+                        ) {
+                            Column {
+                                Text(
+                                    text = "PERFORMANCE PERCENTILE",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Black,
+                                    color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.8f),
+                                    letterSpacing = 1.sp
+                                )
+                                Text(
+                                    text = "Beats $beatsPctFull% of reference systems",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                            Text(
+                                text = "#${userRankFull + 1}",
+                                style = MaterialTheme.typography.headlineMedium,
+                                fontWeight = FontWeight.Black,
+                                color = MaterialTheme.colorScheme.tertiary
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(20.dp))
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth().height(10.dp).clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.5f))
+                        ) {
+                            var targetProgressFull by remember { mutableStateOf(0f) }
+                            LaunchedEffect(Unit) { delay(600); targetProgressFull = beatsPctFull / 100f }
+                            val animProgFull by animateFloatAsState(
+                                targetValue = targetProgressFull,
+                                animationSpec = tween(1500, easing = FastOutSlowInEasing),
+                                label = "fullPct"
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxHeight().fillMaxWidth(animProgFull).clip(CircleShape)
+                                    .background(
+                                        Brush.horizontalGradient(
+                                            listOf(MaterialTheme.colorScheme.tertiary, MaterialTheme.colorScheme.primary)
+                                        )
+                                    )
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            text = when {
+                                beatsPctFull >= 90 -> "ELITE: Outperforming almost all reference systems."
+                                beatsPctFull >= 70 -> "POWERHOUSE: Strong enough for heavy professional work."
+                                beatsPctFull >= 50 -> "COMPETITIVE: Above average performance profile."
+                                else -> "STANDARD: Capable hardware for daily operations."
+                            },
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+
+            // Global leaderboard header
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    Icons.Rounded.Leaderboard, null,
+                    modifier = Modifier.size(16.dp),
+                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "GLOBAL LEADERBOARD  (0–1000 scale)",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = 2.sp,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                )
+            }
+
+            // Rankings list
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                allDevices.forEachIndexed { index, item ->
+                    AnimatedEntranceContainer(index = index + 2) {
+                        val scoreProgressFull by animateFloatAsState(
+                            targetValue = (item.normalizedScore.toFloat() / topScoreMaxFull).coerceIn(0f, 1f),
+                            animationSpec = tween(1000, easing = FastOutSlowInEasing),
+                            label = "fullRank_$index"
+                        )
+                        val goldColor2   = Color(0xFFFFD700)
+                        val silverColor2 = Color(0xFFC0C0C0)
+                        val bronzeColor2 = Color(0xFFCD7F32)
+                        val rankColor2 = when (item.rank) {
+                            1 -> goldColor2; 2 -> silverColor2; 3 -> bronzeColor2
+                            else -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                        }
+                        val isTop3F = item.rank <= 3
+                        val cColor = if (item.isCurrentUser)
+                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.18f)
+                        else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.15f)
+                        val bColor = if (item.isCurrentUser)
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
+                        else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f)
+
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(20.dp),
+                            colors = CardDefaults.cardColors(containerColor = cColor),
+                            elevation = CardDefaults.cardElevation(0.dp),
+                            border = BorderStroke(1.dp, bColor)
+                        ) {
+                            Column(modifier = Modifier.padding(18.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Box(
+                                        modifier = Modifier.size(44.dp).clip(CircleShape)
+                                            .background(
+                                                if (isTop3F) rankColor2.copy(alpha = 0.15f)
+                                                else MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.5f)
+                                            ),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = "#${item.rank}",
+                                            fontWeight = FontWeight.Black,
+                                            color = if (isTop3F) rankColor2 else MaterialTheme.colorScheme.onSurface,
+                                            fontSize = 16.sp
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.width(14.dp))
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text(
+                                                text = item.name,
+                                                style = MaterialTheme.typography.titleSmall,
+                                                fontWeight = FontWeight.Bold,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                            if (item.isCurrentUser) {
+                                                Spacer(modifier = Modifier.width(8.dp))
+                                                Surface(
+                                                    color = MaterialTheme.colorScheme.primary,
+                                                    shape = RoundedCornerShape(6.dp)
+                                                ) {
+                                                    Text(
+                                                        "YOU",
+                                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                                        fontSize = 9.sp,
+                                                        fontWeight = FontWeight.Black,
+                                                        color = MaterialTheme.colorScheme.onPrimary
+                                                    )
+                                                }
+                                            }
+                                            item.tag?.let { tag ->
+                                                Spacer(modifier = Modifier.width(6.dp))
+                                                Surface(
+                                                    color = MaterialTheme.colorScheme.tertiaryContainer,
+                                                    shape = RoundedCornerShape(6.dp)
+                                                ) {
+                                                    Text(
+                                                        text = tag,
+                                                        fontSize = 9.sp,
+                                                        fontWeight = FontWeight.Bold,
+                                                        color = MaterialTheme.colorScheme.onTertiaryContainer,
+                                                        modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
+                                                    )
+                                                }
+                                            }
+                                        }
+                                        Text(
+                                            text = "Score: ${item.normalizedScore} pts",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                        )
+                                    }
+                                    if (isTop3F) {
+                                        Text(
+                                            text = when(item.rank) { 1 -> "🥇"; 2 -> "🥈"; else -> "🥉" },
+                                            fontSize = 20.sp
+                                        )
+                                    } else {
+                                        Text(
+                                            text = "${item.normalizedScore}",
+                                            fontWeight = FontWeight.Black,
+                                            fontSize = 20.sp,
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
+                                }
+                                Spacer(modifier = Modifier.height(14.dp))
+                                LinearProgressIndicator(
+                                    progress = { scoreProgressFull },
+                                    modifier = Modifier.fillMaxWidth().height(6.dp).clip(CircleShape),
+                                    color = if (item.isCurrentUser) MaterialTheme.colorScheme.primary
+                                            else if (isTop3F) rankColor2
+                                            else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
+                                    trackColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(32.dp))
+        }
+        return
+    }
+
+    // If not CPU and not FULL, show "Coming Soon" placeholder
     if (type != "CPU") {
         Column(
             modifier = Modifier.fillMaxSize().padding(16.dp),
@@ -2904,6 +3470,28 @@ private fun formatBenchmarkShareData(context: Context, summary: BenchmarkSummary
                 }
                 builder.append("${result.name}: ${String.format("%.0f", score)} pts  |  $valueStr\n")
             }
+        } else if (summary.type == "FULL") {
+            // Full benchmark — list all 6 categories with weighted scores
+            builder.append("[Full Benchmark Category Breakdown]\n")
+            data class ShareCatCfg(val key: String, val name: String, val weight: Float, val maxScore: Double)
+            val shareCats = listOf(
+                ShareCatCfg("CPU",          "CPU Performance",     0.20f, 1000.0),
+                ShareCatCfg("AI",           "AI / ML",             0.15f,  500.0),
+                ShareCatCfg("GPU",          "GPU Performance",     0.20f,  500.0),
+                ShareCatCfg("RAM",          "RAM Performance",     0.10f,  500.0),
+                ShareCatCfg("STORAGE",      "Storage Performance", 0.10f,  600.0),
+                ShareCatCfg("PRODUCTIVITY", "Productivity",        0.25f,  900.0),
+            )
+            shareCats.forEach { cat ->
+                val raw = summary.categoryScores[cat.key] ?: 0.0
+                val pct = (raw / cat.maxScore).coerceIn(0.0, 1.0)
+                val weighted = pct * cat.weight * 1000.0
+                builder.append(
+                    "${cat.name} (${(cat.weight * 100).toInt()}%): ${String.format("%.0f", raw)}/${cat.maxScore.toInt()} raw  →  ${String.format("%.1f", weighted)} pts\n"
+                )
+            }
+            builder.append("\nTotal Score: ${String.format("%.0f", summary.finalScore)} / 1000\n")
+            builder.append("Scoring: each category normalised 0–100%, then weighted. Final score 0–1000.\n")
         } else {
             // Group by Single/Multi for CPU/AI
             val singleCoreResults = summary.detailedResults.filter { it.name.contains("Single-Core") }
