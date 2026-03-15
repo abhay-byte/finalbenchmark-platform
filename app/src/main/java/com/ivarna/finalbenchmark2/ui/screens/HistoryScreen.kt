@@ -252,20 +252,35 @@ fun HistoryScreen(viewModel: HistoryViewModel, navController: NavController) {
                                                 val detailedResultsJson =
                                                         gson.toJson(result.detailedResults)
 
-                                                val summaryJson =
-                                                        """
-                                                {
-                                                    "single_core_score": ${result.singleCoreScore},
-                                                    "multi_core_score": ${result.multiCoreScore},
-                                                    "final_score": ${result.finalScore},
-                                                    "normalized_score": ${result.normalizedScore},
-                                                    "timestamp": ${result.timestamp},
-                                                    "type": "${result.testName}",
-                                                    "benchmark_id": ${result.id},
-                                                    "performance_metrics": ${if (result.performanceMetricsJson.isNotEmpty()) result.performanceMetricsJson else "{}"},
-                                                    "detailed_results": $detailedResultsJson
+                                                // For FULL benchmark: performanceMetricsJson holds
+                                                // the category_scores JSON object (set at save time)
+                                                val isFull = result.testName.equals("FULL", ignoreCase = true)
+                                                val categoryScoresJson = if (isFull && result.performanceMetricsJson.isNotEmpty()) {
+                                                    result.performanceMetricsJson
+                                                } else {
+                                                    null
                                                 }
-                                            """.trimIndent()
+
+                                                val summaryJson = buildString {
+                                                    append("{\n")
+                                                    append("  \"single_core_score\": ${result.singleCoreScore},\n")
+                                                    append("  \"multi_core_score\": ${result.multiCoreScore},\n")
+                                                    append("  \"final_score\": ${result.finalScore},\n")
+                                                    append("  \"normalized_score\": ${result.normalizedScore},\n")
+                                                    append("  \"timestamp\": ${result.timestamp},\n")
+                                                    append("  \"type\": \"${result.testName}\",\n")
+                                                    append("  \"benchmark_id\": ${result.id},\n")
+                                                    if (categoryScoresJson != null) {
+                                                        append("  \"category_scores\": $categoryScoresJson,\n")
+                                                        append("  \"performance_metrics\": {},\n")
+                                                    } else {
+                                                        val pmJson = if (result.performanceMetricsJson.isNotEmpty()) result.performanceMetricsJson else "{}"
+                                                        append("  \"performance_metrics\": $pmJson,\n")
+                                                    }
+                                                    append("  \"detailed_results\": $detailedResultsJson\n")
+                                                    append("}")
+                                                }
+
 
                                                 val encodedJson =
                                                         java.net.URLEncoder.encode(summaryJson, "UTF-8")
