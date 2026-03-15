@@ -102,12 +102,14 @@ fun BenchmarkScreen(
     onBenchmarkStart: () -> Unit = {},
     onBenchmarkEnd: () -> Unit = {},
     onNavBack: () -> Unit = {},
-    historyRepository: HistoryRepository
+    historyRepository: HistoryRepository,
+    viewModelKey: String = "default"
 ) {
     val context = LocalContext.current
     val application = context.applicationContext as Application
     
     val viewModel: BenchmarkViewModel = viewModel(
+        key = viewModelKey,
         factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T {

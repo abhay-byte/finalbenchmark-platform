@@ -330,10 +330,12 @@ fun HomeScreen(
                                 // =========================================================
                                 // BENCHMARK CONTROLS
                                 // =========================================================
-                                var selectedBenchmarkCategory by remember { mutableStateOf(com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkCategory.CPU) }
-                                // EXTERNAL_GPU requires a separate APK; exclude from this dropdown
-                                val benchmarkCategories = com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkCategory.entries
-                                    .filter { it != com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkCategory.EXTERNAL_GPU }
+                                var selectedBenchmarkCategory by remember { mutableStateOf(com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkCategory.FULL) }
+                                // EXTERNAL_GPU requires a separate APK; exclude from this dropdown. FULL is pinned first.
+                                val benchmarkCategories = listOf(com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkCategory.FULL) +
+                                    com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkCategory.entries
+                                        .filter { it != com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkCategory.EXTERNAL_GPU &&
+                                                  it != com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkCategory.FULL }
                                 var isTypeDropdownExpanded by remember { mutableStateOf(false) }
 
                                 com.ivarna.finalbenchmark2.ui.components.AnimatedGlassCard(

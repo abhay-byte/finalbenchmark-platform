@@ -116,6 +116,15 @@
 			"command": "cd /home/flux/repos/finalbenchmark-platform && ./gradlew assembleDebug && cp app/build/outputs/apk/debug/app-debug.apk /sdcard/Download/finalbenchmark-debug.apk && echo 'APK copied to /sdcard/Download/finalbenchmark-debug.apk'",
 			"problemMatcher": [],
 			"group": "build"
+		},
+		{
+			"label": "Build Release APK",
+			"type": "shell",
+			"command": "./gradlew assembleRelease",
+			"problemMatcher": [
+				"$kotlinc"
+			],
+			"group": "build"
 		}
 	]
 }

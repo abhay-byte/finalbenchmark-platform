@@ -131,7 +131,8 @@ private fun PhaseSubScreen(
             benchmarkCategory   = phase.category,
             onBenchmarkComplete = onComplete,
             onNavBack           = onNavBack,
-            historyRepository   = historyRepo
+            historyRepository   = historyRepo,
+            viewModelKey        = "full_${phase.category.name}"
         )
         BenchmarkCategory.RAM -> RamBenchmarkScreen(
             preset              = preset,
