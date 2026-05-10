@@ -3530,8 +3530,24 @@ private fun formatBenchmarkShareData(context: Context, summary: BenchmarkSummary
             }
             builder.append("\nTotal Score: ${String.format("%.0f", summary.finalScore)} / 1000\n")
             builder.append("Scoring: each category normalised 0–100%, then weighted. Final score 0–1000.\n")
+        } else if (summary.type == "AI") {
+            // AI benchmark results — show TPS (throughput) and inference time per test
+            builder.append("[AI / ML Benchmark Results]\n")
+            summary.detailedResults.forEach { result ->
+                val tps = result.opsPerSecond
+                val timeMs = result.executionTimeMs
+                val accel = result.accelerationMode?.takeIf { it.isNotBlank() } ?: "CPU"
+                val tpsStr = when {
+                    tps >= 1000.0 -> String.format("%.0f infer/s", tps)
+                    tps >= 1.0    -> String.format("%.2f infer/s", tps)
+                    else          -> String.format("%.3f infer/s", tps)
+                }
+                val timeStr = if (timeMs >= 1000.0) String.format("%.2f s", timeMs / 1000.0)
+                              else String.format("%.0f ms", timeMs)
+                builder.append("${result.name}: $tpsStr  |  $timeStr  |  [$accel]\n")
+            }
         } else {
-            // Group by Single/Multi for CPU/AI
+            // Group by Single/Multi for CPU
             val singleCoreResults = summary.detailedResults.filter { it.name.contains("Single-Core") }
             val multiCoreResults = summary.detailedResults.filter { it.name.contains("Multi-Core") }
 

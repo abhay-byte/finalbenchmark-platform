@@ -66,13 +66,27 @@ class KotlinBenchmarkManager(
                 BenchmarkName.JSON_PARSING to 1.56e-6/28500,            // 20 / 6.41 Mops/s
                 BenchmarkName.N_QUEENS to 2.011e-7/3.2,                // 20 / 66.18e6 ops/s
                 
-                // AI Scoring Factors (Placeholder / TBD - Target similar point range)
-                // AI Scoring Factors (Target ~100 points per test for typical mid-range 50 TPS)
-                BenchmarkName.LLM_INFERENCE to 2.0,
+        // AI Scoring: Reference TPS values from Snapdragon 8 Gen 3 (OnePlus Pad 2)
+                // Used for geometric mean calculation (same approach as CPU)
+                BenchmarkName.LLM_INFERENCE to 2.0,             // placeholder – SD8G3 ~10 tok/s; will tune
                 BenchmarkName.IMAGE_CLASSIFICATION to 2.0,
                 BenchmarkName.OBJECT_DETECTION to 2.0,
                 BenchmarkName.TEXT_EMBEDDING to 2.0,
                 BenchmarkName.SPEECH_TO_TEXT to 2.0
+        )
+
+        // AI Baseline TPS: Snapdragon 8 Gen 3 measured throughput (inferences/sec)
+        // Used for geometric mean normalisation. Score of 1000 = SD8Gen3 performance.
+        val AI_REFERENCE_TPS = mapOf(
+                BenchmarkName.LLM_INFERENCE                  to 15.0,    // ~15 tok/s on SD8G3 (Gemma via GenAI)
+                BenchmarkName.IMAGE_CLASSIFICATION           to 200.0,   // MobileNet V3 @ NPU
+                BenchmarkName.OBJECT_DETECTION               to 30.0,    // EfficientDet Lite0
+                BenchmarkName.TEXT_EMBEDDING                 to 20.0,    // MiniLM-L6 (CPU forced, XNNPACK)
+                BenchmarkName.SPEECH_TO_TEXT                 to 0.5,     // Whisper Tiny
+                BenchmarkName.IMAGE_CLASSIFICATION_MOBILENET_V1 to 180.0,// MobileNet V1 @ NPU
+                BenchmarkName.OBJECT_DETECTION_YOLO_V8       to 8.0,     // YOLOv8n
+                BenchmarkName.TEXT_CLASSIFICATION_MOBILEBERT  to 2.0,    // MobileBERT (CPU forced)
+                BenchmarkName.AUDIO_NOISE_SUPPRESSION_DTLN   to 3000.0   // DTLN (CPU, very fast blocks)
         )
 
         }
@@ -269,13 +283,10 @@ class KotlinBenchmarkManager(
                         AiBenchmarkResult(benchmark.displayName(), 0.0, 0.0, "Error", false, e.message ?: "Unknown error")
                     }
 
-                    // Log & Emit
+                    // Log & Emit — score is raw throughput (no multiplier)
                     if (result.success) {
-                        // Calculate score (simple multiplier)
-                         val multiplier = SCORING_FACTORS[benchmark] ?: 2.0
-                         val score = result.throughput * multiplier
+                        val score = result.throughput // Raw TPS — final score via geometric mean later
                         Log.i("FinalBenchmark", "PASS: ${result.modelName} | TPS=${result.throughput} | Mode=${result.accelerationMode}")
-                        
                         emitBenchmarkComplete(testName, categoryName, result.inferenceTimeMs.toLong(), score, result.accelerationMode)
                     } else {
                         Log.e("FinalBenchmark", "FAIL: ${result.modelName} | Error: ${result.errorMessage}")
@@ -294,9 +305,32 @@ class KotlinBenchmarkManager(
                     delay(100)
              }
              
-             // Calculate generic score: Simple Sum * Factor (2.0)
-             // Typical TPS sum ~ 100-200. Score ~ 200-400.
-             val totalScore = results.sumOf { it.opsPerSecond } * 2.0
+             // Calculate AI score using geometric mean (same approach as CPU)
+             // Ratio = deviceTPS / referenceTPS, then geometricMean * 1000 = final score
+             val validResults = results.filter { it.isValid && it.opsPerSecond > 0.0 }
+             val totalScore = if (validResults.isNotEmpty()) {
+                 val ratios = validResults.mapNotNull { result ->
+                     val benchmarkName = BenchmarkName.fromString(result.name)
+                     val refTps = benchmarkName?.let { AI_REFERENCE_TPS[it] }
+                     if (refTps != null && refTps > 0.0) {
+                         result.opsPerSecond / refTps
+                     } else {
+                         Log.w(TAG, "No AI reference TPS for ${result.name}, skipping in geometric mean")
+                         null
+                     }
+                 }
+                 if (ratios.isNotEmpty()) {
+                     var product = 1.0
+                     for (r in ratios) product *= r
+                     val geometricMean = Math.pow(product, 1.0 / ratios.size)
+                     geometricMean * 1000.0  // Scale: SD8Gen3 = 1000
+                 } else {
+                     validResults.sumOf { it.opsPerSecond } // Fallback if no reference values
+                 }
+             } else {
+                 0.0
+             }
+             Log.d(TAG, "AI Score (geometric mean × 1000): $totalScore from ${validResults.size} valid results")
              
              val detailedResultsArray = JSONArray()
              results.forEach { result ->

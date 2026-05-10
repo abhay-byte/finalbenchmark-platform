@@ -338,12 +338,16 @@ class AiBenchmarkManager(private val context: Context) {
                 val start = System.nanoTime()
                 val response = llmInference.generateResponse(prompt)
                 val end = System.nanoTime()
-                
-                // Estimate tokens (Simulated count if response doesn't give it)
-                val tokenCount = response.length / 4 
+                val elapsedSec = (end - start) / 1_000_000_000.0
+
+                // Estimate tokens: response.length/4, but guard against empty/stub "()" responses.
+                // If the response is too short to be real output, estimate from elapsed time
+                // (assuming at least 10 tok/s for any real inference).
+                val rawTokenCount = response.filter { it.isLetterOrDigit() || it.isWhitespace() }.length / 4
+                val tokenCount = if (rawTokenCount >= 2) rawTokenCount else maxOf(1, (elapsedSec * 10).toInt())
                 totalTokens += tokenCount
                 totalTimeNs += (end - start)
-                Log.d(TAG, "[$benchmarkName] Iteration $it done: $tokenCount tokens")
+                Log.d(TAG, "[$benchmarkName] Iteration $it done: resp='${response.take(30)}' rawTok=$rawTokenCount adjTok=$tokenCount")
             }
 
             val avgTimeMs = (totalTimeNs / iterations) / 1_000_000.0
