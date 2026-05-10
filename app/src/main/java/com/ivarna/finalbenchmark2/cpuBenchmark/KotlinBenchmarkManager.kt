@@ -75,18 +75,32 @@ class KotlinBenchmarkManager(
                 BenchmarkName.SPEECH_TO_TEXT to 2.0
         )
 
-        // AI Baseline TPS: Snapdragon 8 Gen 3 measured throughput (inferences/sec)
-        // Used for geometric mean normalisation. Score of 1000 = SD8Gen3 performance.
+        // AI Baseline TPS: Measured on Snapdragon 8 Gen 3 (CPH2691) — actual run data.
+        // Used for geometric mean normalisation. SD8Gen3 = 100 (see scale below).
         val AI_REFERENCE_TPS = mapOf(
-                BenchmarkName.LLM_INFERENCE                  to 15.0,    // ~15 tok/s on SD8G3 (Gemma via GenAI)
-                BenchmarkName.IMAGE_CLASSIFICATION           to 200.0,   // MobileNet V3 @ NPU
-                BenchmarkName.OBJECT_DETECTION               to 30.0,    // EfficientDet Lite0
-                BenchmarkName.TEXT_EMBEDDING                 to 20.0,    // MiniLM-L6 (CPU forced, XNNPACK)
-                BenchmarkName.SPEECH_TO_TEXT                 to 0.5,     // Whisper Tiny
-                BenchmarkName.IMAGE_CLASSIFICATION_MOBILENET_V1 to 180.0,// MobileNet V1 @ NPU
-                BenchmarkName.OBJECT_DETECTION_YOLO_V8       to 8.0,     // YOLOv8n
-                BenchmarkName.TEXT_CLASSIFICATION_MOBILEBERT  to 2.0,    // MobileBERT (CPU forced)
-                BenchmarkName.AUDIO_NOISE_SUPPRESSION_DTLN   to 3000.0   // DTLN (CPU, very fast blocks)
+                BenchmarkName.LLM_INFERENCE                      to 15.0,   // Gemma via GenAI SDK (real tok/s)
+                BenchmarkName.IMAGE_CLASSIFICATION               to 178.0,  // MobileNet V3: measured 177.92 ops/s
+                BenchmarkName.OBJECT_DETECTION                   to 26.6,   // EfficientDet Lite0: measured 26.59
+                BenchmarkName.TEXT_EMBEDDING                     to 14.3,   // MiniLM-L6: measured 14.32
+                BenchmarkName.SPEECH_TO_TEXT                     to 0.30,   // Whisper Tiny: measured 0.30
+                BenchmarkName.IMAGE_CLASSIFICATION_MOBILENET_V1  to 26.5,   // MobileNet V1: measured 26.50
+                BenchmarkName.OBJECT_DETECTION_YOLO_V8           to 3.2,    // YOLOv8n: measured 3.22
+                BenchmarkName.TEXT_CLASSIFICATION_MOBILEBERT     to 1.2,    // MobileBERT: measured 1.23
+                BenchmarkName.AUDIO_NOISE_SUPPRESSION_DTLN       to 7230.0  // DTLN: measured 7230.01
+        )
+
+        // Per-test display scoring factors: factor = 100 / refTps
+        // So each test shows ~100 pts on the SD8Gen3 baseline device.
+        val AI_PER_TEST_SCORING_FACTORS = mapOf(
+                BenchmarkName.LLM_INFERENCE                      to (100.0 / 15.0),    // ~6.67
+                BenchmarkName.IMAGE_CLASSIFICATION               to (100.0 / 178.0),   // ~0.56
+                BenchmarkName.OBJECT_DETECTION                   to (100.0 / 26.6),    // ~3.76
+                BenchmarkName.TEXT_EMBEDDING                     to (100.0 / 14.3),    // ~6.99
+                BenchmarkName.SPEECH_TO_TEXT                     to (100.0 / 0.30),    // ~333
+                BenchmarkName.IMAGE_CLASSIFICATION_MOBILENET_V1  to (100.0 / 26.5),    // ~3.77
+                BenchmarkName.OBJECT_DETECTION_YOLO_V8           to (100.0 / 3.2),     // ~31.25
+                BenchmarkName.TEXT_CLASSIFICATION_MOBILEBERT     to (100.0 / 1.2),     // ~83.3
+                BenchmarkName.AUDIO_NOISE_SUPPRESSION_DTLN       to (100.0 / 7230.0)   // ~0.0138
         )
 
         }
@@ -306,7 +320,7 @@ class KotlinBenchmarkManager(
              }
              
              // Calculate AI score using geometric mean (same approach as CPU)
-             // Ratio = deviceTPS / referenceTPS, then geometricMean * 1000 = final score
+             // Ratio = deviceTPS / referenceTPS, then geometricMean * 100 = final score
              val validResults = results.filter { it.isValid && it.opsPerSecond > 0.0 }
              val totalScore = if (validResults.isNotEmpty()) {
                  val ratios = validResults.mapNotNull { result ->
@@ -323,7 +337,7 @@ class KotlinBenchmarkManager(
                      var product = 1.0
                      for (r in ratios) product *= r
                      val geometricMean = Math.pow(product, 1.0 / ratios.size)
-                     geometricMean * 1000.0  // Scale: SD8Gen3 = 1000
+                     geometricMean * 100.0  // Scale: SD8Gen3 = 100
                  } else {
                      validResults.sumOf { it.opsPerSecond } // Fallback if no reference values
                  }

@@ -2440,10 +2440,10 @@ fun BenchmarkResultItem(result: BenchmarkResult, isAi: Boolean = false, isGpu: B
         val individualScore: Double
 
         if (isAi) {
-             // For AI, opsPerSecond is tokens/sec or operations/sec
+             // For AI, opsPerSecond is tokens/sec or inferences/sec
              displayThroughput = String.format("%.2f ops/s", result.opsPerSecond)
-             // Use pre-calculated score if available, or calculate using factor 2.0
-             val scalingFactors = KotlinBenchmarkManager.SCORING_FACTORS
+             // Use AI_PER_TEST_SCORING_FACTORS (= 100 / refTps) so baseline SD8Gen3 shows ~100 pts
+             val scalingFactors = KotlinBenchmarkManager.AI_PER_TEST_SCORING_FACTORS
              val benchmarkName = BenchmarkName.fromString(result.name)
              individualScore = benchmarkName?.let { scalingFactors[it]?.times(result.opsPerSecond) } ?: (result.opsPerSecond * 2.0)
         } else if (isGpu) {
@@ -3448,9 +3448,12 @@ private fun formatBenchmarkShareData(context: Context, summary: BenchmarkSummary
 
     if (summary.type == "FULL") {
         builder.append("Overall Score: ${String.format("%.0f", summary.finalScore)} / 1000\n\n")
-    } else {
+    } else if (summary.type != "AI") {
+        // Single/Multi-Core scores are only meaningful for CPU benchmarks
         builder.append("Single-Core Score: ${String.format("%.0f", summary.singleCoreScore)}\n")
         builder.append("Multi-Core Score: ${String.format("%.0f", summary.multiCoreScore)}\n\n")
+    } else {
+        builder.append("\n") // spacer for AI
     }
 
     // Detailed Results
