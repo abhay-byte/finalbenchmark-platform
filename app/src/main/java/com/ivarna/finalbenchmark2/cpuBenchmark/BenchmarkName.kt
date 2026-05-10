@@ -171,13 +171,13 @@ enum class BenchmarkName(val category: BenchmarkCategory) {
                     when {
                         cleanName.startsWith("Monte Carlo") -> "Monte Carlo π"
                         cleanName.startsWith("LLM Inference") -> "LLM Inference (Gemma 3)"
+                        // V1/YOLOv8 MUST come before the generic Image/Object checks below
+                        cleanName.startsWith("Image Classification (MobileNet V1)") -> "Image Classification (MobileNet V1)"
+                        cleanName.startsWith("Object Detection (YOLOv8)") -> "Object Detection (YOLOv8)"
                         cleanName.startsWith("Image Classification") -> "Image Classification (MobileNet V3)"
                         cleanName.startsWith("Object Detection") -> "Object Detection (EfficientDet)"
                         cleanName.startsWith("Text Embedding") -> "Text Embedding (MiniLM)"
                         cleanName.startsWith("Speech-to-Text") -> "Speech-to-Text (Whisper)"
-                        cleanName.startsWith("Image Classification (MobileNet V1)") -> "Image Classification (MobileNet V1)"
-                        cleanName.startsWith("Object Detection (YOLOv8)") -> "Object Detection (YOLOv8)"
-
                         cleanName.startsWith("Text Classification") -> "Text Classification (MobileBERT)"
                         cleanName.startsWith("Noise Suppression") -> "Noise Suppression (DTLN)"
                         
