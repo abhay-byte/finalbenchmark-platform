@@ -73,7 +73,9 @@ data class BenchmarkSummary(
         val timestamp: Long = System.currentTimeMillis(),
         val performanceMetricsJson: String = "",
         /** Populated for FULL benchmark: maps category key (CPU/AI/GPU/RAM/STORAGE/PRODUCTIVITY) to raw normalized_score. */
-        val categoryScores: Map<String, Double> = emptyMap()
+        val categoryScores: Map<String, Double> = emptyMap(),
+        /** Populated for FULL benchmark: maps category key to full per-phase summaryJson for drill-down. */
+        val phaseDetails: Map<String, String> = emptyMap()
 )
 
 @OptIn(
@@ -193,6 +195,15 @@ fun ResultScreen(
                         }
                     }
 
+                    // Parse per-phase summary JSONs for FULL drill-down
+                    val phaseDetails = mutableMapOf<String, String>()
+                    val phaseDetailsObj = jsonObject.optJSONObject("phase_details")
+                    if (phaseDetailsObj != null) {
+                        phaseDetailsObj.keys().forEach { key ->
+                            phaseDetails[key] = phaseDetailsObj.getString(key)
+                        }
+                    }
+
                     val parsedSummary = BenchmarkSummary(
                         singleCoreScore = jsonObject.optDouble("single_core_score", 0.0),
                         multiCoreScore = jsonObject.optDouble("multi_core_score", 0.0),
@@ -203,7 +214,8 @@ fun ResultScreen(
                         deviceSummary = deviceSummary,
                         timestamp = jsonObject.optLong("timestamp", System.currentTimeMillis()),
                         performanceMetricsJson = performanceMetricsJson,
-                        categoryScores = categoryScores
+                        categoryScores = categoryScores,
+                        phaseDetails = phaseDetails
                     )
                     
                     summaryState = parsedSummary
@@ -998,6 +1010,7 @@ fun LongSummaryInfoRow(label: String, value: String) {
         }
 }
 
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun DetailedDataTab(summary: BenchmarkSummary) {
     if (summary.type == "AI") {
@@ -1412,6 +1425,75 @@ fun DetailedDataTab(summary: BenchmarkSummary) {
             }
         }
     } else if (summary.type == "FULL") {
+        // State for phase drill-down bottom sheet
+        var selectedPhaseKey by remember { mutableStateOf<String?>(null) }
+        val selectedPhaseJson: String? = selectedPhaseKey?.let { summary.phaseDetails[it] }
+
+        // Bottom sheet for per-phase detail
+        if (selectedPhaseKey != null && selectedPhaseJson != null) {
+            val sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true)
+            val phaseSummary = remember(selectedPhaseJson) {
+                try {
+                    val obj = org.json.JSONObject(selectedPhaseJson)
+                    val dra = obj.optJSONArray("detailed_results")
+                    val dr = mutableListOf<BenchmarkResult>()
+                    if (dra != null) {
+                        for (i in 0 until dra.length()) {
+                            val o = dra.getJSONObject(i)
+                            dr.add(BenchmarkResult(
+                                name = o.optString("name"),
+                                executionTimeMs = o.optDouble("executionTimeMs"),
+                                opsPerSecond = o.optDouble("opsPerSecond"),
+                                isValid = o.optBoolean("isValid", true),
+                                metricsJson = o.optString("metricsJson", "{}")
+                            ))
+                        }
+                    }
+                    BenchmarkSummary(
+                        type = obj.optString("type", selectedPhaseKey!!),
+                        finalScore = obj.optDouble("final_score", 0.0),
+                        normalizedScore = obj.optDouble("normalized_score", 0.0),
+                        singleCoreScore = obj.optDouble("single_core_score", 0.0),
+                        multiCoreScore = obj.optDouble("multi_core_score", 0.0),
+                        performanceMetricsJson = obj.opt("performance_metrics")?.toString() ?: "{}",
+                        detailedResults = dr
+                    )
+                } catch (e: Exception) { null }
+            }
+            if (phaseSummary != null) {
+                androidx.compose.material3.ModalBottomSheet(
+                    onDismissRequest = { selectedPhaseKey = null },
+                    sheetState = sheetState,
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    modifier = Modifier.fillMaxHeight(0.92f)
+                ) {
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = selectedPhaseKey!!,
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Detailed Results",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                            )
+                        }
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            DetailedDataTab(summary = phaseSummary)
+                        }
+                    }
+                }
+            }
+        }
+
         // ── Full benchmark results (all 6 categories) ─────────────────────────────
         val catScores = summary.categoryScores
 
@@ -1506,6 +1588,15 @@ fun DetailedDataTab(summary: BenchmarkSummary) {
                 }
             }
 
+            // Performance monitoring graphs (spans full benchmark run)
+            item {
+                AnimatedEntranceContainer(index = 0) {
+                    PerformanceMonitoringSection(
+                        performanceMetricsJson = summary.performanceMetricsJson
+                    )
+                }
+            }
+
             // Per-category cards
             categories.forEachIndexed { i, cat ->
                 item {
@@ -1516,8 +1607,12 @@ fun DetailedDataTab(summary: BenchmarkSummary) {
                         val accentColor = catAccentColors[i]
                         val catInitial = cat.key.take(2)
 
+                        val hasDetail = summary.phaseDetails.containsKey(cat.key)
+
                         Card(
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .then(if (hasDetail) Modifier.clickable { selectedPhaseKey = cat.key } else Modifier),
                             shape = RoundedCornerShape(20.dp),
                             colors = CardDefaults.cardColors(
                                 containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.12f)
@@ -1559,6 +1654,13 @@ fun DetailedDataTab(summary: BenchmarkSummary) {
                                                 style = MaterialTheme.typography.labelSmall,
                                                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                                             )
+                                            if (hasDetail) {
+                                                Text(
+                                                    text = "Tap to view details →",
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = accentColor.copy(alpha = 0.8f)
+                                                )
+                                            }
                                         }
                                     }
                                     Column(horizontalAlignment = Alignment.End) {

@@ -3,6 +3,7 @@ package com.ivarna.finalbenchmark2.ui.viewmodels
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkCategory
+import com.ivarna.finalbenchmark2.utils.PerformanceMonitor
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -29,6 +30,8 @@ data class FullBenchmarkState(
     val currentPhaseIndex: Int = 0,
     /** Map of category → raw normalized_score collected from the sub-benchmark. */
     val scores: Map<BenchmarkCategory, Double> = emptyMap(),
+    /** Map of category → full summary JSON from the sub-benchmark (for drill-down). */
+    val phaseJsons: Map<BenchmarkCategory, String> = emptyMap(),
     val isComplete: Boolean = false,
     val overallScore: Int = 0,
     val grade: String = ""
@@ -87,7 +90,18 @@ class FullBenchmarkViewModel(application: Application) : AndroidViewModel(applic
     private val _state = MutableStateFlow(FullBenchmarkState(phases = PHASES))
     val state: StateFlow<FullBenchmarkState> = _state.asStateFlow()
 
+    /** Overall performance monitor spanning the entire full benchmark run. */
+    private val performanceMonitor = PerformanceMonitor(application)
+
     // ── Public API ────────────────────────────────────────────────────────────
+
+    /** Start overall performance monitoring — call when the full benchmark begins. */
+    fun startMonitoring() {
+        performanceMonitor.start()
+    }
+
+    /** Stop monitoring and return the metrics JSON string. */
+    fun stopAndGetMetrics(): String = performanceMonitor.stop()
 
     /**
      * Record the result of one phase. Called by FullBenchmarkScreen when a sub-benchmark
@@ -95,7 +109,8 @@ class FullBenchmarkViewModel(application: Application) : AndroidViewModel(applic
      */
     fun recordPhaseScore(category: BenchmarkCategory, summaryJson: String) {
         val rawScore = extractNormalizedScore(summaryJson)
-        val newScores = _state.value.scores + (category to rawScore)
+        val newScores    = _state.value.scores    + (category to rawScore)
+        val newPhaseJsons = _state.value.phaseJsons + (category to summaryJson)
         val nextIndex = _state.value.currentPhaseIndex + 1
 
         if (nextIndex >= PHASES.size) {
@@ -103,6 +118,7 @@ class FullBenchmarkViewModel(application: Application) : AndroidViewModel(applic
             _state.update {
                 it.copy(
                     scores       = newScores,
+                    phaseJsons   = newPhaseJsons,
                     isComplete   = true,
                     overallScore = overall,
                     grade        = gradeFor(overall)
@@ -110,19 +126,33 @@ class FullBenchmarkViewModel(application: Application) : AndroidViewModel(applic
             }
         } else {
             _state.update {
-                it.copy(scores = newScores, currentPhaseIndex = nextIndex)
+                it.copy(
+                    scores           = newScores,
+                    phaseJsons       = newPhaseJsons,
+                    currentPhaseIndex = nextIndex
+                )
             }
         }
     }
 
     /**
      * Build the final summary JSON that can be passed to ResultScreen or stored in history.
-     * The format mirrors the per-category summary JSON so the ResultScreen can handle it.
+     * Includes `phase_details` (per-category summary JSONs) and `performance_metrics`.
      */
-    fun buildFinalSummaryJson(): String {
+    fun buildFinalSummaryJson(performanceMetricsJson: String = "{}"): String {
         val s = _state.value
         val categoryScores = JSONObject()
         for ((cat, score) in s.scores) categoryScores.put(cat.name, score)
+
+        // Per-phase summary JSONs for drill-down
+        val phaseDetails = JSONObject()
+        for ((cat, json) in s.phaseJsons) phaseDetails.put(cat.name, json)
+
+        val perfMetricsObj = try {
+            JSONObject(performanceMetricsJson)
+        } catch (e: Exception) {
+            JSONObject()
+        }
 
         return JSONObject().apply {
             put("type",               "FULL")
@@ -132,6 +162,8 @@ class FullBenchmarkViewModel(application: Application) : AndroidViewModel(applic
             put("multi_core_score",   s.overallScore.toDouble())
             put("grade",              s.grade)
             put("category_scores",    categoryScores)
+            put("phase_details",      phaseDetails)
+            put("performance_metrics", perfMetricsObj)
             put("timestamp",          System.currentTimeMillis())
         }.toString()
     }

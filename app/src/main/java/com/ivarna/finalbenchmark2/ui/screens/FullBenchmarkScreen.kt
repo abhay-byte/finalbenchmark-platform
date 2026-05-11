@@ -74,6 +74,9 @@ fun FullBenchmarkScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val coroutineScope = rememberCoroutineScope()
 
+    // Start the overall performance monitor when this screen is first composed
+    LaunchedEffect(Unit) { viewModel.startMonitoring() }
+
     // ── Final results ────────────────────────────────────────────────────────
     AnimatedVisibility(
         visible = state.isComplete,
@@ -83,10 +86,30 @@ fun FullBenchmarkScreen(
         FullBenchmarkResultScreen(
             state = state,
             onDone = {
-                // Save FULL benchmark result to history before navigating away
-                val summaryJson = viewModel.buildFinalSummaryJson()
+                // Stop monitoring and build final JSON with performance metrics
+                val metricsJson = viewModel.stopAndGetMetrics()
+                val summaryJson = viewModel.buildFinalSummaryJson(metricsJson)
+
                 coroutineScope.launch {
                     try {
+                        // Store {category_scores, performance_metrics} combined in performanceMetricsJson
+                        // so HistoryScreen can read both from a single column (backward-compat)
+                        val catScores = try {
+                            org.json.JSONObject(summaryJson).optJSONObject("category_scores") ?: org.json.JSONObject()
+                        } catch (e: Exception) { org.json.JSONObject() }
+                        val perfMetrics = try {
+                            org.json.JSONObject(metricsJson)
+                        } catch (e: Exception) { org.json.JSONObject() }
+                        val combinedMetrics = org.json.JSONObject().apply {
+                            put("category_scores", catScores)
+                            put("performance_metrics", perfMetrics)
+                        }.toString()
+
+                        // Store per-phase summary JSONs in detailedResultsJson for drill-down
+                        val phaseDetailsJson = try {
+                            org.json.JSONObject(summaryJson).optJSONObject("phase_details")?.toString() ?: "{}"
+                        } catch (e: Exception) { "{}" }
+
                         val entity = com.ivarna.finalbenchmark2.data.database.entities.BenchmarkResultEntity(
                             type                   = "FULL",
                             totalScore             = state.overallScore.toDouble(),
@@ -95,8 +118,8 @@ fun FullBenchmarkScreen(
                             singleCoreScore        = 0.0,
                             multiCoreScore         = state.overallScore.toDouble(),
                             normalizedScore        = state.overallScore.toDouble(),
-                            detailedResultsJson    = "[]",
-                            performanceMetricsJson = org.json.JSONObject(summaryJson).optJSONObject("category_scores")?.toString() ?: "{}"
+                            detailedResultsJson    = phaseDetailsJson,
+                            performanceMetricsJson = combinedMetrics
                         )
                         historyRepository.saveGenericBenchmark(entity, emptyList())
                     } catch (e: Exception) {

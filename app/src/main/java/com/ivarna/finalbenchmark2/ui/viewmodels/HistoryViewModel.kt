@@ -22,7 +22,9 @@ data class HistoryUiModel(
         val testName: String,
         val normalizedScore: Double = 0.0,
         val detailedResults: List<BenchmarkResult> = emptyList(),
-        val performanceMetricsJson: String = ""
+        val performanceMetricsJson: String = "",
+        /** Raw JSON string from detailedResultsJson DB column — used for FULL benchmark phase_details. */
+        val rawDetailedResultsJson: String = ""
 )
 
 sealed interface HistoryScreenState {
@@ -97,7 +99,9 @@ class HistoryViewModel(private val repository: HistoryRepository) : ViewModel() 
                                                     benchmark.benchmarkResult.normalizedScore,
                                             detailedResults = detailedResults,
                                             performanceMetricsJson =
-                                                    benchmark.benchmarkResult.performanceMetricsJson
+                                                    benchmark.benchmarkResult.performanceMetricsJson,
+                                            rawDetailedResultsJson =
+                                                    benchmark.benchmarkResult.detailedResultsJson
                                     )
                                 }
 

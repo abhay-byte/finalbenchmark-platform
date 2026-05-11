@@ -252,14 +252,34 @@ fun HistoryScreen(viewModel: HistoryViewModel, navController: NavController) {
                                                 val detailedResultsJson =
                                                         gson.toJson(result.detailedResults)
 
-                                                // For FULL benchmark: performanceMetricsJson holds
-                                                // the category_scores JSON object (set at save time)
+                                                // For FULL benchmark: performanceMetricsJson may be:
+                                                // - New: {"category_scores":{...},"performance_metrics":{...}}
+                                                // - Old: the raw category_scores JSON object directly
                                                 val isFull = result.testName.equals("FULL", ignoreCase = true)
-                                                val categoryScoresJson = if (isFull && result.performanceMetricsJson.isNotEmpty()) {
-                                                    result.performanceMetricsJson
+                                                val categoryScoresJson: String?
+                                                val perfMetricsJson: String
+                                                if (isFull && result.performanceMetricsJson.isNotEmpty()) {
+                                                    val combined = try { org.json.JSONObject(result.performanceMetricsJson) } catch (e: Exception) { null }
+                                                    if (combined != null && combined.has("category_scores")) {
+                                                        // New format
+                                                        categoryScoresJson = combined.optJSONObject("category_scores")?.toString()
+                                                        perfMetricsJson = combined.optJSONObject("performance_metrics")?.toString() ?: "{}"
+                                                    } else {
+                                                        // Old format: the field IS category_scores
+                                                        categoryScoresJson = result.performanceMetricsJson
+                                                        perfMetricsJson = "{}"
+                                                    }
                                                 } else {
-                                                    null
+                                                    categoryScoresJson = null
+                                                    perfMetricsJson = if (result.performanceMetricsJson.isNotEmpty()) result.performanceMetricsJson else "{}"
                                                 }
+
+                                                // Phase details for drill-down (stored in rawDetailedResultsJson for FULL)
+                                                val phaseDetailsJson: String? = if (isFull && result.rawDetailedResultsJson.isNotBlank()
+                                                    && result.rawDetailedResultsJson != "[]"
+                                                    && result.rawDetailedResultsJson.startsWith("{")) {
+                                                    result.rawDetailedResultsJson
+                                                } else null
 
                                                 val summaryJson = buildString {
                                                     append("{\n")
@@ -272,10 +292,10 @@ fun HistoryScreen(viewModel: HistoryViewModel, navController: NavController) {
                                                     append("  \"benchmark_id\": ${result.id},\n")
                                                     if (categoryScoresJson != null) {
                                                         append("  \"category_scores\": $categoryScoresJson,\n")
-                                                        append("  \"performance_metrics\": {},\n")
-                                                    } else {
-                                                        val pmJson = if (result.performanceMetricsJson.isNotEmpty()) result.performanceMetricsJson else "{}"
-                                                        append("  \"performance_metrics\": $pmJson,\n")
+                                                    }
+                                                    append("  \"performance_metrics\": $perfMetricsJson,\n")
+                                                    if (phaseDetailsJson != null) {
+                                                        append("  \"phase_details\": $phaseDetailsJson,\n")
                                                     }
                                                     append("  \"detailed_results\": $detailedResultsJson\n")
                                                     append("}")

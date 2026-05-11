@@ -78,7 +78,12 @@ android {
 
     // Signing configuration for release builds
     signingConfigs {
-        create("release") { storeFile = file("../keystore/my-release-key.keystore") }
+        create("release") {
+            storeFile = file("/home/abhay/projects/keys/finalbenchmark-release.jks")
+            storePassword = "finalbenchmark_release_ab"
+            keyAlias = "finalbenchmark"
+            keyPassword = "finalbenchmark_release_ab"
+        }
     }
 
     buildTypes {
