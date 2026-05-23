@@ -41,6 +41,7 @@ import com.ivarna.finalbenchmark2.utils.PowerConsumptionPreferences
 import com.ivarna.finalbenchmark2.utils.RootAccessManager
 import com.ivarna.finalbenchmark2.utils.RootAccessPreferences
 import com.ivarna.finalbenchmark2.utils.ThemePreferences
+import com.ivarna.finalbenchmark2.utils.BenchmarkPreferences
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -349,6 +350,50 @@ fun SettingsScreen(
                                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                                             modifier = Modifier.padding(top = 8.dp)
                                         )
+                                    }
+                                }
+
+                                // Custom Benchmark Options Settings Card
+                                val benchmarkPrefs = remember { BenchmarkPreferences(context) }
+                                var showIndividualOptions by remember { mutableStateOf(benchmarkPrefs.getShowIndividualOptions()) }
+
+                                GlassSettingCard(delayMillis = 150) {
+                                    Column(modifier = Modifier.padding(20.dp)) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Column(modifier = Modifier.weight(1f)) {
+                                                Text(
+                                                    text = "Advanced Mode",
+                                                    fontSize = 16.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = MaterialTheme.colorScheme.onSurface
+                                                )
+
+                                                Text(
+                                                    text = "Choose specific benchmark workloads on the Home Screen",
+                                                    fontSize = 13.sp,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                    modifier = Modifier.padding(top = 4.dp)
+                                                )
+                                            }
+
+                                            Switch(
+                                                checked = showIndividualOptions,
+                                                onCheckedChange = { enabled ->
+                                                    showIndividualOptions = enabled
+                                                    benchmarkPrefs.setShowIndividualOptions(enabled)
+                                                },
+                                                colors = SwitchDefaults.colors(
+                                                    checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                                                    checkedTrackColor = MaterialTheme.colorScheme.primary,
+                                                    uncheckedThumbColor = MaterialTheme.colorScheme.outline,
+                                                    uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant
+                                                )
+                                            )
+                                        }
                                     }
                                 }
 

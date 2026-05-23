@@ -87,6 +87,7 @@ import com.ivarna.finalbenchmark2.utils.CpuUtilizationUtils
 import com.ivarna.finalbenchmark2.utils.PowerUtils
 import com.ivarna.finalbenchmark2.utils.TemperatureUtils
 import com.ivarna.finalbenchmark2.cpuBenchmark.displayLabel
+import com.ivarna.finalbenchmark2.utils.BenchmarkPreferences
 import kotlinx.coroutines.delay
 import kotlin.math.abs
 import dev.chrisbanes.haze.hazeChild
@@ -351,90 +352,88 @@ fun HomeScreen(
                                         modifier = Modifier.padding(16.dp),
                                         verticalArrangement = Arrangement.spacedBy(16.dp)
                                     ) {
-                                        // Workload Dropdown – hidden for GPU/EXTERNAL_GPU/RAM/STORAGE/FULL (no intensity tiers)
-                                        androidx.compose.animation.AnimatedVisibility(
-                                            visible = selectedBenchmarkCategory != com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkCategory.GPU &&
-                                                      selectedBenchmarkCategory != com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkCategory.EXTERNAL_GPU &&
-                                                      selectedBenchmarkCategory != com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkCategory.RAM &&
-                                                      selectedBenchmarkCategory != com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkCategory.STORAGE &&
-                                                      selectedBenchmarkCategory != com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkCategory.FULL
-                                        ) {
-                                        ExposedDropdownMenuBox(
-                                            expanded = isDropdownExpanded,
-                                            onExpandedChange = { isDropdownExpanded = !isDropdownExpanded },
-                                            modifier = Modifier.fillMaxWidth()
-                                        ) {
-                                            OutlinedTextField(
-                                                value = selectedWorkload,
-                                                onValueChange = {},
-                                                readOnly = true,
-                                                label = { Text("Workload Intensity") },
-                                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isDropdownExpanded) },
-                                                colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
-                                                modifier = Modifier.menuAnchor().fillMaxWidth(),
-                                                shape = RoundedCornerShape(12.dp)
-                                            )
-                                            ExposedDropdownMenu(
-                                                expanded = isDropdownExpanded,
-                                                onDismissRequest = { isDropdownExpanded = false }
+                                        val benchmarkPrefs = remember { com.ivarna.finalbenchmark2.utils.BenchmarkPreferences(context) }
+                                        val showIndividualOptions = benchmarkPrefs.getShowIndividualOptions()
+
+                                        if (showIndividualOptions) {
+                                            // Workload Dropdown – hidden for GPU/EXTERNAL_GPU/RAM/STORAGE/FULL (no intensity tiers)
+                                            androidx.compose.animation.AnimatedVisibility(
+                                                visible = selectedBenchmarkCategory != com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkCategory.GPU &&
+                                                          selectedBenchmarkCategory != com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkCategory.EXTERNAL_GPU &&
+                                                          selectedBenchmarkCategory != com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkCategory.RAM &&
+                                                          selectedBenchmarkCategory != com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkCategory.STORAGE &&
+                                                          selectedBenchmarkCategory != com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkCategory.FULL
                                             ) {
-                                                workloadOptions.forEach { option ->
-                                                    DropdownMenuItem(
-                                                        text = { Text(option) },
-                                                        onClick = {
-                                                            selectedWorkload = option
-                                                            isDropdownExpanded = false
-                                                        }
-                                                    )
+                                            ExposedDropdownMenuBox(
+                                                expanded = isDropdownExpanded,
+                                                onExpandedChange = { isDropdownExpanded = !isDropdownExpanded },
+                                                modifier = Modifier.fillMaxWidth()
+                                            ) {
+                                                OutlinedTextField(
+                                                    value = selectedWorkload,
+                                                    onValueChange = {},
+                                                    readOnly = true,
+                                                    label = { Text("Workload Intensity") },
+                                                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isDropdownExpanded) },
+                                                    colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                                                    modifier = Modifier.menuAnchor().fillMaxWidth(),
+                                                    shape = RoundedCornerShape(12.dp)
+                                                )
+                                                ExposedDropdownMenu(
+                                                    expanded = isDropdownExpanded,
+                                                    onDismissRequest = { isDropdownExpanded = false }
+                                                ) {
+                                                    workloadOptions.forEach { option ->
+                                                        DropdownMenuItem(
+                                                            text = { Text(option) },
+                                                            onClick = {
+                                                                selectedWorkload = option
+                                                                isDropdownExpanded = false
+                                                            }
+                                                        )
+                                                    }
                                                 }
                                             }
-                                        }
-                                        } // end AnimatedVisibility
+                                            } // end AnimatedVisibility
 
-                                        // Benchmark Type Dropdown
-                                        ExposedDropdownMenuBox(
-                                            expanded = isTypeDropdownExpanded,
-                                            onExpandedChange = { isTypeDropdownExpanded = !isTypeDropdownExpanded },
-                                            modifier = Modifier.fillMaxWidth()
-                                        ) {
-                                            OutlinedTextField(
-                                                value = selectedBenchmarkCategory.displayLabel(),
-                                                onValueChange = {},
-                                                readOnly = true,
-                                                label = { Text("Benchmark Type") },
-                                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isTypeDropdownExpanded) },
-                                                colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
-                                                modifier = Modifier.menuAnchor().fillMaxWidth(),
-                                                shape = RoundedCornerShape(12.dp)
-                                            )
-                                            
-                                            ExposedDropdownMenu(
+                                            // Benchmark Type Dropdown
+                                            ExposedDropdownMenuBox(
                                                 expanded = isTypeDropdownExpanded,
-                                                onDismissRequest = { isTypeDropdownExpanded = false }
+                                                onExpandedChange = { isTypeDropdownExpanded = !isTypeDropdownExpanded },
+                                                modifier = Modifier.fillMaxWidth()
                                             ) {
-                                                benchmarkCategories.forEach { category ->
-                                                    DropdownMenuItem(
-                                                        text = {
-                                                            Column {
-                                                                Text(
-                                                                    text = category.displayLabel(),
-                                                                    fontWeight = if (category == com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkCategory.FULL)
-                                                                        androidx.compose.ui.text.font.FontWeight.Bold else androidx.compose.ui.text.font.FontWeight.Normal
-                                                                )
-                                                                if (category == com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkCategory.FULL) {
+                                                OutlinedTextField(
+                                                    value = selectedBenchmarkCategory.displayLabel(),
+                                                    onValueChange = {},
+                                                    readOnly = true,
+                                                    label = { Text("Benchmark Type") },
+                                                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isTypeDropdownExpanded) },
+                                                    colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                                                    modifier = Modifier.menuAnchor().fillMaxWidth(),
+                                                    shape = RoundedCornerShape(12.dp)
+                                                )
+                                                
+                                                ExposedDropdownMenu(
+                                                    expanded = isTypeDropdownExpanded,
+                                                    onDismissRequest = { isTypeDropdownExpanded = false }
+                                                ) {
+                                                    benchmarkCategories.forEach { category ->
+                                                        DropdownMenuItem(
+                                                            text = {
+                                                                Column {
                                                                     Text(
-                                                                        text = "CPU · RAM · Storage · GPU · Productivity  (~15–30 min)",
-                                                                        style = MaterialTheme.typography.labelSmall,
-                                                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                                                        text = category.displayLabel(),
+                                                                        fontWeight = if (category == com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkCategory.FULL)
+                                                                            androidx.compose.ui.text.font.FontWeight.Bold else androidx.compose.ui.text.font.FontWeight.Normal
                                                                     )
                                                                 }
+                                                            },
+                                                            onClick = {
+                                                                selectedBenchmarkCategory = category
+                                                                isTypeDropdownExpanded = false
                                                             }
-                                                        },
-                                                        onClick = {
-                                                            selectedBenchmarkCategory = category
-                                                            isTypeDropdownExpanded = false
-                                                        }
-                                                    )
+                                                        )
+                                                    }
                                                 }
                                             }
                                         }

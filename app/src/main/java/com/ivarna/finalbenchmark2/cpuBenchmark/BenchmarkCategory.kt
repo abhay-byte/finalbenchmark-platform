@@ -20,5 +20,5 @@ fun BenchmarkCategory.displayLabel(): String = when (this) {
     BenchmarkCategory.STORAGE      -> "Storage"
     BenchmarkCategory.PRODUCTIVITY -> "Productivity"
     BenchmarkCategory.EXTERNAL_GPU -> "GPU (External)"
-    BenchmarkCategory.FULL         -> "⚡ Full Benchmark"
+    BenchmarkCategory.FULL         -> "Final Benchmark"
 }
