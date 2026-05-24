@@ -60,6 +60,8 @@ import java.util.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.delay
+import kotlin.math.roundToInt
+import androidx.compose.ui.draw.drawBehind
 import org.json.JSONObject
 
 data class BenchmarkSummary(
@@ -1425,102 +1427,38 @@ fun DetailedDataTab(summary: BenchmarkSummary) {
             }
         }
     } else if (summary.type == "FULL") {
-        // State for phase drill-down bottom sheet
-        var selectedPhaseKey by remember { mutableStateOf<String?>(null) }
-        val selectedPhaseJson: String? = selectedPhaseKey?.let { summary.phaseDetails[it] }
-
-        // Bottom sheet for per-phase detail
-        if (selectedPhaseKey != null && selectedPhaseJson != null) {
-            val sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true)
-            val phaseSummary = remember(selectedPhaseJson) {
-                try {
-                    val obj = org.json.JSONObject(selectedPhaseJson)
-                    val dra = obj.optJSONArray("detailed_results")
-                    val dr = mutableListOf<BenchmarkResult>()
-                    if (dra != null) {
-                        for (i in 0 until dra.length()) {
-                            val o = dra.getJSONObject(i)
-                            dr.add(BenchmarkResult(
-                                name = o.optString("name"),
-                                executionTimeMs = o.optDouble("executionTimeMs"),
-                                opsPerSecond = o.optDouble("opsPerSecond"),
-                                isValid = o.optBoolean("isValid", true),
-                                metricsJson = o.optString("metricsJson", "{}")
-                            ))
-                        }
-                    }
-                    BenchmarkSummary(
-                        type = obj.optString("type", selectedPhaseKey!!),
-                        finalScore = obj.optDouble("final_score", 0.0),
-                        normalizedScore = obj.optDouble("normalized_score", 0.0),
-                        singleCoreScore = obj.optDouble("single_core_score", 0.0),
-                        multiCoreScore = obj.optDouble("multi_core_score", 0.0),
-                        performanceMetricsJson = obj.opt("performance_metrics")?.toString() ?: "{}",
-                        detailedResults = dr
-                    )
-                } catch (e: Exception) { null }
-            }
-            if (phaseSummary != null) {
-                androidx.compose.material3.ModalBottomSheet(
-                    onDismissRequest = { selectedPhaseKey = null },
-                    sheetState = sheetState,
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    modifier = Modifier.fillMaxHeight(0.92f)
-                ) {
-                    Column(modifier = Modifier.fillMaxSize()) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = selectedPhaseKey!!,
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.ExtraBold,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "Detailed Results",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                            )
-                        }
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
-                        Box(modifier = Modifier.fillMaxSize()) {
-                            DetailedDataTab(summary = phaseSummary)
-                        }
-                    }
-                }
-            }
-        }
-
-        // ── Full benchmark results (all 6 categories) ─────────────────────────────
+        // ── Full benchmark results ─────────────────────────────────────────────
         val catScores = summary.categoryScores
 
-        // Phase config: key, displayName, weight, maxScore
-        data class CatConfig(val key: String, val displayName: String, val weight: Float, val maxScore: Double)
+        // Category display config – only key and display name needed; weights kept for reference
+        data class CatConfig(val key: String, val displayName: String)
         val categories = listOf(
-            CatConfig("CPU",          "CPU Performance",     0.20f, 1000.0),
-            CatConfig("AI",           "AI / ML",             0.15f,  500.0),
-            CatConfig("GPU",          "GPU Performance",     0.20f,  500.0),
-            CatConfig("RAM",          "RAM Performance",     0.10f,  500.0),
-            CatConfig("STORAGE",      "Storage Performance", 0.10f,  600.0),
-            CatConfig("PRODUCTIVITY", "Productivity",        0.25f,  900.0),
+            CatConfig("CPU",          "CPU Performance"),
+            CatConfig("AI",           "AI / ML"),
+            CatConfig("GPU",          "GPU Performance"),
+            CatConfig("RAM",          "RAM Performance"),
+            CatConfig("STORAGE",      "Storage Performance"),
+            CatConfig("PRODUCTIVITY", "Productivity"),
         )
         val catAccentColors = listOf(
             androidx.compose.ui.graphics.Color(0xFF7C4DFF),
-            androidx.compose.ui.graphics.Color(0xFF00BCD4),
+            androidx.compose.ui.graphics.Color(0xFFE91E63),
             androidx.compose.ui.graphics.Color(0xFFF44336),
+            androidx.compose.ui.graphics.Color(0xFF00BCD4),
             androidx.compose.ui.graphics.Color(0xFF4CAF50),
             androidx.compose.ui.graphics.Color(0xFFFF9800),
-            androidx.compose.ui.graphics.Color(0xFFFFD700),
         )
+
+        // Per-category expanded state
+        val expandedStates = remember(categories) {
+            categories.map { androidx.compose.runtime.mutableStateOf(false) }
+        }
 
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            // Overall score card
+            // Overall score card (top)
             item {
                 AnimatedEntranceContainer(index = 0) {
                     Card(
@@ -1533,7 +1471,7 @@ fun DetailedDataTab(summary: BenchmarkSummary) {
                         border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.25f))
                     ) {
                         Row(
-                            modifier = Modifier.fillMaxWidth().padding(24.dp),
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 20.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
@@ -1546,217 +1484,152 @@ fun DetailedDataTab(summary: BenchmarkSummary) {
                                     letterSpacing = 1.5.sp
                                 )
                                 Text(
-                                    text = "Combined System Performance  ·  0–1000",
+                                    text = "Combined System Performance",
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f)
                                 )
                             }
                             Text(
                                 text = String.format("%.0f", summary.finalScore),
-                                style = MaterialTheme.typography.headlineLarge,
+                                style = MaterialTheme.typography.displaySmall,
                                 fontWeight = FontWeight.ExtraBold,
                                 color = MaterialTheme.colorScheme.primary,
-                                letterSpacing = (-1).sp
+                                letterSpacing = (-1.5).sp
                             )
                         }
                     }
                 }
             }
 
-            // Section header
+            // Performance monitoring
             item {
                 AnimatedEntranceContainer(index = 1) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Rounded.Speed,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp),
-                            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "CATEGORY BREAKDOWN",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Black,
-                            letterSpacing = 2.sp,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                        )
-                    }
-                }
-            }
-
-            // Performance monitoring graphs (spans full benchmark run)
-            item {
-                AnimatedEntranceContainer(index = 0) {
                     PerformanceMonitoringSection(
                         performanceMetricsJson = summary.performanceMetricsJson
                     )
                 }
             }
 
-            // Per-category cards
+            // Per-category expandable rows
             categories.forEachIndexed { i, cat ->
                 item {
                     AnimatedEntranceContainer(index = i + 2) {
-                        val rawScore = catScores[cat.key] ?: 0.0
-                        val pct = (rawScore / cat.maxScore).coerceIn(0.0, 1.0)
-                        val weightedPts = pct * cat.weight * 1000.0
+                        val rawScore    = catScores[cat.key] ?: 0.0
                         val accentColor = catAccentColors[i]
-                        val catInitial = cat.key.take(2)
+                        val phaseJson   = summary.phaseDetails[cat.key]
+                        var expanded    = expandedStates[i]
 
-                        val hasDetail = summary.phaseDetails.containsKey(cat.key)
+                        // Parse sub-tests
+                        val subTests: List<Pair<String, String>> = remember(phaseJson) {
+                            if (phaseJson == null) return@remember emptyList()
+                            try {
+                                val obj = org.json.JSONObject(phaseJson)
+                                val dr  = obj.optJSONArray("detailed_results") ?: return@remember emptyList()
+                                (0 until dr.length()).mapNotNull { idx ->
+                                    val item = dr.getJSONObject(idx)
+                                    val name = item.optString("name", "Test ${idx + 1}")
+                                        .removePrefix("Single-Core ").removePrefix("Multi-Core ")
+                                    val metricsStr = item.optString("metricsJson", "{}")
+                                    val score = try {
+                                        org.json.JSONObject(metricsStr).optDouble("score", -1.0)
+                                    } catch (_: Exception) { -1.0 }
+                                    val scoreText = if (score >= 0) score.roundToInt().toString() else "—"
+                                    name to scoreText
+                                }
+                            } catch (_: Exception) { emptyList() }
+                        }
+
+                        val hasSubTests = subTests.isNotEmpty()
 
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .then(if (hasDetail) Modifier.clickable { selectedPhaseKey = cat.key } else Modifier),
-                            shape = RoundedCornerShape(20.dp),
+                                .then(if (hasSubTests) Modifier.clickable { expanded.value = !expanded.value } else Modifier),
+                            shape  = RoundedCornerShape(18.dp),
                             colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.12f)
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.10f)
                             ),
                             elevation = CardDefaults.cardElevation(0.dp),
-                            border = BorderStroke(1.dp, accentColor.copy(alpha = 0.3f))
+                            border = BorderStroke(1.dp, accentColor.copy(alpha = 0.25f))
                         ) {
-                            Column(modifier = Modifier.fillMaxWidth().padding(20.dp)) {
+                            Column(modifier = Modifier.fillMaxWidth()) {
+                                // Header
                                 Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Box(
-                                            modifier = Modifier
-                                                .size(42.dp)
-                                                .clip(CircleShape)
-                                                .background(accentColor.copy(alpha = 0.15f)),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Text(
-                                                text = catInitial,
-                                                fontSize = 13.sp,
-                                                fontWeight = FontWeight.Black,
-                                                color = accentColor
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .drawBehind {
+                                            drawRect(
+                                                color = accentColor,
+                                                size  = androidx.compose.ui.geometry.Size(4.dp.toPx(), size.height)
                                             )
                                         }
-                                        Spacer(modifier = Modifier.width(12.dp))
-                                        Column {
-                                            Text(
-                                                text = cat.displayName,
-                                                style = MaterialTheme.typography.titleSmall,
-                                                fontWeight = FontWeight.Bold,
-                                                color = MaterialTheme.colorScheme.onSurface
-                                            )
-                                            Text(
-                                                text = "Weight: ${(cat.weight * 100).toInt()}%  ·  Max: ${cat.maxScore.toInt()} pts",
-                                                style = MaterialTheme.typography.labelSmall,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                                            )
-                                            if (hasDetail) {
+                                        .padding(start = 20.dp, end = 16.dp, top = 16.dp, bottom = 16.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment     = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text      = cat.displayName,
+                                        modifier  = Modifier.weight(1f),
+                                        style     = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color     = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Text(
+                                        text          = rawScore.roundToInt().toString(),
+                                        style         = MaterialTheme.typography.titleLarge,
+                                        fontWeight    = FontWeight.ExtraBold,
+                                        color         = accentColor,
+                                        letterSpacing = (-0.5).sp
+                                    )
+                                    if (hasSubTests) {
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(
+                                            text     = if (expanded.value) "▲" else "▼",
+                                            fontSize = 10.sp,
+                                            color    = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.35f)
+                                        )
+                                    }
+                                }
+
+                                // Expandable sub-test list
+                                AnimatedVisibility(visible = expanded.value) {
+                                    Column(modifier = Modifier.fillMaxWidth()) {
+                                        HorizontalDivider(
+                                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.05f)
+                                        )
+                                        subTests.forEachIndexed { idx, (name, scoreText) ->
+                                            Row(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .background(
+                                                        if (idx % 2 == 0) Color.Transparent
+                                                        else MaterialTheme.colorScheme.onBackground.copy(alpha = 0.02f)
+                                                    )
+                                                    .padding(start = 24.dp, end = 16.dp, top = 9.dp, bottom = 9.dp),
+                                                horizontalArrangement = Arrangement.SpaceBetween,
+                                                verticalAlignment     = Alignment.CenterVertically
+                                            ) {
                                                 Text(
-                                                    text = "Tap to view details →",
-                                                    style = MaterialTheme.typography.labelSmall,
-                                                    color = accentColor.copy(alpha = 0.8f)
+                                                    text      = name,
+                                                    modifier  = Modifier.weight(1f),
+                                                    style     = MaterialTheme.typography.bodySmall,
+                                                    color     = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f),
+                                                    maxLines  = 2,
+                                                    overflow  = TextOverflow.Ellipsis
+                                                )
+                                                Spacer(modifier = Modifier.width(12.dp))
+                                                Text(
+                                                    text       = scoreText,
+                                                    style      = MaterialTheme.typography.bodySmall,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color      = accentColor
                                                 )
                                             }
                                         }
+                                        Spacer(modifier = Modifier.height(4.dp))
                                     }
-                                    Column(horizontalAlignment = Alignment.End) {
-                                        Text(
-                                            text = String.format("%.0f", weightedPts),
-                                            style = MaterialTheme.typography.titleLarge,
-                                            fontWeight = FontWeight.Black,
-                                            color = accentColor
-                                        )
-                                        Text(
-                                            text = "pts",
-                                            style = MaterialTheme.typography.labelSmall,
-                                            fontSize = 9.sp,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                                        )
-                                    }
-                                }
-
-                                Spacer(modifier = Modifier.height(12.dp))
-
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    Text(
-                                        text = "Raw: ${String.format("%.0f", rawScore)} / ${cat.maxScore.toInt()}",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                                    )
-                                    Text(
-                                        text = "${String.format("%.1f", pct * 100)}%",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        fontWeight = FontWeight.Bold,
-                                        color = accentColor
-                                    )
-                                }
-
-                                Spacer(modifier = Modifier.height(8.dp))
-
-                                var animTarget by remember { mutableStateOf(0f) }
-                                LaunchedEffect(Unit) { animTarget = pct.toFloat() }
-                                val animPct by animateFloatAsState(
-                                    targetValue = animTarget,
-                                    animationSpec = tween(1200, easing = FastOutSlowInEasing),
-                                    label = "catPct_${cat.key}"
-                                )
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(8.dp)
-                                        .clip(CircleShape)
-                                        .background(MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.4f))
-                                ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth(animPct)
-                                            .fillMaxHeight()
-                                            .clip(CircleShape)
-                                            .background(
-                                                Brush.horizontalGradient(
-                                                    listOf(accentColor.copy(alpha = 0.7f), accentColor)
-                                                )
-                                            )
-                                    )
                                 }
                             }
-                        }
-                    }
-                }
-            }
-
-            // Scoring methodology note
-            item {
-                AnimatedEntranceContainer(index = 8) {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(20.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.08f)
-                        ),
-                        elevation = CardDefaults.cardElevation(0.dp),
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.12f))
-                    ) {
-                        Column(modifier = Modifier.fillMaxWidth().padding(20.dp)) {
-                            Text(
-                                text = "Scoring Methodology",
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = "Each category score is normalised against its maximum (0–100%), then weighted: CPU 20% · AI 15% · GPU 20% · RAM 10% · Storage 10% · Productivity 25%. Final score is on a 0–1000 scale.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                            )
                         }
                     }
                 }
@@ -3618,23 +3491,24 @@ private fun formatBenchmarkShareData(context: Context, summary: BenchmarkSummary
             builder.append("[Full Benchmark Category Breakdown]\n")
             data class ShareCatCfg(val key: String, val name: String, val weight: Float, val maxScore: Double)
             val shareCats = listOf(
-                ShareCatCfg("CPU",          "CPU Performance",     0.20f, 1000.0),
-                ShareCatCfg("AI",           "AI / ML",             0.15f,  500.0),
-                ShareCatCfg("GPU",          "GPU Performance",     0.20f,  500.0),
-                ShareCatCfg("RAM",          "RAM Performance",     0.10f,  500.0),
-                ShareCatCfg("STORAGE",      "Storage Performance", 0.10f,  600.0),
-                ShareCatCfg("PRODUCTIVITY", "Productivity",        0.25f,  900.0),
+                ShareCatCfg("CPU",          "CPU Performance",     0.25f, 200.0),
+                ShareCatCfg("AI",           "AI / ML",             0.15f, 100.0),
+                ShareCatCfg("GPU",          "GPU Performance",     0.25f, 100.0),
+                ShareCatCfg("RAM",          "RAM Performance",     0.10f, 100.0),
+                ShareCatCfg("STORAGE",      "Storage Performance", 0.10f,  85.0),
+                ShareCatCfg("PRODUCTIVITY", "Productivity",        0.15f,  85.0),
             )
             shareCats.forEach { cat ->
                 val raw = summary.categoryScores[cat.key] ?: 0.0
                 val pct = (raw / cat.maxScore).coerceIn(0.0, 1.0)
                 val weighted = pct * cat.weight * 1000.0
                 builder.append(
-                    "${cat.name} (${(cat.weight * 100).toInt()}%): ${String.format("%.0f", raw)}/${cat.maxScore.toInt()} raw  →  ${String.format("%.1f", weighted)} pts\n"
+                    "${cat.name} (${(cat.weight * 100).toInt()}%): ${String.format("%.0f", raw)} raw  →  ${String.format("%.1f", weighted)} pts\n"
                 )
             }
             builder.append("\nTotal Score: ${String.format("%.0f", summary.finalScore)} / 1000\n")
-            builder.append("Scoring: each category normalised 0–100%, then weighted. Final score 0–1000.\n")
+            builder.append("Scoring: each category normalised to its max (8 Gen 3 baseline), then weighted. Final score 0–1000.\n")
+
         } else if (summary.type == "AI") {
             // AI benchmark results — show TPS (throughput) and inference time per test
             builder.append("[AI / ML Benchmark Results]\n")

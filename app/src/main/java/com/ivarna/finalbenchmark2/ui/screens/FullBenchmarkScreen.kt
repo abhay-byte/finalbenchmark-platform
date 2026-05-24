@@ -15,6 +15,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.border
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
@@ -701,126 +702,56 @@ private fun FullBenchmarkResultScreen(
     preset: String,
     onDone: () -> Unit
 ) {
-    val gradeColor = when (state.grade) {
-        "A+" -> Color(0xFFFFD700)
-        "A"  -> Color(0xFF4CAF50)
-        "B+" -> Color(0xFF8BC34A)
-        "B"  -> Color(0xFF03A9F4)
-        "C"  -> Color(0xFFFF9800)
-        "D"  -> Color(0xFFFF5722)
-        else -> Color(0xFFF44336)
-    }
-
-    val ratingText = when {
-        state.overallScore >= 850 -> "ELITE EXTREME"
-        state.overallScore >= 700 -> "FLAGSHIP POWER"
-        state.overallScore >= 550 -> "HIGH PERFORMANCE"
-        state.overallScore >= 400 -> "MID-RANGE GEAR"
-        state.overallScore >= 250 -> "BUDGET PERFORMER"
-        else -> "LOW PERFORMANCE"
-    }
-
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .statusBarsPadding() // Pushes everything safely completely below the physical camera cutout/notch
+            .statusBarsPadding()
     ) {
-        // Subtle Theme Gradient Overlay
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.05f),
-                            MaterialTheme.colorScheme.background
-                        )
-                    )
-                )
-        )
-
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(24.dp)
-                .padding(top = 16.dp, bottom = 32.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(24.dp)
+                .padding(horizontal = 24.dp)
+                .padding(top = 24.dp, bottom = 40.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // ── Top Header ────────────────────────────────────────────────────────
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    text = "BENCHMARK REPORT",
-                    color = MaterialTheme.colorScheme.primary,
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 3.sp
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "Full Performance Analysis",
-                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
-                    style = MaterialTheme.typography.bodySmall
-                )
-            }
+            // ── Big score ring ────────────────────────────────────────────────
+            ScoreRing(score = state.overallScore)
 
-            // ── Big score ring dial ───────────────────────────────────────────────
-            ScoreRing(
-                score      = state.overallScore,
-                grade      = state.grade,
-                gradeColor = gradeColor,
-                ratingText = ratingText
-            )
-
+            Spacer(modifier = Modifier.height(28.dp))
             HorizontalDivider(color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.08f))
+            Spacer(modifier = Modifier.height(20.dp))
 
             // ── Category breakdown ────────────────────────────────────────────
-            Text(
-                text = "Detailed Category Analysis",
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.85f),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
                 state.phases.forEach { phase ->
                     val rawScore = state.scores[phase.category] ?: 0.0
-                    val pct = ((rawScore / phase.maxScore) * 100.0).coerceIn(0.0, 100.0)
-                    
-                    val barColor = when (phase.category) {
-                        BenchmarkCategory.CPU         -> Color(0xFF6C63FF)
-                        BenchmarkCategory.AI          -> Color(0xFFE91E63)
-                        BenchmarkCategory.RAM         -> Color(0xFF00BCD4)
-                        BenchmarkCategory.STORAGE     -> Color(0xFF8BC34A)
-                        BenchmarkCategory.GPU         -> Color(0xFFFF5722)
+                    val phaseJson = state.phaseJsons[phase.category]
+                    val categoryColor = when (phase.category) {
+                        BenchmarkCategory.CPU          -> Color(0xFF6C63FF)
+                        BenchmarkCategory.AI           -> Color(0xFFE91E63)
+                        BenchmarkCategory.RAM          -> Color(0xFF00BCD4)
+                        BenchmarkCategory.STORAGE      -> Color(0xFF8BC34A)
+                        BenchmarkCategory.GPU          -> Color(0xFFFF5722)
                         BenchmarkCategory.PRODUCTIVITY -> Color(0xFFFF9800)
-                        else                          -> Color(0xFF9E9E9E)
+                        else                           -> Color(0xFF9E9E9E)
                     }
-
-                    CategoryScoreCard(
-                        phase        = phase,
-                        scorePercent = pct.toFloat(),
-                        categoryColor = barColor
+                    ExpandableCategoryRow(
+                        displayName   = phase.displayName,
+                        rawScore      = rawScore,
+                        categoryColor = categoryColor,
+                        phaseJson     = phaseJson
                     )
                 }
             }
 
-            HorizontalDivider(color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.08f))
+            Spacer(modifier = Modifier.height(32.dp))
 
-            // ── Environment specs log ─────────────────────────────────────────
-            DeviceReportCard(preset = preset)
-
-            HorizontalDivider(color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.08f))
-
-            // ── Scoring methodology note ──────────────────────────────────────
-            ScoringNoteCard()
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // ── Save/Done button ──────────────────────────────────────────────
+            // ── Save & Close button ───────────────────────────────────────────
             Button(
                 onClick = onDone,
                 modifier = Modifier
@@ -832,96 +763,84 @@ private fun FullBenchmarkResultScreen(
                 ),
                 elevation = ButtonDefaults.buttonElevation(
                     defaultElevation = 4.dp,
-                    pressedElevation = 8.dp
+                    pressedElevation  = 8.dp
                 )
             ) {
                 Text(
-                    text = "Save & Close Report",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp,
-                    color = MaterialTheme.colorScheme.onPrimary
+                    text        = "Save & Close",
+                    fontWeight  = FontWeight.Bold,
+                    fontSize    = 16.sp,
+                    color       = MaterialTheme.colorScheme.onPrimary
                 )
             }
         }
     }
 }
 
+// ── Score ring (simplified – score number only) ───────────────────────────────
+
 @Composable
-private fun ScoreRing(
-    score: Int,
-    grade: String,
-    gradeColor: Color,
-    ratingText: String
-) {
+private fun ScoreRing(score: Int) {
     val progressAnim by animateFloatAsState(
-        targetValue = score / 1000f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
-        label = "score_progress"
+        targetValue    = (score / 1000f).coerceIn(0f, 1f),
+        animationSpec  = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
+        label          = "score_progress"
     )
-    val primaryColor = gradeColor
+    val primaryColor = MaterialTheme.colorScheme.primary
     val trackColor   = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.08f)
 
     Box(
-        modifier = Modifier.size(230.dp),
-        contentAlignment = Alignment.Center
+        modifier           = Modifier.size(230.dp),
+        contentAlignment   = Alignment.Center
     ) {
-        // High-tech dial background & reference ticks
         Canvas(modifier = Modifier.fillMaxSize()) {
             val strokeWidth = 14.dp.toPx()
-            val radius = (size.minDimension - strokeWidth - 36.dp.toPx()) / 2f
-            val center = Offset(size.width / 2f, size.height / 2f)
+            val radius      = (size.minDimension - strokeWidth - 36.dp.toPx()) / 2f
+            val center      = Offset(size.width / 2f, size.height / 2f)
 
-            // 1. Ticks indicator glow ring
+            // Tick marks
             val numTicks = 40
             for (i in 0..numTicks) {
-                val angle = 135f + (270f * i / numTicks)
-                val isGlow = i <= (progressAnim * numTicks)
-                val tickColor = if (isGlow) primaryColor.copy(alpha = 0.8f) else trackColor.copy(alpha = 0.25f)
+                val angle      = 135f + (270f * i / numTicks)
+                val isGlow     = i <= (progressAnim * numTicks)
+                val tickColor  = if (isGlow) primaryColor.copy(alpha = 0.8f) else trackColor.copy(alpha = 0.25f)
                 val tickLength = if (i % 5 == 0) 8.dp.toPx() else 4.dp.toPx()
-                val tickWidth = if (i % 5 == 0) 2.5.dp.toPx() else 1.2f.dp.toPx()
-
-                val rad = Math.toRadians(angle.toDouble())
-                val startX = center.x + (radius + 12.dp.toPx()) * Math.cos(rad).toFloat()
-                val startY = center.y + (radius + 12.dp.toPx()) * Math.sin(rad).toFloat()
-                val endX = center.x + (radius + 12.dp.toPx() + tickLength) * Math.cos(rad).toFloat()
-                val endY = center.y + (radius + 12.dp.toPx() + tickLength) * Math.sin(rad).toFloat()
-
+                val tickWidth  = if (i % 5 == 0) 2.5.dp.toPx() else 1.2f.dp.toPx()
+                val rad        = Math.toRadians(angle.toDouble())
+                val r0         = radius + 12.dp.toPx()
                 drawLine(
-                    color = tickColor,
-                    start = Offset(startX, startY),
-                    end = Offset(endX, endY),
+                    color       = tickColor,
+                    start       = Offset(center.x + r0 * Math.cos(rad).toFloat(), center.y + r0 * Math.sin(rad).toFloat()),
+                    end         = Offset(center.x + (r0 + tickLength) * Math.cos(rad).toFloat(), center.y + (r0 + tickLength) * Math.sin(rad).toFloat()),
                     strokeWidth = tickWidth,
-                    cap = StrokeCap.Round
+                    cap         = StrokeCap.Round
                 )
             }
 
-            // 2. Track background
+            // Track arc
             drawArc(
-                color = trackColor,
-                startAngle = 135f,
-                sweepAngle = 270f,
-                useCenter = false,
-                style = Stroke(strokeWidth, cap = StrokeCap.Round),
-                topLeft = Offset(center.x - radius, center.y - radius),
-                size = androidx.compose.ui.geometry.Size(radius * 2, radius * 2)
+                color       = trackColor,
+                startAngle  = 135f,
+                sweepAngle  = 270f,
+                useCenter   = false,
+                style       = Stroke(strokeWidth, cap = StrokeCap.Round),
+                topLeft     = Offset(center.x - radius, center.y - radius),
+                size        = androidx.compose.ui.geometry.Size(radius * 2, radius * 2)
             )
 
-            // 3. Glowing Progress arc
+            // Progress arc
             drawArc(
-                brush = Brush.sweepGradient(
-                    listOf(primaryColor.copy(alpha = 0.5f), primaryColor),
-                    center = center
-                ),
-                startAngle = 135f,
-                sweepAngle = 270f * progressAnim,
-                useCenter = false,
-                style = Stroke(strokeWidth, cap = StrokeCap.Round),
-                topLeft = Offset(center.x - radius, center.y - radius),
-                size = androidx.compose.ui.geometry.Size(radius * 2, radius * 2)
+                brush       = Brush.sweepGradient(listOf(primaryColor.copy(alpha = 0.5f), primaryColor), center = center),
+                startAngle  = 135f,
+                sweepAngle  = 270f * progressAnim,
+                useCenter   = false,
+                style       = Stroke(strokeWidth, cap = StrokeCap.Round),
+                topLeft     = Offset(center.x - radius, center.y - radius),
+                size        = androidx.compose.ui.geometry.Size(radius * 2, radius * 2)
             )
         }
 
-        // Center typography and pill grade
+        // Center typography: score + "/1000"
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
@@ -929,316 +848,144 @@ private fun ScoreRing(
             Text(
                 text  = "$score",
                 style = MaterialTheme.typography.displayLarge.copy(
-                    fontSize = 52.sp,
-                    fontWeight = FontWeight.Black,
-                    letterSpacing = (-1.5).sp
+                    fontSize      = 58.sp,
+                    fontWeight    = FontWeight.Black,
+                    letterSpacing = (-2).sp
                 ),
-                color = MaterialTheme.colorScheme.onBackground,
-                lineHeight = 52.sp
+                color      = MaterialTheme.colorScheme.onBackground,
+                lineHeight = 58.sp
             )
             Text(
-                text  = "PTS",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.4f),
-                letterSpacing = 2.sp,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-            
-            // Grade pill
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(gradeColor.copy(alpha = 0.15f))
-                    .border(1.dp, gradeColor.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
-                    .padding(horizontal = 12.dp, vertical = 3.dp)
-            ) {
-                Text(
-                    text = "GRADE $grade",
-                    color = gradeColor,
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Black
-                )
-            }
-            Spacer(modifier = Modifier.height(6.dp))
-            Text(
-                text = ratingText,
-                style = MaterialTheme.typography.labelSmall,
-                color = gradeColor.copy(alpha = 0.8f),
-                fontWeight = FontWeight.Black,
-                letterSpacing = 0.5.sp
+                text         = "/ 1000",
+                style        = MaterialTheme.typography.labelSmall,
+                color        = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.4f),
+                letterSpacing = 1.sp,
+                fontWeight   = FontWeight.Bold
             )
         }
     }
 }
 
+// ── Expandable category row ───────────────────────────────────────────────────
+
 @Composable
-private fun CategoryScoreCard(
-    phase: FullBenchmarkPhase,
-    scorePercent: Float,
-    categoryColor: Color
+private fun ExpandableCategoryRow(
+    displayName   : String,
+    rawScore      : Double,
+    categoryColor : Color,
+    phaseJson     : String?
 ) {
-    val barProgress by animateFloatAsState(
-        targetValue = scorePercent / 100f,
-        animationSpec = tween(800, easing = EaseInOutCubic),
-        label = "card_bar_${phase.category}"
-    )
+    var expanded by remember { mutableStateOf(false) }
 
-    val actualContributionPts = ((scorePercent / 100f) * phase.weight * 1000).roundToInt()
-    val maxContributionPts    = (phase.weight * 1000).roundToInt()
-
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.12f)
-        ),
-        border = BorderStroke(
-            width = 1.dp,
-            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.06f)
-        )
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .drawBehind {
-                    // Left color vertical strip
-                    drawRect(
-                        color = categoryColor,
-                        size = androidx.compose.ui.geometry.Size(4.dp.toPx(), size.height)
-                    )
-                }
-                .padding(start = 16.dp, top = 14.dp, bottom = 14.dp, end = 16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                // Title Row
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        val icon = when (phase.category) {
-                            BenchmarkCategory.CPU         -> Icons.Rounded.Speed
-                            BenchmarkCategory.RAM         -> Icons.Rounded.Memory
-                            BenchmarkCategory.STORAGE     -> Icons.Rounded.Storage
-                            BenchmarkCategory.GPU         -> Icons.Rounded.Speed
-                            BenchmarkCategory.PRODUCTIVITY -> Icons.Rounded.Speed
-                            else                          -> Icons.Rounded.Speed
-                        }
-                        Icon(
-                            imageVector = icon,
-                            contentDescription = null,
-                            tint = categoryColor,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Text(
-                            text = phase.displayName,
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onBackground
-                        )
-                    }
-                    Text(
-                        text = "${scorePercent.roundToInt()}%",
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.Black,
-                        color = categoryColor
-                    )
-                }
-
-                // Progress Bar
-                LinearProgressIndicator(
-                    progress = { barProgress },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(8.dp)
-                        .clip(CircleShape),
-                    color = categoryColor,
-                    trackColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.08f),
-                    strokeCap = StrokeCap.Round
-                )
-
-                // Contribution details row
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Weight: ${(phase.weight * 100).roundToInt()}%",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.4f)
-                    )
-                    Text(
-                        text = "Contribution: +$actualContributionPts / $maxContributionPts pts",
-                        style = MaterialTheme.typography.bodySmall,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.75f)
-                    )
-                }
+    // Parse sub-test list from the phase JSON
+    val subTests: List<Pair<String, String>> = remember(phaseJson) {
+        if (phaseJson == null) return@remember emptyList()
+        try {
+            val obj = org.json.JSONObject(phaseJson)
+            val dr  = obj.optJSONArray("detailed_results") ?: return@remember emptyList()
+            (0 until dr.length()).mapNotNull { i ->
+                val item = dr.getJSONObject(i)
+                val name = item.optString("name", "Test ${i + 1}")
+                    .removePrefix("Single-Core ").removePrefix("Multi-Core ")
+                val metricsStr = item.optString("metricsJson", "{}")
+                val score = try {
+                    org.json.JSONObject(metricsStr).optDouble("score", -1.0)
+                } catch (_: Exception) { -1.0 }
+                val scoreText = if (score >= 0) score.roundToInt().toString() else "—"
+                name to scoreText
             }
-        }
+        } catch (_: Exception) { emptyList() }
     }
-}
 
-@Composable
-private fun DeviceReportCard(preset: String) {
+    val hasSubTests = subTests.isNotEmpty()
+
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(if (hasSubTests) Modifier.clickable { expanded = !expanded } else Modifier),
+        shape  = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.08f)
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.10f)
         ),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.onBackground.copy(alpha = 0.05f))
+        border = BorderStroke(1.dp, categoryColor.copy(alpha = 0.20f))
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Text(
-                text = "TEST ENVIRONMENT",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 1.5.sp
-            )
-            
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                ReportRow(label = "Device Model", value = "${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}")
-                ReportRow(label = "Android SDK", value = "API ${android.os.Build.VERSION.SDK_INT}")
-                ReportRow(
-                    label = "Test Preset", 
-                    value = when (preset.lowercase()) {
-                        "slow" -> "Low Workload (Fast)"
-                        "mid" -> "Medium Workload (Standard)"
-                        "flagship" -> "Flagship Workload (Extensive)"
-                        else -> preset
-                    }
-                )
-                ReportRow(
-                    label = "Completion Time", 
-                    value = java.text.SimpleDateFormat("MMM dd, yyyy  •  HH:mm", java.util.Locale.getDefault()).format(java.util.Date())
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun ReportRow(label: String, value: String) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)
-        )
-        Text(
-            text = value,
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onBackground
-        )
-    }
-}
-
-@Composable
-private fun ScoringNoteCard() {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.1f)
-        ),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.onBackground.copy(alpha = 0.05f))
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Text(
-                text = "SCORING METHODOLOGY",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 1.5.sp
-            )
-
-            Text(
-                text = "The overall index is calculated dynamically by normalizing each category's score (0-100%) and multiplying it by its respective weight, aggregating to a final 0-1000 score scale.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
-                lineHeight = 16.sp
-            )
-
-            // Visual stacked weights bar graph
-            Box(
+        Column(modifier = Modifier.fillMaxWidth()) {
+            // Header row
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(14.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.onBackground.copy(alpha = 0.06f))
+                    .drawBehind {
+                        // Left colour strip
+                        drawRect(
+                            color = categoryColor,
+                            size  = androidx.compose.ui.geometry.Size(4.dp.toPx(), size.height)
+                        )
+                    }
+                    .padding(start = 16.dp, end = 12.dp, top = 14.dp, bottom = 14.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(modifier = Modifier.fillMaxSize()) {
-                    Box(modifier = Modifier.fillMaxHeight().weight(20f).background(Color(0xFF6C63FF))) // CPU
-                    Box(modifier = Modifier.fillMaxHeight().weight(15f).background(Color(0xFFE91E63))) // AI/ML
-                    Box(modifier = Modifier.fillMaxHeight().weight(10f).background(Color(0xFF00BCD4))) // RAM
-                    Box(modifier = Modifier.fillMaxHeight().weight(10f).background(Color(0xFF8BC34A))) // Storage
-                    Box(modifier = Modifier.fillMaxHeight().weight(20f).background(Color(0xFFFF5722))) // GPU
-                    Box(modifier = Modifier.fillMaxHeight().weight(25f).background(Color(0xFFFF9800))) // Productivity
+                Text(
+                    text      = displayName,
+                    modifier  = Modifier.weight(1f),
+                    style     = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color     = MaterialTheme.colorScheme.onBackground
+                )
+                Text(
+                    text          = rawScore.roundToInt().toString(),
+                    style         = MaterialTheme.typography.titleLarge,
+                    fontWeight    = FontWeight.Black,
+                    color         = categoryColor,
+                    letterSpacing = (-0.5).sp
+                )
+                if (hasSubTests) {
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text     = if (expanded) "▲" else "▼",
+                        fontSize = 10.sp,
+                        color    = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.35f)
+                    )
                 }
             }
 
-            // Weights Legend Grid
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    LegendItem(color = Color(0xFF6C63FF), text = "CPU Performance (20%)")
-                    LegendItem(color = Color(0xFFE91E63), text = "AI / ML Engine (15%)")
-                    LegendItem(color = Color(0xFF00BCD4), text = "RAM Bandwidth (10%)")
-                }
-                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    LegendItem(color = Color(0xFF8BC34A), text = "Storage I/O (10%)")
-                    LegendItem(color = Color(0xFFFF5722), text = "GPU Compute (20%)")
-                    LegendItem(color = Color(0xFFFF9800), text = "Productivity (25%)")
+            // Sub-test rows (animated dropdown)
+            AnimatedVisibility(visible = expanded) {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    HorizontalDivider(
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.05f)
+                    )
+                    subTests.forEachIndexed { idx, (name, scoreText) ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(
+                                    if (idx % 2 == 0) Color.Transparent
+                                    else MaterialTheme.colorScheme.onBackground.copy(alpha = 0.025f)
+                                )
+                                .padding(start = 20.dp, end = 16.dp, top = 9.dp, bottom = 9.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment     = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text      = name,
+                                modifier  = Modifier.weight(1f),
+                                style     = MaterialTheme.typography.bodySmall,
+                                color     = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.65f),
+                                maxLines  = 2,
+                                overflow  = TextOverflow.Ellipsis
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text(
+                                text       = scoreText,
+                                style      = MaterialTheme.typography.bodySmall,
+                                fontWeight = FontWeight.Bold,
+                                color      = categoryColor
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
                 }
             }
         }
     }
 }
-
-@Composable
-private fun LegendItem(color: Color, text: String) {
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(
-            modifier = Modifier
-                .size(8.dp)
-                .background(color, CircleShape)
-        )
-        Text(
-            text = text,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
-            fontSize = 9.sp,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
-    }
-}
-
