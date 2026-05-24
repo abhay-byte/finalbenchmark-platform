@@ -9,7 +9,9 @@ import androidx.compose.material.icons.rounded.Leaderboard
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.zIndex
@@ -23,6 +25,7 @@ import com.ivarna.finalbenchmark2.data.database.AppDatabase
 import com.ivarna.finalbenchmark2.data.repository.HistoryRepository
 import com.ivarna.finalbenchmark2.ui.screens.*
 import com.ivarna.finalbenchmark2.ui.screens.DetailedResultScreen
+import com.ivarna.finalbenchmark2.ui.screens.ModelDownloadDialog
 import com.ivarna.finalbenchmark2.ui.viewmodels.RootStatus
 import com.ivarna.finalbenchmark2.utils.OnboardingPreferences
 import dev.chrisbanes.haze.HazeState
@@ -45,6 +48,26 @@ fun MainNavigation(
 
     // Set start destination based on onboarding status
     val startDestination = if (isOnboardingCompleted) "home" else "welcome"
+
+    // AI model download dialog state — shown before Full Benchmark starts
+    var showModelDownloadDialog by remember { mutableStateOf(false) }
+    var pendingFullBenchmarkPreset by remember { mutableStateOf("") }
+
+    // Show model download dialog if needed
+    if (showModelDownloadDialog) {
+        ModelDownloadDialog(
+            onDismiss = {
+                showModelDownloadDialog = false
+                pendingFullBenchmarkPreset = ""
+            },
+            onProceed = {
+                showModelDownloadDialog = false
+                val preset = pendingFullBenchmarkPreset
+                pendingFullBenchmarkPreset = ""
+                navController.navigate("benchmark/$preset/FULL")
+            }
+        )
+    }
 
     // Define the bottom navigation items with custom icons
     val bottomNavigationItems =
@@ -196,7 +219,18 @@ fun MainNavigation(
                     }
                     HomeScreen(
                             onStartBenchmark = { preset, type ->
-                                navController.navigate("benchmark/$preset/$type")
+                                if (type == "FULL") {
+                                    val areModelsReady = com.ivarna.finalbenchmark2.aiBenchmark.ModelDownloader.areAllModelsDownloaded(context)
+                                    if (areModelsReady) {
+                                        navController.navigate("benchmark/$preset/FULL")
+                                    } else {
+                                        // Show AI model download check dialog before starting Full Benchmark
+                                        pendingFullBenchmarkPreset = preset
+                                        showModelDownloadDialog = true
+                                    }
+                                } else {
+                                    navController.navigate("benchmark/$preset/$type")
+                                }
                             },
                             onNavigateToSettings = { navController.navigate("settings") },
                             historyRepository = historyRepository,

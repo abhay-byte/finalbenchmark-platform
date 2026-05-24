@@ -473,32 +473,6 @@ fun ReactorProgress(progress: Float) {
             style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
         )
 
-        // Glowing Shiny Tip Light at progress bar end
-        if (progress > 0f) {
-            val endAngle = -90f + 360f * progress
-            val rad = Math.toRadians(endAngle.toDouble())
-            val tipX = center.x + arcRadius * Math.cos(rad).toFloat()
-            val tipY = center.y + arcRadius * Math.sin(rad).toFloat()
-
-            // 1. Soft glowing outer ring
-            drawCircle(
-                color = primaryColor.copy(alpha = 0.35f * glowAlpha),
-                radius = glowRadius,
-                center = Offset(tipX, tipY)
-            )
-            // 2. Bright white core
-            drawCircle(
-                color = Color.White,
-                radius = 8f,
-                center = Offset(tipX, tipY)
-            )
-            // 3. Inner neon highlight
-            drawCircle(
-                color = primaryColor,
-                radius = 4f,
-                center = Offset(tipX, tipY)
-            )
-        }
 
         // Spinner Ring
         if (progress > 0 && progress < 1f) {

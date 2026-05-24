@@ -135,8 +135,7 @@ fun HomeScreen(
         var showHighScoreCard by remember { mutableStateOf(true) }
         var highestScoreEntity by remember { mutableStateOf<BenchmarkResultEntity?>(null) }
         
-        // Dialog State
-        var showDownloadDialog by remember { mutableStateOf(false) }
+
 
         // Load highest score from database
         LaunchedEffect(historyRepository) {
@@ -450,16 +449,6 @@ fun HomeScreen(
                                                 )
                                                 .clip(RoundedCornerShape(28.dp))
                                                 .clickable {
-                                                    // Check if AI type is selected and models are missing
-                                                    if (selectedBenchmarkCategory == com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkCategory.AI) {
-                                                        val areModelsReady = com.ivarna.finalbenchmark2.aiBenchmark.ModelDownloader.areAllModelsDownloaded(context)
-                                                        if (!areModelsReady) {
-                                                            // Show download dialog instead of starting
-                                                            showDownloadDialog = true
-                                                            return@clickable
-                                                        }
-                                                    }
-
                                                     val activity = context as? com.ivarna.finalbenchmark2.MainActivity
                                                     activity?.startAllOptimizations()
                                                     val deviceTier = when (selectedWorkload) {
@@ -836,53 +825,6 @@ fun HomeScreen(
 
                                 // Benchmark Tips Card
                                 BenchmarkTipsCard()
-
-                                Spacer(modifier = Modifier.height(16.dp))
-
-                                // AI Resources Card
-                                // var showDownloadDialog removed (hoisted)
-
-                                com.ivarna.finalbenchmark2.ui.components.AnimatedGlassCard(
-                                    modifier = Modifier.fillMaxWidth().clickable { showDownloadDialog = true },
-                                    shape = RoundedCornerShape(24.dp),
-                                    containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.3f),
-                                    borderColor = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.5f),
-                                    delayMillis = 400
-                                ) {
-                                    Row(
-                                        modifier = Modifier.padding(20.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Rounded.ArrowDropDown,
-                                            contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.tertiary,
-                                            modifier = Modifier.size(32.dp)
-                                        )
-                                        Spacer(modifier = Modifier.width(16.dp))
-                                        Column {
-                                            Text(
-                                                text = "AI Models Missing?",
-                                                style = MaterialTheme.typography.titleMedium,
-                                                fontWeight = FontWeight.Bold,
-                                                color = MaterialTheme.colorScheme.onSurface
-                                            )
-                                            Text(
-                                                text = "Tap here to download required AI models.",
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                                            )
-                                        }
-                                    }
-                                }
-
-                                if (showDownloadDialog) {
-                                    AiDownloadDialog(
-                                        onDismiss = { showDownloadDialog = false }
-                                    )
-                                }
-
-
 
                                 
                                 Spacer(modifier = Modifier.height(120.dp)) // Bottom padding for floating nav bar
@@ -1750,85 +1692,4 @@ fun SmallStatCard(
             letterSpacing = 1.2.sp
         )
     }
-}
-@Composable
-fun AiDownloadDialog(onDismiss: () -> Unit) {
-    var downloadProgress by remember { mutableStateOf(0f) }
-    var downloadStatus by remember { mutableStateOf("Ready to download") }
-    var isDownloading by remember { mutableStateOf(false) }
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-
-    AlertDialog(
-        onDismissRequest = { if (!isDownloading) onDismiss() },
-        title = { Text("Download AI Models") },
-        text = {
-            Column {
-                Text("To run AI Benchmarks offline, we need to download the following models (~450MB total):\n\n• MobileNet V3 (Image Classification)\n• MobileNet V1 (Legacy Classification)\n• YOLOv8 (Object Detection)\n• EfficientDet (Object Detection)\n• MiniLM (Text Embedding)\n• MobileBERT (Text Classification)\n• USE QA (Question Answering)\n• DTLN (Noise Suppression)\n• Whisper (Speech-to-Text)\n• Gemma 3 (LLM Inference)")
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                if (isDownloading) {
-                    LinearProgressIndicator(
-                        progress = { downloadProgress },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = downloadStatus,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                }
-            }
-        },
-        confirmButton = {
-            if (!isDownloading) {
-                Button(
-                    onClick = {
-                        isDownloading = true
-                        scope.launch {
-                            try {
-                                val models = com.ivarna.finalbenchmark2.aiBenchmark.ModelRepository.models
-                                val totalModels = models.size
-
-                                models.forEachIndexed { index, model ->
-                                    downloadStatus = "Downloading ${index + 1}/$totalModels: ${model.title} (${model.sizeMb})..."
-                                    
-                                    // Calculate progress range for this file
-                                    val startProgress = index.toFloat() / totalModels
-                                    val endProgress = (index + 1).toFloat() / totalModels
-                                    
-                                    com.ivarna.finalbenchmark2.aiBenchmark.ModelDownloader.downloadModel(
-                                        context,
-                                        model.url,
-                                        model.filename
-                                    ) { fileProgress ->
-                                        // Map file progress (0..1) to total progress (start..end)
-                                        downloadProgress = startProgress + (fileProgress * (endProgress - startProgress))
-                                    }
-                                }
-
-                                downloadStatus = "All Downloads Complete!"
-                                downloadProgress = 1.0f
-                                delay(1000)
-                                onDismiss()
-                            } catch (e: Exception) {
-                                downloadStatus = "Error: ${e.message}"
-                                isDownloading = false
-                            }
-                        }
-                    }
-                ) {
-                    Text("Download All")
-                }
-            }
-        },
-        dismissButton = {
-            if (!isDownloading) {
-                TextButton(onClick = onDismiss) {
-                    Text("Cancel")
-                }
-            }
-        }
-    )
 }

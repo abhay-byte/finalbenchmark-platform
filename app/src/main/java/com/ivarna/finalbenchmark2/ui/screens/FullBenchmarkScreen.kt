@@ -18,6 +18,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
+import com.ivarna.finalbenchmark2.R
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -61,8 +64,6 @@ import com.ivarna.finalbenchmark2.ui.viewmodels.FullBenchmarkPhase
 import com.ivarna.finalbenchmark2.ui.viewmodels.FullBenchmarkState
 import com.ivarna.finalbenchmark2.ui.viewmodels.FullBenchmarkViewModel
 import com.ivarna.finalbenchmark2.ui.viewmodels.PhaseStatus
-import androidx.compose.runtime.rememberCoroutineScope
-import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 // ── Main Screen ───────────────────────────────────────────────────────────────
@@ -84,10 +85,55 @@ fun FullBenchmarkScreen(
 ) {
     val viewModel: FullBenchmarkViewModel = viewModel()
     val state by viewModel.state.collectAsStateWithLifecycle()
-    val coroutineScope = rememberCoroutineScope()
+
+    // Track whether the final result has already been auto-saved so we don't double-insert
+    var savedToDb by remember { mutableStateOf(false) }
 
     // Start the overall performance monitor when this screen is first composed
     LaunchedEffect(Unit) { viewModel.startMonitoring() }
+
+    // ── Auto-save to Room DB the moment all phases complete ──────────────────
+    // This ensures results persist even if the user closes the app before pressing the button.
+    LaunchedEffect(state.isComplete) {
+        if (state.isComplete && !savedToDb) {
+            try {
+                val metricsJson = viewModel.stopAndGetMetrics()
+                val summaryJson = viewModel.buildFinalSummaryJson(metricsJson)
+
+                val catScores = try {
+                    org.json.JSONObject(summaryJson).optJSONObject("category_scores") ?: org.json.JSONObject()
+                } catch (e: Exception) { org.json.JSONObject() }
+                val perfMetrics = try {
+                    org.json.JSONObject(metricsJson)
+                } catch (e: Exception) { org.json.JSONObject() }
+                val combinedMetrics = org.json.JSONObject().apply {
+                    put("category_scores", catScores)
+                    put("performance_metrics", perfMetrics)
+                }.toString()
+
+                val phaseDetailsJson = try {
+                    org.json.JSONObject(summaryJson).optJSONObject("phase_details")?.toString() ?: "{}"
+                } catch (e: Exception) { "{}" }
+
+                val entity = com.ivarna.finalbenchmark2.data.database.entities.BenchmarkResultEntity(
+                    type                   = "FULL",
+                    totalScore             = state.overallScore.toDouble(),
+                    timestamp              = System.currentTimeMillis(),
+                    deviceModel            = "${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}",
+                    singleCoreScore        = 0.0,
+                    multiCoreScore         = state.overallScore.toDouble(),
+                    normalizedScore        = state.overallScore.toDouble(),
+                    detailedResultsJson    = phaseDetailsJson,
+                    performanceMetricsJson = combinedMetrics
+                )
+                historyRepository.saveGenericBenchmark(entity, emptyList())
+                savedToDb = true
+                android.util.Log.d("FullBenchmarkScreen", "Full benchmark auto-saved to DB. Score=${state.overallScore}")
+            } catch (e: Exception) {
+                android.util.Log.e("FullBenchmarkScreen", "Auto-save failed: ${e.message}", e)
+            }
+        }
+    }
 
     FinalBenchmark2Theme {
         // ── Final results ────────────────────────────────────────────────────────
@@ -100,46 +146,10 @@ fun FullBenchmarkScreen(
                 state = state,
                 preset = preset,
                 onDone = {
-                    // Stop monitoring and build final JSON with performance metrics
+                    // Build the final JSON for the result screen navigation.
+                    // DB save already happened via LaunchedEffect above.
                     val metricsJson = viewModel.stopAndGetMetrics()
                     val summaryJson = viewModel.buildFinalSummaryJson(metricsJson)
-
-                    coroutineScope.launch {
-                        try {
-                            // Store {category_scores, performance_metrics} combined in performanceMetricsJson
-                            // so HistoryScreen can read both from a single column (backward-compat)
-                            val catScores = try {
-                                org.json.JSONObject(summaryJson).optJSONObject("category_scores") ?: org.json.JSONObject()
-                            } catch (e: Exception) { org.json.JSONObject() }
-                            val perfMetrics = try {
-                                org.json.JSONObject(metricsJson)
-                            } catch (e: Exception) { org.json.JSONObject() }
-                            val combinedMetrics = org.json.JSONObject().apply {
-                                put("category_scores", catScores)
-                                put("performance_metrics", perfMetrics)
-                            }.toString()
-
-                            // Store per-phase summary JSONs in detailedResultsJson for drill-down
-                            val phaseDetailsJson = try {
-                                org.json.JSONObject(summaryJson).optJSONObject("phase_details")?.toString() ?: "{}"
-                            } catch (e: Exception) { "{}" }
-
-                            val entity = com.ivarna.finalbenchmark2.data.database.entities.BenchmarkResultEntity(
-                                type                   = "FULL",
-                                totalScore             = state.overallScore.toDouble(),
-                                timestamp              = System.currentTimeMillis(),
-                                deviceModel            = "${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}",
-                                singleCoreScore        = 0.0,
-                                multiCoreScore         = state.overallScore.toDouble(),
-                                normalizedScore        = state.overallScore.toDouble(),
-                                detailedResultsJson    = phaseDetailsJson,
-                                performanceMetricsJson = combinedMetrics
-                            )
-                            historyRepository.saveGenericBenchmark(entity, emptyList())
-                        } catch (e: Exception) {
-                            android.util.Log.e("FullBenchmarkScreen", "Failed to save to history: ${e.message}", e)
-                        }
-                    }
                     onBenchmarkComplete(summaryJson)
                 }
             )
@@ -267,12 +277,10 @@ private fun FullBenchmarkProgressOverlay(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "FinalBenchmark",
-                    color = Color.White,
-                    fontWeight = FontWeight.Black,
-                    fontSize = 14.sp,
-                    letterSpacing = (-0.3).sp
+                Image(
+                    painter = painterResource(id = R.drawable.logo_2),
+                    contentDescription = "Logo",
+                    modifier = Modifier.size(24.dp)
                 )
 
                 Row(
@@ -416,12 +424,10 @@ private fun FullBenchmarkProgressOverlay(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "FinalBenchmark",
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Black,
-                    fontSize = 18.sp,
-                    letterSpacing = (-0.5).sp
+                Image(
+                    painter = painterResource(id = R.drawable.logo_2),
+                    contentDescription = "Logo",
+                    modifier = Modifier.size(28.dp)
                 )
 
                 Row(

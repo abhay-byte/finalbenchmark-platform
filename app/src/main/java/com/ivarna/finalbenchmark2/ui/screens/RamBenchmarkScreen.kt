@@ -556,32 +556,6 @@ private fun RamReactorProgress(progress: Float, accentColor: Color) {
             style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
         )
 
-        // Glowing Shiny Tip Light at progress bar end
-        if (progress > 0f) {
-            val endAngle = -90f + 360f * progress
-            val rad = Math.toRadians(endAngle.toDouble())
-            val tipX = center.x + arcRadius * Math.cos(rad).toFloat()
-            val tipY = center.y + arcRadius * Math.sin(rad).toFloat()
-
-            // 1. Soft glowing outer ring
-            drawCircle(
-                color = accentColor.copy(alpha = 0.35f * glowAlpha),
-                radius = glowRadius,
-                center = Offset(tipX, tipY)
-            )
-            // 2. Bright white core
-            drawCircle(
-                color = Color.White,
-                radius = 6f,
-                center = Offset(tipX, tipY)
-            )
-            // 3. Inner neon highlight
-            drawCircle(
-                color = accentColor,
-                radius = 3f,
-                center = Offset(tipX, tipY)
-            )
-        }
 
         // Spinner Ring
         if (progress > 0f && progress < 1f) {
@@ -780,10 +754,10 @@ private fun RamHUDMonitor(
             .width(340.dp)
             .height(80.dp)
             .clip(RoundedCornerShape(40.dp))
-            .background(Color(0xCC06080D))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f))
             .border(
                 1.dp,
-                Color(0x33FFFFFF),
+                MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
                 RoundedCornerShape(40.dp)
             )
     ) {
