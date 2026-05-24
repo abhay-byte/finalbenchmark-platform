@@ -14,11 +14,13 @@
 
 ---
 
-[![GitHub Downloads](https://img.shields.io/github/downloads/abhay-byte/finalbenchmark-platform/total?style=for-the-badge&logo=github&logoColor=white&labelColor=24292e&color=success)](https://github.com/abhay-byte/finalbenchmark-platform/releases)
-[![GitHub Stars](https://img.shields.io/github/stars/abhay-byte/finalbenchmark-platform?style=for-the-badge&logo=github&logoColor=white&labelColor=24292e&color=yellow)](https://github.com/abhay-byte/finalbenchmark-platform/stargazers)
-[![GitHub Forks](https://img.shields.io/github/forks/abhay-byte/finalbenchmark-platform?style=for-the-badge&logo=github&logoColor=white&labelColor=24292e&color=blue)](https://github.com/abhay-byte/finalbenchmark-platform/network/members)
+[![Discord](https://img.shields.io/badge/Discord-Join_Server-5865F2?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/khzKmGzfRf)
+[![Downloads](https://img.shields.io/github/downloads/abhay-byte/finalbenchmark-platform/total?style=for-the-badge&logo=github&logoColor=white&labelColor=24292e&color=success)](https://github.com/abhay-byte/finalbenchmark-platform/releases)
+[![Stars](https://img.shields.io/github/stars/abhay-byte/finalbenchmark-platform?style=for-the-badge&logo=github&logoColor=white&labelColor=24292e&color=yellow)](https://github.com/abhay-byte/finalbenchmark-platform/stargazers)
+<br>
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=for-the-badge&logo=apache&logoColor=white)](LICENSE)
-[![FOSS](https://img.shields.io/badge/FOSS-100%25-brightgreen?style=for-the-badge&logo=opensourceinitiative&logoColor=white)](https://opensource.org/)
+[![Kotlin](https://img.shields.io/badge/Kotlin-100%25-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white)](https://kotlinlang.org/)
+[![Latest Release](https://img.shields.io/github/v/release/abhay-byte/finalbenchmark-platform?style=for-the-badge&logo=github&logoColor=white&labelColor=24292e&color=blue)](https://github.com/abhay-byte/finalbenchmark-platform/releases/latest)
 
 ![Play Store Downloads](https://playbadges.pavi2410.com/badge/downloads?id=com.ivarna.finalbenchmark2&pretty)
 ![Play Store Rating](https://playbadges.pavi2410.com/badge/ratings?id=com.ivarna.finalbenchmark2&pretty)
@@ -127,6 +129,31 @@ cd finalbenchmark-platform
 ## 📄 License
 
 This project is licensed under the Apache 2.0 License - see the [LICENSE](LICENSE) file for details.
+
+---
+
+<div align="center">
+
+## 💬 Discord
+
+Join our community to discuss benchmarks, get support, and share feedback!
+
+<a href="https://discord.gg/khzKmGzfRf">
+  <img src="https://img.shields.io/badge/Discord-Join_Server-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Join Discord Server" height="40"/>
+</a>
+
+<br>
+<sub><i>To enable the live Discord member count badge later (optional):</i></sub>
+<br>
+<sub>1. Discord → Your server → ⚙️ Server Settings → Widget</sub>
+<br>
+<sub>2. Enable "Server Widget" toggle</sub>
+<br>
+<sub>3. Select an invite channel</sub>
+<br>
+<sub>4. Then the .svg Discord badge can show member count <code>https://discord.gg/khzKmGzfRf</code></sub>
+
+</div>
 
 ---
 
