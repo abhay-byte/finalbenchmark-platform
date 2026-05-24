@@ -380,6 +380,15 @@ fun SettingsScreen(
                                                 )
                                             }
 
+                                            Spacer(modifier = Modifier.width(16.dp))
+                                            Box(
+                                                modifier = Modifier
+                                                    .height(36.dp)
+                                                    .width(1.dp)
+                                                    .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f))
+                                            )
+                                            Spacer(modifier = Modifier.width(16.dp))
+
                                             Switch(
                                                 checked = showIndividualOptions,
                                                 onCheckedChange = { enabled ->
@@ -389,8 +398,9 @@ fun SettingsScreen(
                                                 colors = SwitchDefaults.colors(
                                                     checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
                                                     checkedTrackColor = MaterialTheme.colorScheme.primary,
-                                                    uncheckedThumbColor = MaterialTheme.colorScheme.outline,
-                                                    uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant
+                                                    uncheckedThumbColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                                                    uncheckedTrackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f),
+                                                    uncheckedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)
                                                 )
                                             )
                                         }
