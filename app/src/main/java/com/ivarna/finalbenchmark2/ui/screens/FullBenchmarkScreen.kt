@@ -320,7 +320,8 @@ private fun FullBenchmarkProgressOverlay(
                     PhasePill(
                         phase  = phase,
                         status = state.statusOf(phase),
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f),
+                        isDarkCard = true
                     )
                 }
             }
@@ -444,9 +445,9 @@ private fun FullBenchmarkProgressOverlay(
                         .background(
                             Brush.horizontalGradient(
                                 colors = listOf(
-                                    Color(0xFF6C63FF), // Indigo
-                                    Color(0xFF9D63FF), // Violet
-                                    Color(0xFFFF63B8)  // Glowing pink
+                                    MaterialTheme.colorScheme.primary,
+                                    MaterialTheme.colorScheme.secondary,
+                                    MaterialTheme.colorScheme.tertiary
                                 )
                             )
                         )
@@ -460,7 +461,8 @@ private fun FullBenchmarkProgressOverlay(
 private fun PhasePill(
     phase: FullBenchmarkPhase,
     status: PhaseStatus,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isDarkCard: Boolean = false
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "pulse_pill")
     val pulseGlow by infiniteTransition.animateFloat(
@@ -483,6 +485,12 @@ private fun PhasePill(
         else                           -> phase.category.name.take(3)
     }
 
+    // Dynamic Theme-based colors
+    val primaryColor = MaterialTheme.colorScheme.primary
+    val secondaryColor = MaterialTheme.colorScheme.secondary
+    val tertiaryColor = MaterialTheme.colorScheme.tertiary
+    val onSurfaceColor = MaterialTheme.colorScheme.onSurface
+
     Box(
         modifier = modifier
             .height(28.dp)
@@ -495,22 +503,41 @@ private fun PhasePill(
                     PhaseStatus.RUNNING -> Modifier
                         .background(
                             Brush.linearGradient(
-                                colors = listOf(Color(0xFF6C63FF), Color(0xFF9D63FF))
+                                colors = if (isDarkCard) {
+                                    listOf(Color(0xFF6C63FF), Color(0xFF9D63FF))
+                                } else {
+                                    listOf(primaryColor, secondaryColor)
+                                }
                             )
                         )
                         .border(
                             width = 1.dp,
                             brush = Brush.linearGradient(
-                                colors = listOf(
-                                    Color(0xFFFF63B8).copy(alpha = pulseGlow),
-                                    Color(0xFF9D63FF).copy(alpha = pulseGlow)
-                                )
+                                colors = if (isDarkCard) {
+                                    listOf(
+                                        Color(0xFFFF63B8).copy(alpha = pulseGlow),
+                                        Color(0xFF9D63FF).copy(alpha = pulseGlow)
+                                    )
+                                } else {
+                                    listOf(
+                                        tertiaryColor.copy(alpha = pulseGlow),
+                                        primaryColor.copy(alpha = pulseGlow)
+                                    )
+                                }
                             ),
                             shape = RoundedCornerShape(14.dp)
                         )
                     PhaseStatus.PENDING -> Modifier
-                        .background(Color(0xFF1E293B).copy(alpha = 0.25f))
-                        .border(0.5.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(14.dp))
+                        .background(
+                            if (isDarkCard) Color(0xFF1E293B).copy(alpha = 0.25f)
+                            else onSurfaceColor.copy(alpha = 0.05f)
+                        )
+                        .border(
+                            width = 0.5.dp,
+                            color = if (isDarkCard) Color.White.copy(alpha = 0.08f)
+                            else onSurfaceColor.copy(alpha = 0.12f),
+                            shape = RoundedCornerShape(14.dp)
+                        )
                 }
             ),
         contentAlignment = Alignment.Center
@@ -526,8 +553,14 @@ private fun PhasePill(
             Text(
                 text = abbrev,
                 color = when (status) {
-                    PhaseStatus.RUNNING -> Color.White
-                    else -> Color.White.copy(alpha = 0.35f)
+                    PhaseStatus.RUNNING -> {
+                        if (isDarkCard) Color.White
+                        else MaterialTheme.colorScheme.onPrimary
+                    }
+                    else -> {
+                        if (isDarkCard) Color.White.copy(alpha = 0.35f)
+                        else onSurfaceColor.copy(alpha = 0.4f)
+                    }
                 },
                 fontSize = 9.sp,
                 fontWeight = if (status == PhaseStatus.RUNNING) FontWeight.ExtraBold else FontWeight.Medium,
