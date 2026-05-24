@@ -4,10 +4,6 @@
 
 # FinalBenchmark 2
 
-<a href="https://play.google.com/store/apps/details?id=com.ivarna.finalbenchmark2">
-  <img src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" alt="Get it on Google Play" height="80"/>
-</a>
-
 <a href="https://f-droid.org/packages/com.ivarna.finalbenchmark2">
   <img src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png" alt="Get it on F-Droid" height="80"/>
 </a>
@@ -21,10 +17,6 @@
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=for-the-badge&logo=apache&logoColor=white)](LICENSE)
 [![Kotlin](https://img.shields.io/badge/Kotlin-100%25-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white)](https://kotlinlang.org/)
 [![Latest Release](https://img.shields.io/github/v/release/abhay-byte/finalbenchmark-platform?style=for-the-badge&logo=github&logoColor=white&labelColor=24292e&color=blue)](https://github.com/abhay-byte/finalbenchmark-platform/releases/latest)
-
-![Play Store Downloads](https://playbadges.pavi2410.com/badge/downloads?id=com.ivarna.finalbenchmark2&pretty)
-![Play Store Rating](https://playbadges.pavi2410.com/badge/ratings?id=com.ivarna.finalbenchmark2&pretty)
-![Play Store Version](https://playbadges.pavi2410.com/badge/version?id=com.ivarna.finalbenchmark2)
 
 A comprehensive Android CPU benchmarking application with detailed scoring and visualization. *(GPU, RAM, and Storage benchmarks coming soon)*
 
