@@ -70,12 +70,12 @@ class FullBenchmarkViewModel(application: Application) : AndroidViewModel(applic
             // Each sub-benchmark emits a single normalized_score calibrated so that
             // Snapdragon 8 Gen 3 = 100 pts. Using 100 here ensures 8 Gen 3 scores
             // 1000/1000 on Full Benchmark (weights sum to 1.0 → 1.0 × 1000 = 1000).
-            FullBenchmarkPhase(BenchmarkCategory.CPU,          "CPU Performance",     0.20f, 100.0),
+            FullBenchmarkPhase(BenchmarkCategory.CPU,          "CPU Performance",     0.25f, 100.0),
             FullBenchmarkPhase(BenchmarkCategory.AI,           "AI / ML",             0.15f, 100.0),
             FullBenchmarkPhase(BenchmarkCategory.RAM,          "RAM Performance",     0.10f, 100.0),
             FullBenchmarkPhase(BenchmarkCategory.STORAGE,      "Storage Performance", 0.10f, 100.0),
-            FullBenchmarkPhase(BenchmarkCategory.GPU,          "GPU Performance",     0.20f, 100.0),
-            FullBenchmarkPhase(BenchmarkCategory.PRODUCTIVITY, "Productivity",        0.25f, 100.0),
+            FullBenchmarkPhase(BenchmarkCategory.GPU,          "GPU Performance",     0.25f, 100.0),
+            FullBenchmarkPhase(BenchmarkCategory.PRODUCTIVITY, "Productivity",        0.15f, 100.0),
         )
 
         /** Grade thresholds (0–1000 scale). */
