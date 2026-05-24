@@ -2,6 +2,7 @@ package com.ivarna.finalbenchmark2.ui.screens
 
 import android.app.Application
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.EaseInOutCubic
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
@@ -418,6 +419,26 @@ fun ReactorProgress(progress: Float) {
         label = "rotation"
     )
 
+    // Animated glow pulsator for the shiny progress tip
+    val glowAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.4f,
+        targetValue = 1.0f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(800, easing = EaseInOutCubic),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "glow_alpha"
+    )
+    val glowRadius by infiniteTransition.animateFloat(
+        initialValue = 16f,
+        targetValue = 28f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(800, easing = EaseInOutCubic),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "glow_radius"
+    )
+
     val primaryColor = MaterialTheme.colorScheme.primary
     val secondaryColor = MaterialTheme.colorScheme.secondary
     val tertiaryColor = MaterialTheme.colorScheme.tertiary
@@ -426,6 +447,8 @@ fun ReactorProgress(progress: Float) {
     Canvas(modifier = Modifier.size(260.dp)) {
         val center = Offset(size.width / 2, size.height / 2)
         val radius = size.width / 2
+        val strokeWidth = 20f
+        val arcRadius = (size.width - strokeWidth) / 2f
 
         // Outer Glow Ring
         drawCircle(
@@ -447,8 +470,35 @@ fun ReactorProgress(progress: Float) {
             startAngle = -90f,
             sweepAngle = 360f * progress,
             useCenter = false,
-            style = Stroke(width = 20f, cap = StrokeCap.Round)
+            style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
         )
+
+        // Glowing Shiny Tip Light at progress bar end
+        if (progress > 0f) {
+            val endAngle = -90f + 360f * progress
+            val rad = Math.toRadians(endAngle.toDouble())
+            val tipX = center.x + arcRadius * Math.cos(rad).toFloat()
+            val tipY = center.y + arcRadius * Math.sin(rad).toFloat()
+
+            // 1. Soft glowing outer ring
+            drawCircle(
+                color = primaryColor.copy(alpha = 0.35f * glowAlpha),
+                radius = glowRadius,
+                center = Offset(tipX, tipY)
+            )
+            // 2. Bright white core
+            drawCircle(
+                color = Color.White,
+                radius = 8f,
+                center = Offset(tipX, tipY)
+            )
+            // 3. Inner neon highlight
+            drawCircle(
+                color = primaryColor,
+                radius = 4f,
+                center = Offset(tipX, tipY)
+            )
+        }
 
         // Spinner Ring
         if (progress > 0 && progress < 1f) {
