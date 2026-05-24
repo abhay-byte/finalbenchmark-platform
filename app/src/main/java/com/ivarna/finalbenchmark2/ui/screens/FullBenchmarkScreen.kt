@@ -44,6 +44,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -266,75 +267,93 @@ private fun FullBenchmarkProgressOverlay(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                Text(
+                    text = "FinalBenchmark",
+                    color = Color.White,
+                    fontWeight = FontWeight.Black,
+                    fontSize = 14.sp,
+                    letterSpacing = (-0.3).sp
+                )
+
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(
-                        text = "Full Benchmark",
-                        color = Color.White,
-                        fontWeight = FontWeight.ExtraBold,
-                        fontSize = 13.sp,
-                        letterSpacing = (-0.3).sp
-                    )
-                    Text(
-                        text = "• Phase ${state.scores.size + 1}/${state.totalPhases}",
+                        text = "Phase ${state.scores.size + 1}/${state.totalPhases}",
                         color = Color.White.copy(alpha = 0.6f),
                         fontSize = 11.sp,
-                        fontWeight = FontWeight.Medium
+                        fontWeight = FontWeight.SemiBold
                     )
-                }
 
-                // Compact Close Button
-                Surface(
-                    onClick = onNavBack,
-                    color = Color.White.copy(alpha = 0.08f),
-                    shape = CircleShape,
-                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.15f)),
-                    modifier = Modifier.size(26.dp)
-                ) {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
+                    // Compact Close Button
+                    Surface(
+                        onClick = onNavBack,
+                        color = Color.White.copy(alpha = 0.08f),
+                        shape = CircleShape,
+                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.15f)),
+                        modifier = Modifier.size(26.dp)
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = "Stop",
-                            tint = Color.White.copy(alpha = 0.8f),
-                            modifier = Modifier.size(12.dp)
-                        )
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Stop",
+                                tint = Color.White.copy(alpha = 0.8f),
+                                modifier = Modifier.size(12.dp)
+                            )
+                        }
                     }
                 }
             }
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            // Phase Pills Row (Scaled nicely for 360dp width)
+            // Phase Pills Row (Joined Control curved at ends, scaled nicely for 360dp width)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 14.dp),
-                horizontalArrangement = Arrangement.spacedBy(5.dp)
+                    .padding(horizontal = 14.dp)
+                    .height(28.dp)
+                    .border(
+                        width = 0.5.dp,
+                        color = Color.White.copy(alpha = 0.15f),
+                        shape = RoundedCornerShape(14.dp)
+                    )
+                    .clip(RoundedCornerShape(14.dp)),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                state.phases.forEach { phase ->
+                state.phases.forEachIndexed { index, phase ->
                     PhasePill(
                         phase  = phase,
                         status = state.statusOf(phase),
+                        index  = index,
+                        total  = state.phases.size,
                         modifier = Modifier.weight(1f),
                         isDarkCard = true
                     )
+                    if (index < state.phases.size - 1) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxHeight()
+                                .width(0.5.dp)
+                                .background(Color.White.copy(alpha = 0.15f))
+                        )
+                    }
                 }
             }
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Embedded Glowing progress bar
+            // Embedded Glowing progress bar with shiny light at the end
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 14.dp)
-                    .height(3.dp)
-                    .clip(RoundedCornerShape(1.5.dp))
+                    .height(4.dp)
+                    .clip(RoundedCornerShape(2.dp))
                     .background(Color.White.copy(alpha = 0.06f))
             ) {
                 Box(
@@ -349,8 +368,35 @@ private fun FullBenchmarkProgressOverlay(
                                     Color(0xFFFF63B8)  // Glowing pink
                                 )
                             )
-                        )
-                )
+                        ),
+                    contentAlignment = Alignment.CenterEnd
+                ) {
+                    val infiniteTransition = rememberInfiniteTransition(label = "bar_shiny")
+                    val shinyGlow by infiniteTransition.animateFloat(
+                        initialValue = 0.3f,
+                        targetValue = 1.0f,
+                        animationSpec = infiniteRepeatable(
+                            animation = tween(850, easing = LinearEasing),
+                            repeatMode = RepeatMode.Reverse
+                        ),
+                        label = "glow"
+                    )
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .width(16.dp)
+                            .background(
+                                Brush.horizontalGradient(
+                                    colors = listOf(
+                                        Color.White.copy(alpha = 0f),
+                                        Color.White.copy(alpha = 0.8f * shinyGlow),
+                                        Color.White
+                                    )
+                                )
+                            )
+                    )
+                }
             }
         }
     } else {
@@ -370,72 +416,90 @@ private fun FullBenchmarkProgressOverlay(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                Text(
+                    text = "FinalBenchmark",
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Black,
+                    fontSize = 18.sp,
+                    letterSpacing = (-0.5).sp
+                )
+
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Text(
-                        text = "Full Benchmark",
-                        color = MaterialTheme.colorScheme.onBackground,
-                        fontWeight = FontWeight.ExtraBold,
-                        fontSize = 16.sp,
-                        letterSpacing = (-0.5).sp
-                    )
-                    Text(
-                        text = "•  Phase ${state.scores.size + 1} of ${state.totalPhases}",
+                        text = "Phase ${state.scores.size + 1} of ${state.totalPhases}",
                         color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
                         fontSize = 13.sp,
-                        fontWeight = FontWeight.Medium
+                        fontWeight = FontWeight.SemiBold
                     )
-                }
 
-                // Close button
-                Surface(
-                    onClick = onNavBack,
-                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.08f),
-                    shape = CircleShape,
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.onBackground.copy(alpha = 0.15f)),
-                    modifier = Modifier.size(32.dp)
-                ) {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
+                    // Close button
+                    Surface(
+                        onClick = onNavBack,
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.08f),
+                        shape = CircleShape,
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.onBackground.copy(alpha = 0.15f)),
+                        modifier = Modifier.size(32.dp)
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = "Stop",
-                            tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f),
-                            modifier = Modifier.size(16.dp)
-                        )
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Stop",
+                                tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f),
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
                     }
                 }
             }
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            // Phase Pills Row
+            // Phase Pills Row (Joined Control curved at ends)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 20.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    .padding(horizontal = 20.dp)
+                    .height(30.dp)
+                    .border(
+                        width = 1.dp,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f),
+                        shape = RoundedCornerShape(15.dp)
+                    )
+                    .clip(RoundedCornerShape(15.dp)),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                state.phases.forEach { phase ->
+                state.phases.forEachIndexed { index, phase ->
                     PhasePill(
                         phase  = phase,
                         status = state.statusOf(phase),
+                        index  = index,
+                        total  = state.phases.size,
                         modifier = Modifier.weight(1f)
                     )
+                    if (index < state.phases.size - 1) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxHeight()
+                                .width(1.dp)
+                                .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f))
+                        )
+                    }
                 }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Premium thin glowing horizontal progress bar as a divider at the very bottom
+            // Premium thin glowing horizontal progress bar with shiny light at the very bottom
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(3.dp)
+                    .height(4.dp)
                     .background(MaterialTheme.colorScheme.onBackground.copy(alpha = 0.06f))
             ) {
                 Box(
@@ -450,8 +514,35 @@ private fun FullBenchmarkProgressOverlay(
                                     MaterialTheme.colorScheme.tertiary
                                 )
                             )
-                        )
-                )
+                        ),
+                    contentAlignment = Alignment.CenterEnd
+                ) {
+                    val infiniteTransition = rememberInfiniteTransition(label = "bar_shiny_portrait")
+                    val shinyGlow by infiniteTransition.animateFloat(
+                        initialValue = 0.3f,
+                        targetValue = 1.0f,
+                        animationSpec = infiniteRepeatable(
+                            animation = tween(850, easing = LinearEasing),
+                            repeatMode = RepeatMode.Reverse
+                        ),
+                        label = "glow"
+                    )
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .width(20.dp)
+                            .background(
+                                Brush.horizontalGradient(
+                                    colors = listOf(
+                                        Color.White.copy(alpha = 0f),
+                                        Color.White.copy(alpha = 0.8f * shinyGlow),
+                                        Color.White
+                                    )
+                                )
+                            )
+                    )
+                }
             }
         }
     }
@@ -461,18 +552,42 @@ private fun FullBenchmarkProgressOverlay(
 private fun PhasePill(
     phase: FullBenchmarkPhase,
     status: PhaseStatus,
+    index: Int,
+    total: Int,
     modifier: Modifier = Modifier,
     isDarkCard: Boolean = false
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "pulse_pill")
     val pulseGlow by infiniteTransition.animateFloat(
-        initialValue = 0.4f,
+        initialValue = 0.5f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
-            animation = tween(1000, easing = LinearEasing),
+            animation = tween(1200, easing = EaseInOutCubic),
             repeatMode = RepeatMode.Reverse
         ),
         label = "pulse"
+    )
+
+    // Breathing scale animation for the active/running pill's content
+    val textScale by infiniteTransition.animateFloat(
+        initialValue = 0.90f,
+        targetValue = 1.06f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(750, easing = EaseInOutCubic),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "text_scale"
+    )
+
+    // Moving sweeping shimmer position for the active/running gradient
+    val shimmerOffset by infiniteTransition.animateFloat(
+        initialValue = -100f,
+        targetValue = 260f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1400, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "shimmer_offset"
     )
 
     val abbrev = when (phase.category) {
@@ -491,81 +606,83 @@ private fun PhasePill(
     val tertiaryColor = MaterialTheme.colorScheme.tertiary
     val onSurfaceColor = MaterialTheme.colorScheme.onSurface
 
+    // Custom glowing linear sweeping neon gradient for active state
+    val runningBrush = if (isDarkCard) {
+        Brush.linearGradient(
+            colors = listOf(
+                Color(0xFF6C63FF),
+                Color(0xFF9D63FF).copy(alpha = pulseGlow),
+                Color(0xFFFF63B8),
+                Color(0xFF6C63FF)
+            ),
+            start = Offset(shimmerOffset, 0f),
+            end = Offset(shimmerOffset + 120f, 120f)
+        )
+    } else {
+        Brush.linearGradient(
+            colors = listOf(
+                primaryColor,
+                secondaryColor.copy(alpha = pulseGlow),
+                tertiaryColor,
+                primaryColor
+            ),
+            start = Offset(shimmerOffset, 0f),
+            end = Offset(shimmerOffset + 120f, 120f)
+        )
+    }
+
     Box(
         modifier = modifier
-            .height(28.dp)
-            .clip(RoundedCornerShape(14.dp))
+            .fillMaxHeight()
             .then(
                 when (status) {
                     PhaseStatus.DONE -> Modifier
-                        .background(Color(0xFF4CAF50).copy(alpha = 0.12f))
-                        .border(1.dp, Color(0xFF4CAF50).copy(alpha = 0.4f), RoundedCornerShape(14.dp))
-                    PhaseStatus.RUNNING -> Modifier
                         .background(
-                            Brush.linearGradient(
-                                colors = if (isDarkCard) {
-                                    listOf(Color(0xFF6C63FF), Color(0xFF9D63FF))
-                                } else {
-                                    listOf(primaryColor, secondaryColor)
-                                }
-                            )
+                            if (isDarkCard) Color(0xFF4CAF50).copy(alpha = 0.16f)
+                            else Color(0xFF4CAF50).copy(alpha = 0.12f)
                         )
-                        .border(
-                            width = 1.dp,
-                            brush = Brush.linearGradient(
-                                colors = if (isDarkCard) {
-                                    listOf(
-                                        Color(0xFFFF63B8).copy(alpha = pulseGlow),
-                                        Color(0xFF9D63FF).copy(alpha = pulseGlow)
-                                    )
-                                } else {
-                                    listOf(
-                                        tertiaryColor.copy(alpha = pulseGlow),
-                                        primaryColor.copy(alpha = pulseGlow)
-                                    )
-                                }
-                            ),
-                            shape = RoundedCornerShape(14.dp)
-                        )
+                    PhaseStatus.RUNNING -> Modifier
+                        .background(runningBrush)
                     PhaseStatus.PENDING -> Modifier
                         .background(
-                            if (isDarkCard) Color(0xFF1E293B).copy(alpha = 0.25f)
-                            else onSurfaceColor.copy(alpha = 0.05f)
-                        )
-                        .border(
-                            width = 0.5.dp,
-                            color = if (isDarkCard) Color.White.copy(alpha = 0.08f)
-                            else onSurfaceColor.copy(alpha = 0.12f),
-                            shape = RoundedCornerShape(14.dp)
+                            if (isDarkCard) Color(0xFF1E293B).copy(alpha = 0.1f)
+                            else onSurfaceColor.copy(alpha = 0.02f)
                         )
                 }
             ),
         contentAlignment = Alignment.Center
     ) {
-        if (status == PhaseStatus.DONE) {
-            Icon(
-                imageVector = Icons.Rounded.Check,
-                contentDescription = "${phase.displayName} done",
-                tint = Color(0xFF81C784),
-                modifier = Modifier.size(14.dp)
+        Box(
+            modifier = Modifier.then(
+                if (status == PhaseStatus.RUNNING) Modifier.graphicsLayer(scaleX = textScale, scaleY = textScale)
+                else Modifier
             )
-        } else {
-            Text(
-                text = abbrev,
-                color = when (status) {
-                    PhaseStatus.RUNNING -> {
-                        if (isDarkCard) Color.White
-                        else MaterialTheme.colorScheme.onPrimary
-                    }
-                    else -> {
-                        if (isDarkCard) Color.White.copy(alpha = 0.35f)
-                        else onSurfaceColor.copy(alpha = 0.4f)
-                    }
-                },
-                fontSize = 9.sp,
-                fontWeight = if (status == PhaseStatus.RUNNING) FontWeight.ExtraBold else FontWeight.Medium,
-                letterSpacing = 0.5.sp
-            )
+        ) {
+            if (status == PhaseStatus.DONE) {
+                Icon(
+                    imageVector = Icons.Rounded.Check,
+                    contentDescription = "${phase.displayName} done",
+                    tint = if (isDarkCard) Color(0xFF81C784) else Color(0xFF4CAF50),
+                    modifier = Modifier.size(14.dp)
+                )
+            } else {
+                Text(
+                    text = abbrev,
+                    color = when (status) {
+                        PhaseStatus.RUNNING -> {
+                            if (isDarkCard) Color.White
+                            else MaterialTheme.colorScheme.onPrimary
+                        }
+                        else -> {
+                            if (isDarkCard) Color.White.copy(alpha = 0.35f)
+                            else onSurfaceColor.copy(alpha = 0.4f)
+                        }
+                    },
+                    fontSize = 9.sp,
+                    fontWeight = if (status == PhaseStatus.RUNNING) FontWeight.ExtraBold else FontWeight.Bold,
+                    letterSpacing = 0.5.sp
+                )
+            }
         }
     }
 }
