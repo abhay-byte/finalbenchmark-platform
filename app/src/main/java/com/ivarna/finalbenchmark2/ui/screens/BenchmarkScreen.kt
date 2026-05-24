@@ -103,7 +103,8 @@ fun BenchmarkScreen(
     onBenchmarkEnd: () -> Unit = {},
     onNavBack: () -> Unit = {},
     historyRepository: HistoryRepository,
-    viewModelKey: String = "default"
+    viewModelKey: String = "default",
+    isFullBenchmark: Boolean = false
 ) {
     val context = LocalContext.current
     val application = context.applicationContext as Application
@@ -217,54 +218,58 @@ fun BenchmarkScreen(
                     .fillMaxSize()
                     .statusBarsPadding()
             ) {
-                // Top Bar
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 24.dp, vertical = 16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column {
-                        Text(
-                            text = "FINAL BENCHMARK",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
-                            letterSpacing = 2.sp
-                        )
-                        
-                        val configTitle = when (preset.lowercase()) {
-                            "slow" -> "Low Accuracy - Fastest (${benchmarkCategory.name})"
-                            "mid" -> "Mid Accuracy - Fast (${benchmarkCategory.name})"
-                            "flagship" -> "High Accuracy - Slow (${benchmarkCategory.name})"
-                            else -> "${preset.replace("Workload: ", "")} (${benchmarkCategory.name})"
-                        }
-                        
-                        Text(
-                            text = configTitle,
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onBackground,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-
-                    if (uiState.isRunning) {
-                        Surface(
-                            onClick = { 
-                                viewModel.stopBenchmark()
-                                onBenchmarkEnd()
-                                onNavBack()
-                            },
-                            color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.2f),
-                            shape = CircleShape,
-                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.3f))
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = "Stop",
-                                modifier = Modifier.padding(8.dp),
-                                tint = MaterialTheme.colorScheme.error
+                if (isFullBenchmark) {
+                    Spacer(modifier = Modifier.height(120.dp))
+                } else {
+                    // Top Bar
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 24.dp, vertical = 16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text(
+                                text = "FINAL BENCHMARK",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+                                letterSpacing = 2.sp
                             )
+                            
+                            val configTitle = when (preset.lowercase()) {
+                                "slow" -> "Low Accuracy - Fastest (${benchmarkCategory.name})"
+                                "mid" -> "Mid Accuracy - Fast (${benchmarkCategory.name})"
+                                "flagship" -> "High Accuracy - Slow (${benchmarkCategory.name})"
+                                else -> "${preset.replace("Workload: ", "")} (${benchmarkCategory.name})"
+                            }
+                            
+                            Text(
+                                text = configTitle,
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onBackground,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+
+                        if (uiState.isRunning) {
+                            Surface(
+                                onClick = { 
+                                    viewModel.stopBenchmark()
+                                    onBenchmarkEnd()
+                                    onNavBack()
+                                },
+                                color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.2f),
+                                shape = CircleShape,
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.3f))
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Stop",
+                                    modifier = Modifier.padding(8.dp),
+                                    tint = MaterialTheme.colorScheme.error
+                                )
+                            }
                         }
                     }
                 }

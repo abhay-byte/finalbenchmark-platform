@@ -106,18 +106,11 @@ fun GpuBenchmarkScreen(
     preset: String,
     historyRepository: HistoryRepository? = null,
     onBenchmarkComplete: (String) -> Unit,
-    onNavBack: () -> Unit
+    onNavBack: () -> Unit,
+    isFullBenchmark: Boolean = false
 ) {
     val context = LocalContext.current
     val activity = context as? Activity
-
-    // Lock to landscape while GPU benchmark runs; restore on exit
-    DisposableEffect(Unit) {
-        activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
-        onDispose {
-            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
-        }
-    }
 
     val application = context.applicationContext as android.app.Application
     val vmFactory = remember(historyRepository) {
@@ -125,6 +118,15 @@ fun GpuBenchmarkScreen(
     }
     val viewModel: GpuBenchmarkViewModel = viewModel(factory = vmFactory)
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    // Lock to landscape while GPU benchmark runs; restore on exit
+    DisposableEffect(Unit) {
+        activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+        onDispose {
+            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+            viewModel.stop()
+        }
+    }
 
     // Create renderer once
     val renderer = remember {
@@ -234,6 +236,7 @@ fun GpuBenchmarkScreen(
                     tint = tint,
                     elapsedTimeText = elapsedTimeText,
                     remainingTimeText = remainingTimeText,
+                    isFullBenchmark = isFullBenchmark,
                     onStop = {
                         viewModel.stop()
                         onNavBack()
@@ -409,6 +412,7 @@ private fun GpuRightPanel(
     tint: Color,
     elapsedTimeText: String,
     remainingTimeText: String,
+    isFullBenchmark: Boolean,
     onStop: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -566,36 +570,43 @@ private fun GpuRightPanel(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Glass Timer Pill (Scaled down to fit sidebar)
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(end = 12.dp)
-                ) {
+                if (isFullBenchmark) {
                     GlassTimerPill(
                         timeText = remainingTimeText,
                         elapsedTime = elapsedTimeText
                     )
-                }
-
-                // Translucent Close Button
-                Surface(
-                    onClick = onStop,
-                    color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.2f),
-                    shape = CircleShape,
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.3f)),
-                    modifier = Modifier.size(44.dp)
-                ) {
+                } else {
+                    // Glass Timer Pill (Scaled down to fit sidebar)
                     Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(end = 12.dp)
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = "Stop",
-                            tint = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.size(20.dp)
+                        GlassTimerPill(
+                            timeText = remainingTimeText,
+                            elapsedTime = elapsedTimeText
                         )
+                    }
+
+                    // Translucent Close Button
+                    Surface(
+                        onClick = onStop,
+                        color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.2f),
+                        shape = CircleShape,
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.3f)),
+                        modifier = Modifier.size(44.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Stop",
+                                tint = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
                     }
                 }
             }

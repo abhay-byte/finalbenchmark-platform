@@ -15,12 +15,20 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Memory
 import androidx.compose.material.icons.rounded.Speed
@@ -45,6 +53,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkCategory
 import com.ivarna.finalbenchmark2.data.repository.HistoryRepository
+import com.ivarna.finalbenchmark2.ui.theme.FinalBenchmark2Theme
 import com.ivarna.finalbenchmark2.ui.viewmodels.FullBenchmarkPhase
 import com.ivarna.finalbenchmark2.ui.viewmodels.FullBenchmarkState
 import com.ivarna.finalbenchmark2.ui.viewmodels.FullBenchmarkViewModel
@@ -77,88 +86,91 @@ fun FullBenchmarkScreen(
     // Start the overall performance monitor when this screen is first composed
     LaunchedEffect(Unit) { viewModel.startMonitoring() }
 
-    // ── Final results ────────────────────────────────────────────────────────
-    AnimatedVisibility(
-        visible = state.isComplete,
-        enter = fadeIn(tween(600)) + scaleIn(tween(600), initialScale = 0.92f),
-        exit  = fadeOut(tween(300))
-    ) {
-        FullBenchmarkResultScreen(
-            state = state,
-            onDone = {
-                // Stop monitoring and build final JSON with performance metrics
-                val metricsJson = viewModel.stopAndGetMetrics()
-                val summaryJson = viewModel.buildFinalSummaryJson(metricsJson)
+    FinalBenchmark2Theme {
+        // ── Final results ────────────────────────────────────────────────────────
+        AnimatedVisibility(
+            visible = state.isComplete,
+            enter = fadeIn(tween(600)) + scaleIn(tween(600), initialScale = 0.92f),
+            exit  = fadeOut(tween(300))
+        ) {
+            FullBenchmarkResultScreen(
+                state = state,
+                onDone = {
+                    // Stop monitoring and build final JSON with performance metrics
+                    val metricsJson = viewModel.stopAndGetMetrics()
+                    val summaryJson = viewModel.buildFinalSummaryJson(metricsJson)
 
-                coroutineScope.launch {
-                    try {
-                        // Store {category_scores, performance_metrics} combined in performanceMetricsJson
-                        // so HistoryScreen can read both from a single column (backward-compat)
-                        val catScores = try {
-                            org.json.JSONObject(summaryJson).optJSONObject("category_scores") ?: org.json.JSONObject()
-                        } catch (e: Exception) { org.json.JSONObject() }
-                        val perfMetrics = try {
-                            org.json.JSONObject(metricsJson)
-                        } catch (e: Exception) { org.json.JSONObject() }
-                        val combinedMetrics = org.json.JSONObject().apply {
-                            put("category_scores", catScores)
-                            put("performance_metrics", perfMetrics)
-                        }.toString()
+                    coroutineScope.launch {
+                        try {
+                            // Store {category_scores, performance_metrics} combined in performanceMetricsJson
+                            // so HistoryScreen can read both from a single column (backward-compat)
+                            val catScores = try {
+                                org.json.JSONObject(summaryJson).optJSONObject("category_scores") ?: org.json.JSONObject()
+                            } catch (e: Exception) { org.json.JSONObject() }
+                            val perfMetrics = try {
+                                org.json.JSONObject(metricsJson)
+                            } catch (e: Exception) { org.json.JSONObject() }
+                            val combinedMetrics = org.json.JSONObject().apply {
+                                put("category_scores", catScores)
+                                put("performance_metrics", perfMetrics)
+                            }.toString()
 
-                        // Store per-phase summary JSONs in detailedResultsJson for drill-down
-                        val phaseDetailsJson = try {
-                            org.json.JSONObject(summaryJson).optJSONObject("phase_details")?.toString() ?: "{}"
-                        } catch (e: Exception) { "{}" }
+                            // Store per-phase summary JSONs in detailedResultsJson for drill-down
+                            val phaseDetailsJson = try {
+                                org.json.JSONObject(summaryJson).optJSONObject("phase_details")?.toString() ?: "{}"
+                            } catch (e: Exception) { "{}" }
 
-                        val entity = com.ivarna.finalbenchmark2.data.database.entities.BenchmarkResultEntity(
-                            type                   = "FULL",
-                            totalScore             = state.overallScore.toDouble(),
-                            timestamp              = System.currentTimeMillis(),
-                            deviceModel            = "${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}",
-                            singleCoreScore        = 0.0,
-                            multiCoreScore         = state.overallScore.toDouble(),
-                            normalizedScore        = state.overallScore.toDouble(),
-                            detailedResultsJson    = phaseDetailsJson,
-                            performanceMetricsJson = combinedMetrics
-                        )
-                        historyRepository.saveGenericBenchmark(entity, emptyList())
-                    } catch (e: Exception) {
-                        android.util.Log.e("FullBenchmarkScreen", "Failed to save to history: ${e.message}", e)
+                            val entity = com.ivarna.finalbenchmark2.data.database.entities.BenchmarkResultEntity(
+                                type                   = "FULL",
+                                totalScore             = state.overallScore.toDouble(),
+                                timestamp              = System.currentTimeMillis(),
+                                deviceModel            = "${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}",
+                                singleCoreScore        = 0.0,
+                                multiCoreScore         = state.overallScore.toDouble(),
+                                normalizedScore        = state.overallScore.toDouble(),
+                                detailedResultsJson    = phaseDetailsJson,
+                                performanceMetricsJson = combinedMetrics
+                            )
+                            historyRepository.saveGenericBenchmark(entity, emptyList())
+                        } catch (e: Exception) {
+                            android.util.Log.e("FullBenchmarkScreen", "Failed to save to history: ${e.message}", e)
+                        }
                     }
+                    onBenchmarkComplete(summaryJson)
                 }
-                onBenchmarkComplete(summaryJson)
-            }
-        )
-    }
+            )
+        }
 
-    // ── Running phases ───────────────────────────────────────────────────────
-    AnimatedVisibility(
-        visible = !state.isComplete,
-        enter = fadeIn(),
-        exit  = fadeOut(tween(200))
-    ) {
-        val currentPhase = state.currentPhase ?: return@AnimatedVisibility
+        // ── Running phases ───────────────────────────────────────────────────────
+        AnimatedVisibility(
+            visible = !state.isComplete,
+            enter = fadeIn(),
+            exit  = fadeOut(tween(200))
+        ) {
+            val currentPhase = state.currentPhase ?: return@AnimatedVisibility
 
-        Box(modifier = Modifier.fillMaxSize()) {
+            Box(modifier = Modifier.fillMaxSize()) {
 
-            // Sub-benchmark screen (keyed by phase index so LaunchedEffects reset)
-            key(state.currentPhaseIndex) {
-                PhaseSubScreen(
-                    phase        = currentPhase,
-                    preset       = preset,
-                    historyRepo  = historyRepository,
-                    onComplete   = { json ->
-                        viewModel.recordPhaseScore(currentPhase.category, json)
-                    },
-                    onNavBack    = onNavBack
+                // Sub-benchmark screen (keyed by phase index so LaunchedEffects reset)
+                key(state.currentPhaseIndex) {
+                    PhaseSubScreen(
+                        phase        = currentPhase,
+                        preset       = preset,
+                        historyRepo  = historyRepository,
+                        onComplete   = { json ->
+                            viewModel.recordPhaseScore(currentPhase.category, json)
+                        },
+                        onNavBack    = onNavBack
+                    )
+                }
+
+                // Phase progress overlay — floats at the top of the screen
+                FullBenchmarkProgressOverlay(
+                    state     = state,
+                    onNavBack = onNavBack,
+                    modifier  = Modifier.align(Alignment.TopCenter)
                 )
             }
-
-            // Phase progress overlay — floats at the top of the screen
-            FullBenchmarkProgressOverlay(
-                state    = state,
-                modifier = Modifier.align(Alignment.TopCenter)
-            )
         }
     }
 }
@@ -180,31 +192,36 @@ private fun PhaseSubScreen(
             onBenchmarkComplete = onComplete,
             onNavBack           = onNavBack,
             historyRepository   = historyRepo,
-            viewModelKey        = "full_${phase.category.name}"
+            viewModelKey        = "full_${phase.category.name}",
+            isFullBenchmark     = true
         )
         BenchmarkCategory.RAM -> RamBenchmarkScreen(
             preset              = preset,
             historyRepository   = historyRepo,
             onBenchmarkComplete = onComplete,
-            onNavBack           = onNavBack
+            onNavBack           = onNavBack,
+            isFullBenchmark     = true
         )
         BenchmarkCategory.STORAGE -> StorageBenchmarkScreen(
             preset              = preset,
             historyRepository   = historyRepo,
             onBenchmarkComplete = onComplete,
-            onNavBack           = onNavBack
+            onNavBack           = onNavBack,
+            isFullBenchmark     = true
         )
         BenchmarkCategory.GPU -> GpuBenchmarkScreen(
             preset              = preset,
             historyRepository   = historyRepo,
             onBenchmarkComplete = onComplete,
-            onNavBack           = onNavBack
+            onNavBack           = onNavBack,
+            isFullBenchmark     = true
         )
         BenchmarkCategory.PRODUCTIVITY -> ProductivityBenchmarkScreen(
             preset              = preset,
             historyRepository   = historyRepo,
             onBenchmarkComplete = onComplete,
-            onNavBack           = onNavBack
+            onNavBack           = onNavBack,
+            isFullBenchmark     = true
         )
         else -> { /* AI / EXTERNAL_GPU / FULL — not handled here */ }
     }
@@ -215,6 +232,7 @@ private fun PhaseSubScreen(
 @Composable
 private fun FullBenchmarkProgressOverlay(
     state: FullBenchmarkState,
+    onNavBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val overallProgressAnim by animateFloatAsState(
@@ -226,46 +244,67 @@ private fun FullBenchmarkProgressOverlay(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(Color(0xDD050810), Color(0x88050810), Color.Transparent)
-                )
-            )
-            .padding(horizontal = 16.dp, vertical = 10.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp)
+            .background(MaterialTheme.colorScheme.background.copy(alpha = 0.95f)) // Themed unified bar covering status bar area
+            .statusBarsPadding()
+            .padding(top = 22.dp) // Pushes content safely completely below the circular camera cutout/notch
     ) {
-        // "Full Benchmark · Phase X of Y" label
+        // Content Row
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = "Full Benchmark",
-                color = Color.White,
-                fontWeight = FontWeight.Bold,
-                fontSize = 12.sp
-            )
-            Text(
-                text = "Phase ${state.scores.size + 1} of ${state.totalPhases}",
-                color = Color.White.copy(alpha = 0.7f),
-                fontSize = 11.sp
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = "Full Benchmark",
+                    color = MaterialTheme.colorScheme.onBackground,
+                    fontWeight = FontWeight.ExtraBold,
+                    fontSize = 16.sp,
+                    letterSpacing = (-0.5).sp
+                )
+                Text(
+                    text = "•  Phase ${state.scores.size + 1} of ${state.totalPhases}",
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+
+            // Close button
+            Surface(
+                onClick = onNavBack,
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.08f),
+                shape = CircleShape,
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.onBackground.copy(alpha = 0.15f)),
+                modifier = Modifier.size(32.dp)
+            ) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Stop",
+                        tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f),
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            }
         }
 
-        // Thin overall progress bar
-        LinearProgressIndicator(
-            progress = { overallProgressAnim },
-            modifier = Modifier.fillMaxWidth().height(3.dp).clip(CircleShape),
-            color = Color(0xFF6C63FF),
-            trackColor = Color.White.copy(alpha = 0.15f),
-            strokeCap = StrokeCap.Round
-        )
+        Spacer(modifier = Modifier.height(14.dp))
 
-        // Phase pills row
+        // Phase Pills Row
         Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             state.phases.forEach { phase ->
                 PhasePill(
@@ -274,6 +313,31 @@ private fun FullBenchmarkProgressOverlay(
                     modifier = Modifier.weight(1f)
                 )
             }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Premium thin glowing horizontal progress bar as a divider at the very bottom
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(3.dp)
+                .background(MaterialTheme.colorScheme.onBackground.copy(alpha = 0.06f))
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .fillMaxWidth(overallProgressAnim)
+                    .background(
+                        Brush.horizontalGradient(
+                            colors = listOf(
+                                Color(0xFF6C63FF), // Indigo
+                                Color(0xFF9D63FF), // Violet
+                                Color(0xFFFF63B8)  // Glowing pink
+                            )
+                        )
+                    )
+            )
         }
     }
 }
@@ -284,43 +348,75 @@ private fun PhasePill(
     status: PhaseStatus,
     modifier: Modifier = Modifier
 ) {
-    val bgColor = when (status) {
-        PhaseStatus.DONE    -> Color(0xFF4CAF50).copy(alpha = 0.85f)
-        PhaseStatus.RUNNING -> Color(0xFF6C63FF).copy(alpha = 0.85f)
-        PhaseStatus.PENDING -> Color.White.copy(alpha = 0.12f)
-    }
-    val textColor = when (status) {
-        PhaseStatus.PENDING -> Color.White.copy(alpha = 0.4f)
-        else                -> Color.White
-    }
+    val infiniteTransition = rememberInfiniteTransition(label = "pulse_pill")
+    val pulseGlow by infiniteTransition.animateFloat(
+        initialValue = 0.4f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1000, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "pulse"
+    )
+
     val abbrev = when (phase.category) {
-        BenchmarkCategory.CPU         -> "CPU"
-            BenchmarkCategory.AI          -> "AI"
-        BenchmarkCategory.GPU         -> "GPU"
+        BenchmarkCategory.CPU          -> "CPU"
+        BenchmarkCategory.AI           -> "AI"
+        BenchmarkCategory.RAM          -> "RAM"
+        BenchmarkCategory.STORAGE      -> "STO"
+        BenchmarkCategory.GPU          -> "GPU"
         BenchmarkCategory.PRODUCTIVITY -> "PRO"
-        else                          -> phase.category.name.take(3)
+        else                           -> phase.category.name.take(3)
     }
 
     Box(
         modifier = modifier
-            .height(22.dp)
-            .clip(RoundedCornerShape(11.dp))
-            .background(bgColor),
+            .height(28.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .then(
+                when (status) {
+                    PhaseStatus.DONE -> Modifier
+                        .background(Color(0xFF4CAF50).copy(alpha = 0.12f))
+                        .border(1.dp, Color(0xFF4CAF50).copy(alpha = 0.4f), RoundedCornerShape(14.dp))
+                    PhaseStatus.RUNNING -> Modifier
+                        .background(
+                            Brush.linearGradient(
+                                colors = listOf(Color(0xFF6C63FF), Color(0xFF9D63FF))
+                            )
+                        )
+                        .border(
+                            width = 1.dp,
+                            brush = Brush.linearGradient(
+                                colors = listOf(
+                                    Color(0xFFFF63B8).copy(alpha = pulseGlow),
+                                    Color(0xFF9D63FF).copy(alpha = pulseGlow)
+                                )
+                            ),
+                            shape = RoundedCornerShape(14.dp)
+                        )
+                    PhaseStatus.PENDING -> Modifier
+                        .background(Color(0xFF1E293B).copy(alpha = 0.25f))
+                        .border(0.5.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(14.dp))
+                }
+            ),
         contentAlignment = Alignment.Center
     ) {
         if (status == PhaseStatus.DONE) {
             Icon(
                 imageVector = Icons.Rounded.Check,
                 contentDescription = "${phase.displayName} done",
-                tint = Color.White,
-                modifier = Modifier.size(13.dp)
+                tint = Color(0xFF81C784),
+                modifier = Modifier.size(14.dp)
             )
         } else {
             Text(
                 text = abbrev,
-                color = textColor,
+                color = when (status) {
+                    PhaseStatus.RUNNING -> Color.White
+                    else -> Color.White.copy(alpha = 0.35f)
+                },
                 fontSize = 9.sp,
-                fontWeight = FontWeight.SemiBold,
+                fontWeight = if (status == PhaseStatus.RUNNING) FontWeight.ExtraBold else FontWeight.Medium,
                 letterSpacing = 0.5.sp
             )
         }
@@ -347,12 +443,21 @@ private fun FullBenchmarkResultScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    listOf(Color(0xFF050810), Color(0xFF0D1220), Color(0xFF080D1A))
-                )
-            )
+            .background(MaterialTheme.colorScheme.background)
     ) {
+        // Subtle Theme Gradient Overlay
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.05f),
+                            MaterialTheme.colorScheme.background
+                        )
+                    )
+                )
+        )
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -366,7 +471,7 @@ private fun FullBenchmarkResultScreen(
             // ── Header ────────────────────────────────────────────────────────
             Text(
                 text = "FULL BENCHMARK",
-                color = Color.White.copy(alpha = 0.6f),
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 2.sp
@@ -382,7 +487,7 @@ private fun FullBenchmarkResultScreen(
             // ── Subtitle ──────────────────────────────────────────────────────
             Text(
                 text = "Overall Device Score  •  0–1000 scale",
-                color = Color.White.copy(alpha = 0.5f),
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
                 fontSize = 12.sp,
                 textAlign = TextAlign.Center
             )
@@ -392,7 +497,7 @@ private fun FullBenchmarkResultScreen(
             // ── Category breakdown ────────────────────────────────────────────
             Text(
                 text = "Category Breakdown",
-                color = Color.White.copy(alpha = 0.7f),
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
                 fontSize = 13.sp,
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.fillMaxWidth()
@@ -487,14 +592,14 @@ private fun ScoreRing(
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
                 text  = "$score",
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onBackground,
                 fontSize = 48.sp,
                 fontWeight = FontWeight.ExtraBold,
                 lineHeight = 50.sp
             )
             Text(
                 text  = "pts",
-                color = Color.White.copy(alpha = 0.5f),
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
                 fontSize = 14.sp
             )
             Spacer(modifier = Modifier.height(4.dp))
@@ -567,7 +672,7 @@ private fun CategoryScoreRow(
                 )
                 Text(
                     text = phase.displayName,
-                    color = Color.White.copy(alpha = 0.85f),
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.85f),
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Medium
                 )
@@ -584,7 +689,7 @@ private fun CategoryScoreRow(
                 )
                 Text(
                     text = "×${(phase.weight * 100).roundToInt()}%",
-                    color = Color.White.copy(alpha = 0.35f),
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.35f),
                     fontSize = 11.sp
                 )
             }
@@ -594,7 +699,7 @@ private fun CategoryScoreRow(
             progress = { barProgress },
             modifier = Modifier.fillMaxWidth().height(6.dp).clip(CircleShape),
             color = barColor,
-            trackColor = Color.White.copy(alpha = 0.08f),
+            trackColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.08f),
             strokeCap = StrokeCap.Round
         )
     }
@@ -606,13 +711,13 @@ private fun ScoringNoteCard() {
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .background(Color.White.copy(alpha = 0.05f))
+            .background(MaterialTheme.colorScheme.onBackground.copy(alpha = 0.05f))
             .padding(12.dp)
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
                 text  = "Scoring Methodology",
-                color = Color.White.copy(alpha = 0.6f),
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
                 fontSize = 11.sp,
                 fontWeight = FontWeight.SemiBold,
                 letterSpacing = 0.5.sp
@@ -621,7 +726,7 @@ private fun ScoringNoteCard() {
                 text = "Each category normalised 0–100%, then weighted per docs: " +
                        "CPU 20% · AI/ML 15% · GPU 20% · RAM 10% · Storage 10% · Productivity 25%. " +
                        "Final score 0–1000.",
-                color = Color.White.copy(alpha = 0.4f),
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.4f),
                 fontSize = 10.sp,
                 lineHeight = 14.sp
             )

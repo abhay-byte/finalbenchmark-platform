@@ -86,6 +86,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ivarna.finalbenchmark2.data.repository.HistoryRepository
+import com.ivarna.finalbenchmark2.ui.theme.FinalBenchmark2Theme
 import com.ivarna.finalbenchmark2.ui.viewmodels.ProductivityBenchmarkUiState
 import com.ivarna.finalbenchmark2.ui.viewmodels.ProductivityBenchmarkViewModel
 import com.ivarna.finalbenchmark2.ui.viewmodels.ProductivityTest
@@ -130,7 +131,8 @@ fun ProductivityBenchmarkScreen(
     preset: String,
     historyRepository: HistoryRepository? = null,
     onBenchmarkComplete: (String) -> Unit,
-    onNavBack: () -> Unit
+    onNavBack: () -> Unit,
+    isFullBenchmark: Boolean = false
 ) {
     val context = LocalContext.current
     val application = context.applicationContext as android.app.Application
@@ -144,6 +146,15 @@ fun ProductivityBenchmarkScreen(
     BackHandler(enabled = state.isRunning || state.isWarmingUp) {
         vm.stop()
         onNavBack()
+    }
+
+    // Ensure cleanup when leaving composition
+    androidx.compose.runtime.DisposableEffect(Unit) {
+        onDispose {
+            if (state.isRunning) {
+                vm.stop()
+            }
+        }
     }
 
     LaunchedEffect(Unit) { vm.start(preset) }
@@ -275,75 +286,80 @@ fun ProductivityBenchmarkScreen(
         )
     }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xFF020407))
-    ) {
-        // Radial Background Glow
+    FinalBenchmark2Theme {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(
-                    Brush.radialGradient(
-                        colors = listOf(tint.copy(alpha = 0.08f), Color.Transparent),
-                        radius = 800f
+                .background(MaterialTheme.colorScheme.background)
+        ) {
+            // Radial Background Glow
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.radialGradient(
+                            colors = listOf(tint.copy(alpha = 0.08f), Color.Transparent),
+                            radius = 800f
+                        )
                     )
-                )
-        )
+            )
 
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .statusBarsPadding()
         ) {
-            // Uniform Top Bar
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp, vertical = 16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column {
-                    Text(
-                        text = "FINAL BENCHMARK",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = Color.White.copy(alpha = 0.6f),
-                        letterSpacing = 2.sp
-                    )
-                    
-                    val configTitle = when (preset.lowercase()) {
-                        "slow" -> "Low Accuracy - Fastest (Productivity)"
-                        "mid" -> "Mid Accuracy - Fast (Productivity)"
-                        "flagship" -> "High Accuracy - Slow (Productivity)"
-                        else -> "${preset.replace("Workload: ", "")} (Productivity)"
-                    }
-                    
-                    Text(
-                        text = configTitle,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-
-                if (state.isRunning || state.isWarmingUp) {
-                    Surface(
-                        onClick = { 
-                            vm.stop()
-                            onNavBack()
-                        },
-                        color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.2f),
-                        shape = CircleShape,
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.3f))
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = "Stop",
-                            modifier = Modifier.padding(8.dp),
-                            tint = MaterialTheme.colorScheme.error
+            if (isFullBenchmark) {
+                Spacer(modifier = Modifier.height(120.dp))
+            } else {
+                // Uniform Top Bar
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp, vertical = 16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            text = "FINAL BENCHMARK",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+                            letterSpacing = 2.sp
                         )
+                        
+                        val configTitle = when (preset.lowercase()) {
+                            "slow" -> "Low Accuracy - Fastest (Productivity)"
+                            "mid" -> "Mid Accuracy - Fast (Productivity)"
+                            "flagship" -> "High Accuracy - Slow (Productivity)"
+                            else -> "${preset.replace("Workload: ", "")} (Productivity)"
+                        }
+                        
+                        Text(
+                            text = configTitle,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onBackground,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    if (state.isRunning || state.isWarmingUp) {
+                        Surface(
+                            onClick = { 
+                                vm.stop()
+                                onNavBack()
+                            },
+                            color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.2f),
+                            shape = CircleShape,
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.3f))
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Stop",
+                                modifier = Modifier.padding(8.dp),
+                                tint = MaterialTheme.colorScheme.error
+                            )
+                        }
                     }
                 }
             }
@@ -366,7 +382,7 @@ fun ProductivityBenchmarkScreen(
                         Text(
                             text = "${(state.overallProgress * 100).toInt()}%",
                             style = MaterialTheme.typography.displayLarge,
-                            color = Color.White,
+                            color = MaterialTheme.colorScheme.onBackground,
                             fontWeight = FontWeight.ExtraBold,
                             letterSpacing = (-2).sp
                         )
@@ -527,6 +543,7 @@ fun ProductivityBenchmarkScreen(
         )
     }
 }
+}
 
 @Composable
 private fun ProdReactorProgress(progress: Float, accentColor: Color) {
@@ -604,7 +621,7 @@ private fun ProdSectionHeader(title: String, tint: Color) {
         Text(
             text = title,
             style = MaterialTheme.typography.labelMedium,
-            color = Color.White.copy(alpha = 0.7f),
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
             fontWeight = FontWeight.Bold,
             letterSpacing = 1.sp
         )
@@ -686,7 +703,7 @@ private fun ProdTimelineTestRow(
                     Icon(
                         imageVector = Icons.Default.Pending,
                         contentDescription = "Pending",
-                        tint = Color.White.copy(alpha = 0.4f),
+                        tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.4f),
                         modifier = Modifier.size(20.dp)
                     )
                 }
@@ -703,7 +720,7 @@ private fun ProdTimelineTestRow(
                 Text(
                     text = test.name,
                     style = MaterialTheme.typography.bodyLarge,
-                    color = if (isRunning) activeTint else Color.White,
+                    color = if (isRunning) activeTint else MaterialTheme.colorScheme.onBackground,
                     fontWeight = if (isRunning) FontWeight.ExtraBold else FontWeight.Medium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -714,7 +731,7 @@ private fun ProdTimelineTestRow(
                     Text(
                         text = test.timeText,
                         style = MaterialTheme.typography.bodyMedium,
-                        color = if (isRunning) activeTint else Color.White.copy(alpha = 0.8f),
+                        color = if (isRunning) activeTint else MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f),
                         fontWeight = FontWeight.Bold
                     )
                 }
@@ -836,12 +853,12 @@ private fun ProdHUDMetric(
             text = value,
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.Bold,
-            color = Color.White
+            color = MaterialTheme.colorScheme.onSurface
         )
         Text(
             text = label,
             style = MaterialTheme.typography.labelSmall,
-            color = Color.White.copy(alpha = 0.5f),
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
             fontSize = 10.sp
         )
     }
