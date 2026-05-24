@@ -244,103 +244,214 @@ private fun FullBenchmarkProgressOverlay(
         label = "overall_progress"
     )
 
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.background.copy(alpha = 0.95f)) // Themed unified bar covering status bar area
-            .statusBarsPadding()
-            .padding(top = 22.dp) // Pushes content safely completely below the circular camera cutout/notch
-    ) {
-        // Content Row
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+    val isGpuPhase = state.currentPhase?.category == BenchmarkCategory.GPU
+
+    if (isGpuPhase) {
+        // Floating premium island card to accommodate GPU landscape layout without overlapping sidebars
+        Column(
+            modifier = modifier
+                .statusBarsPadding()
+                .padding(top = 8.dp) // Floats slightly below the top bezel/notch safely
+                .width(360.dp)
+                .clip(RoundedCornerShape(16.dp))
+                .background(Color(0xE606080D)) // Matches GpuLeftPanel background
+                .border(0.5.dp, Color(0x33FFFFFF), RoundedCornerShape(16.dp))
+                .padding(vertical = 10.dp)
         ) {
+            // Content Row (Compacted for compact HUD)
             Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "Full Benchmark",
-                    color = MaterialTheme.colorScheme.onBackground,
-                    fontWeight = FontWeight.ExtraBold,
-                    fontSize = 16.sp,
-                    letterSpacing = (-0.5).sp
-                )
-                Text(
-                    text = "•  Phase ${state.scores.size + 1} of ${state.totalPhases}",
-                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Medium
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text(
+                        text = "Full Benchmark",
+                        color = Color.White,
+                        fontWeight = FontWeight.ExtraBold,
+                        fontSize = 13.sp,
+                        letterSpacing = (-0.3).sp
+                    )
+                    Text(
+                        text = "• Phase ${state.scores.size + 1}/${state.totalPhases}",
+                        color = Color.White.copy(alpha = 0.6f),
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+
+                // Compact Close Button
+                Surface(
+                    onClick = onNavBack,
+                    color = Color.White.copy(alpha = 0.08f),
+                    shape = CircleShape,
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.15f)),
+                    modifier = Modifier.size(26.dp)
+                ) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Stop",
+                            tint = Color.White.copy(alpha = 0.8f),
+                            modifier = Modifier.size(12.dp)
+                        )
+                    }
+                }
             }
 
-            // Close button
-            Surface(
-                onClick = onNavBack,
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.08f),
-                shape = CircleShape,
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.onBackground.copy(alpha = 0.15f)),
-                modifier = Modifier.size(32.dp)
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Phase Pills Row (Scaled nicely for 360dp width)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp),
+                horizontalArrangement = Arrangement.spacedBy(5.dp)
             ) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = "Stop",
-                        tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f),
-                        modifier = Modifier.size(16.dp)
+                state.phases.forEach { phase ->
+                    PhasePill(
+                        phase  = phase,
+                        status = state.statusOf(phase),
+                        modifier = Modifier.weight(1f)
                     )
                 }
             }
-        }
 
-        Spacer(modifier = Modifier.height(14.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
-        // Phase Pills Row
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            state.phases.forEach { phase ->
-                PhasePill(
-                    phase  = phase,
-                    status = state.statusOf(phase),
-                    modifier = Modifier.weight(1f)
+            // Embedded Glowing progress bar
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp)
+                    .height(3.dp)
+                    .clip(RoundedCornerShape(1.5.dp))
+                    .background(Color.White.copy(alpha = 0.06f))
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .fillMaxWidth(overallProgressAnim)
+                        .background(
+                            Brush.horizontalGradient(
+                                colors = listOf(
+                                    Color(0xFF6C63FF), // Indigo
+                                    Color(0xFF9D63FF), // Violet
+                                    Color(0xFFFF63B8)  // Glowing pink
+                                )
+                            )
+                        )
                 )
             }
         }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Premium thin glowing horizontal progress bar as a divider at the very bottom
-        Box(
-            modifier = Modifier
+    } else {
+        // Standard Portrait Header bar
+        Column(
+            modifier = modifier
                 .fillMaxWidth()
-                .height(3.dp)
-                .background(MaterialTheme.colorScheme.onBackground.copy(alpha = 0.06f))
+                .background(MaterialTheme.colorScheme.background.copy(alpha = 0.95f)) // Themed unified bar covering status bar area
+                .statusBarsPadding()
+                .padding(top = 22.dp) // Pushes content safely completely below the circular camera cutout/notch
         ) {
+            // Content Row
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = "Full Benchmark",
+                        color = MaterialTheme.colorScheme.onBackground,
+                        fontWeight = FontWeight.ExtraBold,
+                        fontSize = 16.sp,
+                        letterSpacing = (-0.5).sp
+                    )
+                    Text(
+                        text = "•  Phase ${state.scores.size + 1} of ${state.totalPhases}",
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+
+                // Close button
+                Surface(
+                    onClick = onNavBack,
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.08f),
+                    shape = CircleShape,
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.onBackground.copy(alpha = 0.15f)),
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Stop",
+                            tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f),
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // Phase Pills Row
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                state.phases.forEach { phase ->
+                    PhasePill(
+                        phase  = phase,
+                        status = state.statusOf(phase),
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Premium thin glowing horizontal progress bar as a divider at the very bottom
             Box(
                 modifier = Modifier
-                    .fillMaxHeight()
-                    .fillMaxWidth(overallProgressAnim)
-                    .background(
-                        Brush.horizontalGradient(
-                            colors = listOf(
-                                Color(0xFF6C63FF), // Indigo
-                                Color(0xFF9D63FF), // Violet
-                                Color(0xFFFF63B8)  // Glowing pink
+                    .fillMaxWidth()
+                    .height(3.dp)
+                    .background(MaterialTheme.colorScheme.onBackground.copy(alpha = 0.06f))
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .fillMaxWidth(overallProgressAnim)
+                        .background(
+                            Brush.horizontalGradient(
+                                colors = listOf(
+                                    Color(0xFF6C63FF), // Indigo
+                                    Color(0xFF9D63FF), // Violet
+                                    Color(0xFFFF63B8)  // Glowing pink
+                                )
                             )
                         )
-                    )
-            )
+                )
+            }
         }
     }
 }

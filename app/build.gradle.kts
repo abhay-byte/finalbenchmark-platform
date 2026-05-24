@@ -76,10 +76,9 @@ android {
         includeInBundle = false
     }
 
-    // Signing configuration for release builds
     signingConfigs {
         create("release") {
-            storeFile = file("/home/abhay/projects/keys/finalbenchmark-release.jks")
+            storeFile = file("/home/abhay/repos/keys/finalbenchmark-release.jks")
             storePassword = "finalbenchmark_release_ab"
             keyAlias = "finalbenchmark"
             keyPassword = "finalbenchmark_release_ab"
@@ -114,7 +113,7 @@ android {
     kotlinOptions { jvmTarget = "11" }
     buildFeatures { compose = true }
 
-    packaging { jniLibs { useLegacyPackaging = true } }
+    packaging { jniLibs { useLegacyPackaging = false } }
 }
 
 // Reproducible builds configuration for F-Droid
