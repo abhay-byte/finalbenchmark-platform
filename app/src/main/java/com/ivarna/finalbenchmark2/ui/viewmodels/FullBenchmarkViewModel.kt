@@ -58,21 +58,24 @@ class FullBenchmarkViewModel(application: Application) : AndroidViewModel(applic
 
     companion object {
         /**
-         * Category weights match docs exactly:
-         *   CPU 20%, AI 15%, GPU 20%, RAM 10%, Storage 10%, Productivity 25%
+         * Category weights: CPU 20%, AI 15%, GPU 20%, RAM 10%, Storage 10%, Productivity 25%
          *
-         * maxScore = expected maximum of `normalized_score` for each category
-         * (sum of per-test scores where each test is 0-100):
-         *   CPU: 10 tests → 1000,  AI: 5 tests → 500,  GPU: 5 → 500,
-         *   RAM: 5 → 500,  Storage: 6 → 600,  Productivity: 9 → 900
+         * maxScore = 100.0 for every phase.
+         * Each sub-benchmark is individually calibrated so that Snapdragon 8 Gen 3 emits
+         * a final normalized_score of exactly 100. Dividing by 100 normalises each phase
+         * to 0–1, and since all weights sum to 1.0, an 8 Gen 3 scores 1.0 × 1000 = 1000.
          */
         val PHASES = listOf(
-            FullBenchmarkPhase(BenchmarkCategory.CPU,          "CPU Performance",     0.20f, 1000.0),
-            FullBenchmarkPhase(BenchmarkCategory.AI,           "AI / ML",             0.15f,  500.0),
-            FullBenchmarkPhase(BenchmarkCategory.RAM,          "RAM Performance",     0.10f,  500.0),
-            FullBenchmarkPhase(BenchmarkCategory.STORAGE,      "Storage Performance", 0.10f,  600.0),
-            FullBenchmarkPhase(BenchmarkCategory.GPU,          "GPU Performance",     0.20f,  500.0),
-            FullBenchmarkPhase(BenchmarkCategory.PRODUCTIVITY, "Productivity",        0.25f,  900.0),
+            // maxScore = 100.0 for ALL phases.
+            // Each sub-benchmark emits a single normalized_score calibrated so that
+            // Snapdragon 8 Gen 3 = 100 pts. Using 100 here ensures 8 Gen 3 scores
+            // 1000/1000 on Full Benchmark (weights sum to 1.0 → 1.0 × 1000 = 1000).
+            FullBenchmarkPhase(BenchmarkCategory.CPU,          "CPU Performance",     0.20f, 100.0),
+            FullBenchmarkPhase(BenchmarkCategory.AI,           "AI / ML",             0.15f, 100.0),
+            FullBenchmarkPhase(BenchmarkCategory.RAM,          "RAM Performance",     0.10f, 100.0),
+            FullBenchmarkPhase(BenchmarkCategory.STORAGE,      "Storage Performance", 0.10f, 100.0),
+            FullBenchmarkPhase(BenchmarkCategory.GPU,          "GPU Performance",     0.20f, 100.0),
+            FullBenchmarkPhase(BenchmarkCategory.PRODUCTIVITY, "Productivity",        0.25f, 100.0),
         )
 
         /** Grade thresholds (0–1000 scale). */
