@@ -317,7 +317,27 @@ fun MainNavigation(
                                     // Clear the back stack up to home
                                     popUpTo("home") { inclusive = false }
                                 }
+                            },
+                            onNavigateToLastResult = {
+                                navController.navigate("last-result")
                             }
+                    )
+                }
+                composable(
+                    route = "last-result",
+                    enterTransition = enterTransition,
+                    exitTransition = exitTransition,
+                    popEnterTransition = popEnterTransition,
+                    popExitTransition = popExitTransition
+                ) {
+                    val historyRepository = remember {
+                        HistoryRepository(
+                            AppDatabase.getDatabase(context).benchmarkDao()
+                        )
+                    }
+                    com.ivarna.finalbenchmark2.ui.screens.FullBenchmarkLastResultScreen(
+                        historyRepository = historyRepository,
+                        onBackClick = { navController.popBackStack() }
                     )
                 }
                 // Update benchmark route to accept type

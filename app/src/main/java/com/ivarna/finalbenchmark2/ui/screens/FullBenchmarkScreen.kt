@@ -14,6 +14,10 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.animateIntAsState
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.border
@@ -35,10 +39,14 @@ import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Memory
 import androidx.compose.material.icons.rounded.Speed
 import androidx.compose.material.icons.rounded.Storage
+import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material.icons.rounded.Layers
+import androidx.compose.material.icons.rounded.FactCheck
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -702,180 +710,341 @@ private fun PhasePill(
 // ── Final results screen ──────────────────────────────────────────────────────
 
 @Composable
-private fun FullBenchmarkResultScreen(
+fun FullBenchmarkResultScreen(
     state: FullBenchmarkState,
     preset: String,
     onDone: () -> Unit
 ) {
-    Box(
+    val rankInfo = remember(state.overallScore) {
+        when {
+            state.overallScore >= 800 -> "ELITE PERFORMER" to Color(0xFF6C63FF)
+            state.overallScore >= 600 -> "HIGH END" to Color(0xFF00BCD4)
+            state.overallScore >= 400 -> "MID-RANGE" to Color(0xFFFF9800)
+            else -> "BUDGET PERFORMER" to Color(0xFFE91E63)
+        }
+    }
+
+    BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
             .statusBarsPadding()
     ) {
+        val screenHeight = maxHeight
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 24.dp)
-                .padding(top = 24.dp, bottom = 40.dp),
+                .padding(bottom = 40.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // ── Big score ring ────────────────────────────────────────────────
-            ScoreRing(score = state.overallScore)
+            // ── Score Count-up Animation state ──
+            var targetScore by remember { mutableStateOf(0) }
+            var animationFinished by remember { mutableStateOf(false) }
 
-            Spacer(modifier = Modifier.height(28.dp))
-            HorizontalDivider(color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.08f))
-            Spacer(modifier = Modifier.height(20.dp))
+            val animatedScore by animateIntAsState(
+                targetValue = targetScore,
+                animationSpec = tween(durationMillis = 1500, easing = EaseInOutCubic),
+                label = "score_count_up",
+                finishedListener = { _ -> animationFinished = true }
+            )
 
-            // ── Category breakdown ────────────────────────────────────────────
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+            LaunchedEffect(state.overallScore) {
+                targetScore = state.overallScore
+            }
+
+            // Top spacing: 20% of screen height
+            Spacer(modifier = Modifier.height(screenHeight * 0.20f))
+
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp)
             ) {
-                state.phases.forEach { phase ->
-                    val rawScore = state.scores[phase.category] ?: 0.0
-                    val phaseJson = state.phaseJsons[phase.category]
-                    val categoryColor = when (phase.category) {
-                        BenchmarkCategory.CPU          -> Color(0xFF6C63FF)
-                        BenchmarkCategory.AI           -> Color(0xFFE91E63)
-                        BenchmarkCategory.RAM          -> Color(0xFF00BCD4)
-                        BenchmarkCategory.STORAGE      -> Color(0xFF8BC34A)
-                        BenchmarkCategory.GPU          -> Color(0xFFFF5722)
-                        BenchmarkCategory.PRODUCTIVITY -> Color(0xFFFF9800)
-                        else                           -> Color(0xFF9E9E9E)
-                    }
-                ExpandableCategoryRow(
-                        displayName   = phase.displayName,
-                        rawScore      = rawScore,
-                        categoryColor = categoryColor,
-                        phaseJson     = phaseJson,
-                        categoryKey   = phase.category.name
+                val glowColor = MaterialTheme.colorScheme.primary
+                // Background radial glow
+                Box(
+                    modifier = Modifier
+                        .size(240.dp)
+                        .drawBehind {
+                            drawCircle(
+                                brush = Brush.radialGradient(
+                                    colors = listOf(
+                                        glowColor.copy(alpha = 0.12f),
+                                        Color.Transparent
+                                    ),
+                                    radius = size.minDimension * 0.5f
+                                )
+                            )
+                        }
+                )
+
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    // ── Stylized brand header ──
+                    Text(
+                        text = "FINALBENCHMARK",
+                        style = TextStyle(
+                            brush = Brush.horizontalGradient(
+                                colors = listOf(
+                                    MaterialTheme.colorScheme.primary,
+                                    MaterialTheme.colorScheme.tertiary
+                                )
+                            ),
+                            fontWeight = FontWeight.Black,
+                            fontSize = 16.sp,
+                            letterSpacing = 6.sp
+                        )
                     )
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    // ── Big score number (no out of 1000) ──
+                    Text(
+                        text = "$animatedScore",
+                        style = MaterialTheme.typography.displayLarge.copy(
+                            fontSize = 120.sp,
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = (-4).sp
+                        ),
+                        color = MaterialTheme.colorScheme.onBackground,
+                        lineHeight = 120.sp
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // ── Gamified Performance Rank Badge ──
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.12f),
+                        border = BorderStroke(1.dp, rankInfo.second.copy(alpha = 0.25f))
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(8.dp)
+                                    .background(rankInfo.second, CircleShape)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = rankInfo.first,
+                                style = MaterialTheme.typography.labelMedium.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    letterSpacing = 1.sp,
+                                    color = rankInfo.second
+                                )
+                            )
+                        }
+                    }
                 }
             }
 
             Spacer(modifier = Modifier.height(32.dp))
+            HorizontalDivider(
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.08f),
+                modifier = Modifier.padding(horizontal = 24.dp)
+            )
+            Spacer(modifier = Modifier.height(24.dp))
 
-            // ── Save & Close button ───────────────────────────────────────────
-            Button(
-                onClick = onDone,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-                shape = RoundedCornerShape(28.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary
-                ),
-                elevation = ButtonDefaults.buttonElevation(
-                    defaultElevation = 4.dp,
-                    pressedElevation  = 8.dp
-                )
+            // ── Category breakdown & Save button (appears after count-up completes) ──
+            AnimatedVisibility(
+                visible = animationFinished,
+                enter = fadeIn(animationSpec = tween(durationMillis = 500)) +
+                        expandVertically(animationSpec = tween(durationMillis = 500))
             ) {
-                Text(
-                    text        = "Save & Close",
-                    fontWeight  = FontWeight.Bold,
-                    fontSize    = 16.sp,
-                    color       = MaterialTheme.colorScheme.onPrimary
-                )
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    // Unified edge-to-edge container (takes up full width, no side spacing!)
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(0.dp), // flat corners for edge-to-edge look
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.08f)
+                        ),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.06f))
+                    ) {
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            state.phases.forEachIndexed { index, phase ->
+                                val rawScore = state.scores[phase.category] ?: 0.0
+                                val phaseJson = state.phaseJsons[phase.category]
+                                val categoryColor = when (phase.category) {
+                                    BenchmarkCategory.CPU          -> Color(0xFF6C63FF)
+                                    BenchmarkCategory.AI           -> Color(0xFFE91E63)
+                                    BenchmarkCategory.RAM          -> Color(0xFF00BCD4)
+                                    BenchmarkCategory.STORAGE      -> Color(0xFF8BC34A)
+                                    BenchmarkCategory.GPU          -> Color(0xFFFF5722)
+                                    BenchmarkCategory.PRODUCTIVITY -> Color(0xFFFF9800)
+                                    else                           -> Color(0xFF9E9E9E)
+                                }
+
+                                CategoryRow(
+                                    displayName   = phase.displayName,
+                                    rawScore      = rawScore,
+                                    categoryColor = categoryColor,
+                                    phaseJson     = phaseJson,
+                                    categoryKey   = phase.category.name
+                                )
+
+                                if (index < state.phases.lastIndex) {
+                                    HorizontalDivider(
+                                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.05f)
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(36.dp))
+
+                    // ── Save & Close button (Glass effect with proper theming) ──
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 24.dp)
+                    ) {
+                        Button(
+                            onClick = onDone,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(56.dp)
+                                .border(
+                                    width = 1.dp,
+                                    brush = Brush.verticalGradient(
+                                        colors = listOf(
+                                            MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
+                                            MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+                                        )
+                                    ),
+                                    shape = RoundedCornerShape(28.dp)
+                                ),
+                            shape = RoundedCornerShape(28.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                                contentColor = MaterialTheme.colorScheme.primary
+                            ),
+                            elevation = ButtonDefaults.buttonElevation(
+                                defaultElevation = 0.dp,
+                                pressedElevation = 0.dp
+                            ),
+                            contentPadding = PaddingValues(0.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(
+                                        Brush.verticalGradient(
+                                            colors = listOf(
+                                                Color.White.copy(alpha = 0.05f),
+                                                Color.Transparent
+                                            )
+                                        )
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text        = "Save & Close",
+                                    fontWeight  = FontWeight.Bold,
+                                    fontSize    = 16.sp,
+                                    color       = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+                    }
+                }
             }
         }
     }
 }
 
-// ── Score ring (simplified – score number only) ───────────────────────────────
+// ── Subcomponents for the Unified Breakdown Panel ──
+
+private data class SubTestResult(
+    val name: String,
+    val scoreText: String,
+    val isMultiCore: Boolean
+)
 
 @Composable
-private fun ScoreRing(score: Int) {
-    val progressAnim by animateFloatAsState(
-        targetValue    = (score / 1000f).coerceIn(0f, 1f),
-        animationSpec  = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
-        label          = "score_progress"
-    )
-    val primaryColor = MaterialTheme.colorScheme.primary
-    val trackColor   = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.08f)
-
-    Box(
-        modifier           = Modifier.size(230.dp),
-        contentAlignment   = Alignment.Center
+private fun SubSectionHeader(text: String, categoryColor: Color) {
+    Row(
+        modifier = Modifier
+            .padding(start = 24.dp, top = 16.dp, bottom = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            val strokeWidth = 14.dp.toPx()
-            val radius      = (size.minDimension - strokeWidth - 36.dp.toPx()) / 2f
-            val center      = Offset(size.width / 2f, size.height / 2f)
-
-            // Tick marks
-            val numTicks = 40
-            for (i in 0..numTicks) {
-                val angle      = 135f + (270f * i / numTicks)
-                val isGlow     = i <= (progressAnim * numTicks)
-                val tickColor  = if (isGlow) primaryColor.copy(alpha = 0.8f) else trackColor.copy(alpha = 0.25f)
-                val tickLength = if (i % 5 == 0) 8.dp.toPx() else 4.dp.toPx()
-                val tickWidth  = if (i % 5 == 0) 2.5.dp.toPx() else 1.2f.dp.toPx()
-                val rad        = Math.toRadians(angle.toDouble())
-                val r0         = radius + 12.dp.toPx()
-                drawLine(
-                    color       = tickColor,
-                    start       = Offset(center.x + r0 * Math.cos(rad).toFloat(), center.y + r0 * Math.sin(rad).toFloat()),
-                    end         = Offset(center.x + (r0 + tickLength) * Math.cos(rad).toFloat(), center.y + (r0 + tickLength) * Math.sin(rad).toFloat()),
-                    strokeWidth = tickWidth,
-                    cap         = StrokeCap.Round
-                )
-            }
-
-            // Track arc
-            drawArc(
-                color       = trackColor,
-                startAngle  = 135f,
-                sweepAngle  = 270f,
-                useCenter   = false,
-                style       = Stroke(strokeWidth, cap = StrokeCap.Round),
-                topLeft     = Offset(center.x - radius, center.y - radius),
-                size        = androidx.compose.ui.geometry.Size(radius * 2, radius * 2)
-            )
-
-            // Progress arc
-            drawArc(
-                brush       = Brush.sweepGradient(listOf(primaryColor.copy(alpha = 0.5f), primaryColor), center = center),
-                startAngle  = 135f,
-                sweepAngle  = 270f * progressAnim,
-                useCenter   = false,
-                style       = Stroke(strokeWidth, cap = StrokeCap.Round),
-                topLeft     = Offset(center.x - radius, center.y - radius),
-                size        = androidx.compose.ui.geometry.Size(radius * 2, radius * 2)
-            )
-        }
-
-        // Center typography: score + "/1000"
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Text(
-                text  = "$score",
-                style = MaterialTheme.typography.displayLarge.copy(
-                    fontSize      = 58.sp,
-                    fontWeight    = FontWeight.Black,
-                    letterSpacing = (-2).sp
-                ),
-                color      = MaterialTheme.colorScheme.onBackground,
-                lineHeight = 58.sp
-            )
-            Text(
-                text         = "/ 1000",
-                style        = MaterialTheme.typography.labelSmall,
-                color        = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.4f),
+        Box(
+            modifier = Modifier
+                .width(3.dp)
+                .height(14.dp)
+                .background(categoryColor, RoundedCornerShape(1.5.dp))
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = text.uppercase(),
+            style = MaterialTheme.typography.labelLarge.copy(
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
                 letterSpacing = 1.sp,
-                fontWeight   = FontWeight.Bold
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)
             )
-        }
+        )
     }
 }
 
-// ── Expandable category row ───────────────────────────────────────────────────
+@Composable
+private fun SubTestRow(idx: Int, name: String, scoreText: String, categoryColor: Color) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(
+                if (idx % 2 == 0) Color.Transparent
+                else MaterialTheme.colorScheme.onBackground.copy(alpha = 0.015f)
+            )
+            .padding(start = 32.dp, end = 24.dp, top = 12.dp, bottom = 12.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment     = Alignment.CenterVertically
+    ) {
+        Row(
+            modifier = Modifier.weight(1f),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(5.dp)
+                    .background(categoryColor.copy(alpha = 0.5f), CircleShape)
+            )
+            Spacer(modifier = Modifier.width(10.dp))
+            Text(
+                text      = name,
+                style     = MaterialTheme.typography.bodyLarge.copy(
+                    fontSize = 18.sp,
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f)
+                ),
+                maxLines  = 2,
+                overflow  = TextOverflow.Ellipsis
+            )
+        }
+        Spacer(modifier = Modifier.width(12.dp))
+        Text(
+            text       = scoreText,
+            style      = MaterialTheme.typography.bodyLarge.copy(
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                color = categoryColor
+            )
+        )
+    }
+}
 
 @Composable
-private fun ExpandableCategoryRow(
+private fun CategoryRow(
     displayName   : String,
     rawScore      : Double,
     categoryColor : Color,
@@ -885,7 +1054,7 @@ private fun ExpandableCategoryRow(
     var expanded by remember { mutableStateOf(false) }
 
     // Parse sub-test list from the phase JSON
-    val subTests: List<Pair<String, String>> = remember(phaseJson, categoryKey) {
+    val subTests: List<SubTestResult> = remember(phaseJson, categoryKey) {
         if (phaseJson == null) return@remember emptyList()
         try {
             val obj = org.json.JSONObject(phaseJson)
@@ -896,6 +1065,7 @@ private fun ExpandableCategoryRow(
                 val name = rawName.removePrefix("Single-Core ").removePrefix("Multi-Core ")
                 val metricsStr = item.optString("metricsJson", "{}")
                 val opsPerSecond = item.optDouble("opsPerSecond", 0.0)
+                val isMultiCore = rawName.startsWith("Multi-Core")
 
                 // Try metricsJson score first (GPU/RAM/STORAGE/AI), else compute for CPU
                 val score = try {
@@ -922,100 +1092,262 @@ private fun ExpandableCategoryRow(
                     }
                 } catch (_: Exception) { -1.0 }
                 val scoreText = if (score >= 0) score.roundToInt().toString() else "—"
-                name to scoreText
+                SubTestResult(name, scoreText, isMultiCore)
             }
         } catch (_: Exception) { emptyList() }
     }
 
     val hasSubTests = subTests.isNotEmpty()
 
-    Card(
+    val categoryIcon = when (categoryKey) {
+        "CPU"          -> Icons.Rounded.Memory
+        "AI"           -> Icons.Rounded.AutoAwesome
+        "RAM"          -> Icons.Rounded.Layers
+        "STORAGE"      -> Icons.Rounded.Storage
+        "GPU"          -> Icons.Rounded.Speed
+        "PRODUCTIVITY" -> Icons.Rounded.FactCheck
+        else           -> Icons.Rounded.Memory
+    }
+
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .then(if (hasSubTests) Modifier.clickable { expanded = !expanded } else Modifier),
-        shape  = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.10f)
-        ),
-        border = BorderStroke(1.dp, categoryColor.copy(alpha = 0.20f))
+            .then(if (hasSubTests) Modifier.clickable { expanded = !expanded } else Modifier)
     ) {
-        Column(modifier = Modifier.fillMaxWidth()) {
-            // Header row
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .drawBehind {
-                        // Left colour strip
-                        drawRect(
-                            color = categoryColor,
-                            size  = androidx.compose.ui.geometry.Size(4.dp.toPx(), size.height)
-                        )
-                    }
-                    .padding(start = 16.dp, end = 12.dp, top = 14.dp, bottom = 14.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text      = displayName,
-                    modifier  = Modifier.weight(1f),
-                    style     = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.SemiBold,
-                    color     = MaterialTheme.colorScheme.onBackground
-                )
-                Text(
-                    text          = rawScore.roundToInt().toString(),
-                    style         = MaterialTheme.typography.titleLarge,
-                    fontWeight    = FontWeight.Black,
-                    color         = categoryColor,
-                    letterSpacing = (-0.5).sp
-                )
-                if (hasSubTests) {
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text     = if (expanded) "▲" else "▼",
-                        fontSize = 10.sp,
-                        color    = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.35f)
+        // Header row
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .drawBehind {
+                    // Left colour strip
+                    drawRect(
+                        color = categoryColor,
+                        size  = androidx.compose.ui.geometry.Size(4.dp.toPx(), size.height)
                     )
                 }
+                .padding(start = 20.dp, end = 24.dp, top = 16.dp, bottom = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = categoryIcon,
+                contentDescription = null,
+                tint = categoryColor,
+                modifier = Modifier.size(24.dp)
+            )
+            Spacer(modifier = Modifier.width(14.dp))
+            Text(
+                text      = displayName,
+                modifier  = Modifier.weight(1f),
+                style     = MaterialTheme.typography.titleMedium.copy(
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold
+                ),
+                color     = MaterialTheme.colorScheme.onBackground
+            )
+            Text(
+                text          = rawScore.roundToInt().toString(),
+                style         = MaterialTheme.typography.displaySmall.copy(
+                    fontSize = 32.sp,
+                    fontWeight = FontWeight.Black
+                ),
+                color         = categoryColor,
+                letterSpacing = (-0.5).sp
+            )
+            if (hasSubTests) {
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text     = if (expanded) "▲" else "▼",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color    = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.35f)
+                )
             }
+        }
 
-            // Sub-test rows (animated dropdown)
-            AnimatedVisibility(visible = expanded) {
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    HorizontalDivider(
-                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.05f)
-                    )
-                    subTests.forEachIndexed { idx, (name, scoreText) ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .background(
-                                    if (idx % 2 == 0) Color.Transparent
-                                    else MaterialTheme.colorScheme.onBackground.copy(alpha = 0.025f)
-                                )
-                                .padding(start = 20.dp, end = 16.dp, top = 9.dp, bottom = 9.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment     = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text      = name,
-                                modifier  = Modifier.weight(1f),
-                                style     = MaterialTheme.typography.bodySmall,
-                                color     = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.65f),
-                                maxLines  = 2,
-                                overflow  = TextOverflow.Ellipsis
-                            )
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Text(
-                                text       = scoreText,
-                                style      = MaterialTheme.typography.bodySmall,
-                                fontWeight = FontWeight.Bold,
-                                color      = categoryColor
-                            )
+        // Sub-test rows (animated dropdown)
+        AnimatedVisibility(
+            visible = expanded,
+            enter = fadeIn() + expandVertically(),
+            exit = fadeOut() + shrinkVertically()
+        ) {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                HorizontalDivider(
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.05f)
+                )
+                
+                if (categoryKey == "CPU") {
+                    val singleCoreTests = subTests.filter { !it.isMultiCore }
+                    val multiCoreTests = subTests.filter { it.isMultiCore }
+
+                    // Single-core header
+                    if (singleCoreTests.isNotEmpty()) {
+                        SubSectionHeader("Single-Core Tests", categoryColor)
+                        singleCoreTests.forEachIndexed { idx, test ->
+                            SubTestRow(idx, test.name, test.scoreText, categoryColor)
                         }
                     }
-                    Spacer(modifier = Modifier.height(4.dp))
+
+                    // Divider between single-core and multi-core
+                    if (singleCoreTests.isNotEmpty() && multiCoreTests.isNotEmpty()) {
+                        HorizontalDivider(
+                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.05f),
+                            modifier = Modifier.padding(horizontal = 24.dp, vertical = 6.dp)
+                        )
+                    }
+
+                    // Multi-core header
+                    if (multiCoreTests.isNotEmpty()) {
+                        SubSectionHeader("Multi-Core Tests", categoryColor)
+                        multiCoreTests.forEachIndexed { idx, test ->
+                            SubTestRow(idx, test.name, test.scoreText, categoryColor)
+                        }
+                    }
+                } else {
+                    subTests.forEachIndexed { idx, test ->
+                        SubTestRow(idx, test.name, test.scoreText, categoryColor)
+                    }
+                }
+                Spacer(modifier = Modifier.height(4.dp))
+            }
+        }
+    }
+}
+
+@kotlin.OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@Composable
+fun FullBenchmarkLastResultScreen(
+    historyRepository: com.ivarna.finalbenchmark2.data.repository.HistoryRepository,
+    onBackClick: () -> Unit
+) {
+    val resultsState = historyRepository.getResultsByType("FULL").collectAsState(initial = null)
+    val results = resultsState.value
+
+    if (results == null) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+        }
+    } else if (results.isEmpty()) {
+        Scaffold(
+            topBar = {
+                CenterAlignedTopAppBar(
+                    title = {
+                        Text(
+                            "Last Result",
+                            style = MaterialTheme.typography.headlineSmall,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = onBackClick) {
+                            Icon(
+                                imageVector = Icons.Default.ArrowBack,
+                                contentDescription = "Back",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    },
+                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.background
+                    )
+                )
+            }
+        ) { innerPadding ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .background(MaterialTheme.colorScheme.background),
+                contentAlignment = Alignment.Center
+            ) {
+                Card(
+                    modifier = Modifier
+                        .padding(24.dp)
+                        .fillMaxWidth(),
+                    shape = RoundedCornerShape(24.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.15f)
+                    ),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f))
+                ) {
+                    Column(
+                        modifier = Modifier.padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.FactCheck,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(64.dp)
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            text = "No Benchmark Run Found",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            textAlign = TextAlign.Center
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "You haven't run a full benchmark yet. Start one from the Home screen to see results here.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center,
+                            lineHeight = 20.sp
+                        )
+                    }
                 }
             }
         }
+    } else {
+        val lastResult = results.first().benchmarkResult
+        val state = remember(lastResult) {
+            val overallScore = lastResult.totalScore.toInt()
+            val scores = mutableMapOf<com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkCategory, Double>()
+            val phaseJsons = mutableMapOf<com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkCategory, String>()
+            
+            try {
+                val pmObj = org.json.JSONObject(lastResult.performanceMetricsJson)
+                val catScoresObj = pmObj.optJSONObject("category_scores")
+                if (catScoresObj != null) {
+                    catScoresObj.keys().forEach { key ->
+                        try {
+                            val category = com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkCategory.valueOf(key)
+                            scores[category] = catScoresObj.optDouble(key, 0.0)
+                        } catch (_: Exception) {}
+                    }
+                }
+            } catch (_: Exception) {}
+
+            try {
+                val pdObj = org.json.JSONObject(lastResult.detailedResultsJson)
+                pdObj.keys().forEach { key ->
+                    try {
+                        val category = com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkCategory.valueOf(key)
+                        phaseJsons[category] = pdObj.optString(key, "")
+                    } catch (_: Exception) {}
+                }
+            } catch (_: Exception) {}
+
+            FullBenchmarkState(
+                phases = com.ivarna.finalbenchmark2.ui.viewmodels.FullBenchmarkViewModel.PHASES,
+                scores = scores,
+                phaseJsons = phaseJsons,
+                isComplete = true,
+                overallScore = overallScore
+            )
+        }
+        
+        FullBenchmarkResultScreen(
+            state = state,
+            preset = "Auto",
+            onDone = onBackClick
+        )
     }
 }

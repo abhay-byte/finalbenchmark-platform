@@ -49,7 +49,8 @@ fun SettingsScreen(
         rootStatus: RootStatus =
                 RootStatus.NO_ROOT, // Root status from MainViewModel (legacy parameter)
         onBackClick: () -> Unit = {},
-        onNavigateToOnboarding: () -> Unit = {}
+        onNavigateToOnboarding: () -> Unit = {},
+        onNavigateToLastResult: () -> Unit = {}
 ) {
         val context = LocalContext.current
         val themePreferences = remember { ThemePreferences(context) }
@@ -490,6 +491,48 @@ fun SettingsScreen(
                                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                                             modifier = Modifier.padding(top = 8.dp)
                                         )
+                                    }
+                                }
+
+                                 // Last Result Settings Card
+                                GlassSettingCard(delayMillis = 250) {
+                                    Column(modifier = Modifier.padding(20.dp)) {
+                                        Text(
+                                            text = "Last Benchmark Score",
+                                            fontSize = 18.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.padding(bottom = 12.dp)
+                                        )
+
+                                        Text(
+                                            text = "View the detailed performance results and animations of your last full benchmark run.",
+                                            fontSize = 14.sp,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.padding(bottom = 20.dp),
+                                            lineHeight = 20.sp
+                                        )
+
+                                        Button(
+                                            onClick = { onNavigateToLastResult() },
+                                            modifier = Modifier.fillMaxWidth().height(50.dp),
+                                            colors = ButtonDefaults.buttonColors(
+                                                containerColor = MaterialTheme.colorScheme.primary
+                                            ),
+                                            shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Rounded.Analytics,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Text(
+                                                text = "View Last Result",
+                                                style = MaterialTheme.typography.titleMedium,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
                                     }
                                 }
 
