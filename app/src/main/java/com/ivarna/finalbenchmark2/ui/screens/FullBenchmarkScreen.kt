@@ -89,6 +89,9 @@ fun FullBenchmarkScreen(
 
     // Track whether the final result has already been auto-saved so we don't double-insert
     var savedToDb by remember { mutableStateOf(false) }
+    // Cache the metricsJson and summaryJson so they can be reused in onDone without stopping monitor twice
+    var cachedMetricsJson by remember { mutableStateOf("{}") }
+    var cachedSummaryJson by remember { mutableStateOf("") }
 
     // Start the overall performance monitor when this screen is first composed
     LaunchedEffect(Unit) { viewModel.startMonitoring() }
@@ -99,7 +102,9 @@ fun FullBenchmarkScreen(
         if (state.isComplete && !savedToDb) {
             try {
                 val metricsJson = viewModel.stopAndGetMetrics()
+                cachedMetricsJson = metricsJson
                 val summaryJson = viewModel.buildFinalSummaryJson(metricsJson)
+                cachedSummaryJson = summaryJson
 
                 val catScores = try {
                     org.json.JSONObject(summaryJson).optJSONObject("category_scores") ?: org.json.JSONObject()
@@ -147,10 +152,10 @@ fun FullBenchmarkScreen(
                 state = state,
                 preset = preset,
                 onDone = {
-                    // Build the final JSON for the result screen navigation.
-                    // DB save already happened via LaunchedEffect above.
-                    val metricsJson = viewModel.stopAndGetMetrics()
-                    val summaryJson = viewModel.buildFinalSummaryJson(metricsJson)
+                    // Use cached summaryJson (with real performance_metrics) built during auto-save.
+                    // Do NOT call stopAndGetMetrics() again — monitor is already stopped.
+                    val summaryJson = if (cachedSummaryJson.isNotEmpty()) cachedSummaryJson
+                                      else viewModel.buildFinalSummaryJson(cachedMetricsJson)
                     onBenchmarkComplete(summaryJson)
                 }
             )
@@ -740,11 +745,12 @@ private fun FullBenchmarkResultScreen(
                         BenchmarkCategory.PRODUCTIVITY -> Color(0xFFFF9800)
                         else                           -> Color(0xFF9E9E9E)
                     }
-                    ExpandableCategoryRow(
+                ExpandableCategoryRow(
                         displayName   = phase.displayName,
                         rawScore      = rawScore,
                         categoryColor = categoryColor,
-                        phaseJson     = phaseJson
+                        phaseJson     = phaseJson,
+                        categoryKey   = phase.category.name
                     )
                 }
             }
@@ -873,23 +879,47 @@ private fun ExpandableCategoryRow(
     displayName   : String,
     rawScore      : Double,
     categoryColor : Color,
-    phaseJson     : String?
+    phaseJson     : String?,
+    categoryKey   : String = ""
 ) {
     var expanded by remember { mutableStateOf(false) }
 
     // Parse sub-test list from the phase JSON
-    val subTests: List<Pair<String, String>> = remember(phaseJson) {
+    val subTests: List<Pair<String, String>> = remember(phaseJson, categoryKey) {
         if (phaseJson == null) return@remember emptyList()
         try {
             val obj = org.json.JSONObject(phaseJson)
             val dr  = obj.optJSONArray("detailed_results") ?: return@remember emptyList()
             (0 until dr.length()).mapNotNull { i ->
                 val item = dr.getJSONObject(i)
-                val name = item.optString("name", "Test ${i + 1}")
-                    .removePrefix("Single-Core ").removePrefix("Multi-Core ")
+                val rawName = item.optString("name", "Test ${i + 1}")
+                val name = rawName.removePrefix("Single-Core ").removePrefix("Multi-Core ")
                 val metricsStr = item.optString("metricsJson", "{}")
+                val opsPerSecond = item.optDouble("opsPerSecond", 0.0)
+
+                // Try metricsJson score first (GPU/RAM/STORAGE/AI), else compute for CPU
                 val score = try {
-                    org.json.JSONObject(metricsStr).optDouble("score", -1.0)
+                    val metricsObj = org.json.JSONObject(metricsStr)
+                    val fromMetrics = metricsObj.optDouble("score", -1.0)
+                    if (fromMetrics >= 0) {
+                        fromMetrics
+                    } else when (categoryKey) {
+                        "CPU" -> {
+                            val benchmarkName = com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkName.fromString(rawName)
+                            val factor = benchmarkName?.let {
+                                com.ivarna.finalbenchmark2.cpuBenchmark.KotlinBenchmarkManager.SCORING_FACTORS[it]
+                            } ?: 0.0
+                            if (factor > 0) opsPerSecond * factor else -1.0
+                        }
+                        "AI" -> {
+                            val benchmarkName = com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkName.fromString(rawName)
+                            val factor = benchmarkName?.let {
+                                com.ivarna.finalbenchmark2.cpuBenchmark.KotlinBenchmarkManager.AI_PER_TEST_SCORING_FACTORS[it]
+                            } ?: 0.0
+                            if (factor > 0) opsPerSecond * factor else -1.0
+                        }
+                        else -> -1.0
+                    }
                 } catch (_: Exception) { -1.0 }
                 val scoreText = if (score >= 0) score.roundToInt().toString() else "—"
                 name to scoreText

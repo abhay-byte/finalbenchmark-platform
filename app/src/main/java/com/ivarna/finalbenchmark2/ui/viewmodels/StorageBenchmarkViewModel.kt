@@ -123,18 +123,20 @@ private fun StorageTest.unit() = when (this) {
 private fun StorageTest.score(value: Double): Int {
     val ref = STORAGE_REFERENCE[this] ?: return 0
     val ratio = value / ref
-    // Capped at 100: no single test can exceed 100 pts and inflate the geometric mean.
-    // coerceAtLeast(0) guards against negative values from any measurement error.
-    return (ratio * 100.0).roundToInt().coerceIn(0, 100)
+    // Allow scores above 100 to honestly reflect devices faster than the reference.
+    // Clamp at 0 only to guard against negative values from measurement errors.
+    return (ratio * 100.0).roundToInt().coerceAtLeast(0)
 }
 
 private fun calculateStorageGeometricMean(results: List<StorageTestResult>): Double {
     val ratios = results.map { r ->
         val ref = STORAGE_REFERENCE[r.test] ?: return@map 1.0
-        r.value / ref
+        // Cap at 2.0× reference (200 pts) to prevent page-cache reads from massively
+        // inflating the geometric mean while still rewarding genuinely fast devices.
+        (r.value / ref).coerceIn(1e-9, 2.0)
     }
     if (ratios.isEmpty()) return 0.0
-    val product = ratios.fold(1.0) { acc, v -> acc * v.coerceAtLeast(1e-9) }
+    val product = ratios.fold(1.0) { acc, v -> acc * v }
     return product.pow(1.0 / ratios.size) * 100.0
 }
 

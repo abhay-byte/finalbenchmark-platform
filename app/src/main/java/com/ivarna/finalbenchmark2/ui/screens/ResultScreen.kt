@@ -1520,18 +1520,43 @@ fun DetailedDataTab(summary: BenchmarkSummary) {
                         var expanded    = expandedStates[i]
 
                         // Parse sub-tests
-                        val subTests: List<Pair<String, String>> = remember(phaseJson) {
+                        val subTests: List<Pair<String, String>> = remember(phaseJson, cat.key) {
                             if (phaseJson == null) return@remember emptyList()
                             try {
                                 val obj = org.json.JSONObject(phaseJson)
                                 val dr  = obj.optJSONArray("detailed_results") ?: return@remember emptyList()
                                 (0 until dr.length()).mapNotNull { idx ->
                                     val item = dr.getJSONObject(idx)
-                                    val name = item.optString("name", "Test ${idx + 1}")
-                                        .removePrefix("Single-Core ").removePrefix("Multi-Core ")
+                                    val rawName = item.optString("name", "Test ${idx + 1}")
+                                    val name = rawName.removePrefix("Single-Core ").removePrefix("Multi-Core ")
                                     val metricsStr = item.optString("metricsJson", "{}")
+                                    val opsPerSecond = item.optDouble("opsPerSecond", 0.0)
+
+                                    // Try to read score from metricsJson first (RAM/STORAGE/GPU/AI).
+                                    // Fall back to computing from SCORING_FACTORS for CPU.
                                     val score = try {
-                                        org.json.JSONObject(metricsStr).optDouble("score", -1.0)
+                                        val metricsObj = org.json.JSONObject(metricsStr)
+                                        val fromMetrics = metricsObj.optDouble("score", -1.0)
+                                        if (fromMetrics >= 0) {
+                                            fromMetrics
+                                        } else when (cat.key) {
+                                            "CPU" -> {
+                                                // Compute from scoring factors
+                                                val benchmarkName = com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkName.fromString(rawName)
+                                                val factor = benchmarkName?.let {
+                                                    com.ivarna.finalbenchmark2.cpuBenchmark.KotlinBenchmarkManager.SCORING_FACTORS[it]
+                                                } ?: 0.0
+                                                if (factor > 0) opsPerSecond * factor else -1.0
+                                            }
+                                            "AI" -> {
+                                                val benchmarkName = com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkName.fromString(rawName)
+                                                val factor = benchmarkName?.let {
+                                                    com.ivarna.finalbenchmark2.cpuBenchmark.KotlinBenchmarkManager.AI_PER_TEST_SCORING_FACTORS[it]
+                                                } ?: 0.0
+                                                if (factor > 0) opsPerSecond * factor else -1.0
+                                            }
+                                            else -> -1.0
+                                        }
                                     } catch (_: Exception) { -1.0 }
                                     val scoreText = if (score >= 0) score.roundToInt().toString() else "—"
                                     name to scoreText
