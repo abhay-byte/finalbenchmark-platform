@@ -23,6 +23,12 @@ import android.media.MediaCodec
 import android.media.MediaCodecInfo
 import android.media.MediaFormat
 import android.os.Build
+import android.graphics.ColorSpace
+import android.media.Image
+import android.os.Handler
+import android.os.HandlerThread
+import java.util.concurrent.LinkedBlockingQueue
+import java.util.concurrent.TimeUnit
 import java.io.ByteArrayOutputStream
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -96,35 +102,30 @@ data class ProductivityBenchmarkUiState(
 
 // ── Reference values ──────────────────────────────────────────────────────────
 //
-// Calibrated ~20% above best measured values on SD 8 Gen 3 (OnePlus CPH2691, Android 16).
-// A device matching all references scores 100 pts — that would be ~20% faster than
-// this top-tier baseline device.
-//
 // Calibrated to OnePlus CPH2691 (SD 8 Gen 3, Android 16) — this device is the
-// 100-point baseline.  A device that beats these numbers will score above 100;
-// Refs calibrated from SD8 Gen3 (Adreno 750) measured results, set ~18% above
-// measured so top-end device scores ~85 pts per test.
+// 100-point baseline. A device that beats these numbers will score above 100.
+// Refs calibrated from SD8 Gen3 (Adreno 750) measured release build results:
 //
-//   CANVAS_OPS:      measured  334 ops/s            → ref  400
-//   IMAGE_FILTER:    measured  239 imgs/s (AGSL 4K) → ref  285
-//   IMAGE_RESIZE:    measured  148 imgs/s (GPU RT)  → ref  175
-//   TEXT_OPS:        measured ~1.7 Mchars/s (5K)   → ref  2.0
-//   JSON_OPS:        measured   78 docs/s           → ref   90
-//   COMPRESSION:     measured   19 MB/s             → ref   22
-//   VIDEO_ENCODE:    measured  256 fps (H.264 HW)   → ref  305
-//   VIDEO_DECODE:    measured  595 fps (H.264 HW)   → ref  700
-//   VIDEO_TRANSCODE: measured  192 fps (HW pipeline)→ ref  230
+//   CANVAS_OPS:      measured  290 ops/s            → ref  290
+//   IMAGE_FILTER:    measured  256 imgs/s (AGSL 4K) → ref  256
+//   IMAGE_RESIZE:    measured  150 imgs/s (GPU RT)  → ref  150
+//   TEXT_OPS:        measured  4.62 Mchars/s (5K)   → ref  4.62
+//   JSON_OPS:        measured  548 docs/s           → ref  548
+//   COMPRESSION:     measured   28 MB/s             → ref   28
+//   VIDEO_ENCODE:    measured  189 fps (H.264 HW)   → ref  189
+//   VIDEO_DECODE:    measured  407 fps (H.264 HW)   → ref  407
+//   VIDEO_TRANSCODE: measured  190 fps (HW pipeline)→ ref  190
 
 private val PRODUCTIVITY_REFERENCE = mapOf(
-    ProductivityTest.CANVAS_OPS      to    400.0,  // GPU: HardwareRenderer HWUI measured 334 ops/s
-    ProductivityTest.IMAGE_FILTER    to    285.0,  // GPU: RuntimeShader AGSL 4K measured 239 imgs/s
-    ProductivityTest.IMAGE_RESIZE    to    175.0,  // GPU: HardwareRenderer bilinear measured 148 rt/s
-    ProductivityTest.TEXT_OPS        to      2.0,  // CPU: 5K sort + Lev×20 + regex, expected ~1.7 Mchars/s
-    ProductivityTest.JSON_OPS        to     90.0,  // CPU: 200-field 3-level measured 78 docs/s
-    ProductivityTest.COMPRESSION     to     22.0,  // CPU: measured 19 MB/s
-    ProductivityTest.VIDEO_ENCODE    to    305.0,  // HW: MediaCodec H.264 measured 256 fps
-    ProductivityTest.VIDEO_DECODE    to    700.0,  // HW: MediaCodec H.264 measured 595 fps
-    ProductivityTest.VIDEO_TRANSCODE to    230.0,  // HW: decode+AGSL+encode measured 192 fps
+    ProductivityTest.CANVAS_OPS      to    290.0,  // GPU: HardwareRenderer HWUI measured 290 ops/s in release
+    ProductivityTest.IMAGE_FILTER    to    256.0,  // GPU: RuntimeShader AGSL 4K measured 256 imgs/s in release
+    ProductivityTest.IMAGE_RESIZE    to    150.0,  // GPU: HardwareRenderer bilinear measured 150 rt/s in release
+    ProductivityTest.TEXT_OPS        to      4.62, // CPU: 5K sort + Lev×20 + regex, measured 4.62 Mchars/s in release
+    ProductivityTest.JSON_OPS        to    548.0,  // CPU: 200-field 3-level measured 548 docs/s in release
+    ProductivityTest.COMPRESSION     to     28.0,  // CPU: measured 28 MB/s in release
+    ProductivityTest.VIDEO_ENCODE    to    189.0,  // HW: MediaCodec H.264 measured 189 fps in release
+    ProductivityTest.VIDEO_DECODE    to    407.0,  // HW: MediaCodec H.264 measured 407 fps in release
+    ProductivityTest.VIDEO_TRANSCODE to    190.0,  // HW: decode+AGSL+encode measured 190 fps in release
 )
 
 private val PRODUCTIVITY_TESTS = ProductivityTest.values().toList()
@@ -155,7 +156,7 @@ private fun ProductivityTest.unit() = when (this) {
 
 private fun ProductivityTest.score(value: Double): Int {
     val ref = PRODUCTIVITY_REFERENCE[this] ?: return 0
-    return (value / ref * 100.0).roundToInt().coerceIn(0, 100)
+    return (value / ref * 100.0).roundToInt().coerceAtLeast(0)
 }
 
 private fun calculateProductivityGeometricMean(results: List<ProductivityTestResult>): Double {
@@ -489,6 +490,7 @@ class ProductivityBenchmarkViewModel(
 
         val rtShader = RuntimeShader(agsl)
         val drawPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+        val srcShader = BitmapShader(src, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP)
 
         var images = 0L
         val endMs = System.currentTimeMillis() + durationMs
@@ -497,8 +499,7 @@ class ProductivityBenchmarkViewModel(
             val t = images.toFloat()
 
             // Update GPU shader uniforms (CPU-side uniform upload only)
-            rtShader.setInputShader("inputTexture",
-                android.graphics.BitmapShader(src, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP))
+            rtShader.setInputShader("inputTexture", srcShader)
             rtShader.setFloatUniform("brightness", 0.8f + (t % 50f) * 0.006f)
             rtShader.setFloatUniform("saturation", 0.5f + (t % 80f) * 0.007f)
             rtShader.setFloatUniform("hueAngle", (t % 360f) * (Math.PI.toFloat() / 180f))
@@ -772,7 +773,9 @@ class ProductivityBenchmarkViewModel(
                 }
                 val outIdx = dec.dequeueOutputBuffer(decInfo, 5_000L)
                 if (outIdx >= 0) {
-                    decFrames++
+                    if (decInfo.flags and MediaCodec.BUFFER_FLAG_CODEC_CONFIG == 0 && decInfo.size > 0) {
+                        decFrames++
+                    }
                     dec.releaseOutputBuffer(outIdx, false)
                     if (decFrames % 30L == 0L)
                         liveDetail = "HW Dec #$decFrames  •  ${W}×${H} H.264  •  ${dec.codecInfo.name}"
@@ -798,6 +801,15 @@ class ProductivityBenchmarkViewModel(
      */
     private fun benchVideoTranscode(durationMs: Long): Double {
         val W = 1920; val H = 1080; val KEYFRAMES = 10
+        var setupEnc: MediaCodec? = null
+        var outEnc: MediaCodec? = null
+        var dec: MediaCodec? = null
+        var imgReader: ImageReader? = null
+        var handlerThread: HandlerThread? = null
+        var encSurface: android.view.Surface? = null
+        var renderer: HardwareRenderer? = null
+        val imageQueue = LinkedBlockingQueue<Image>(2)
+
         return try {
             // ── Phase 1: pre-encode I-frames for the decode side ────────
             val encSetupFmt = MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC, W, H).apply {
@@ -807,9 +819,10 @@ class ProductivityBenchmarkViewModel(
                 setInteger(MediaFormat.KEY_COLOR_FORMAT,
                     MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Flexible)
             }
-            val setupEnc = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_VIDEO_AVC)
-            setupEnc.configure(encSetupFmt, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
-            setupEnc.start()
+            setupEnc = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_VIDEO_AVC)
+            val sEnc = setupEnc!!
+            sEnc.configure(encSetupFmt, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
+            sEnc.start()
 
             data class Chunk(val data: ByteArray, val flags: Int, val pts: Long)
             val chunks = mutableListOf<Chunk>()
@@ -817,29 +830,29 @@ class ProductivityBenchmarkViewModel(
             var inSent = 0; var setupDone = false
             while (!setupDone) {
                 if (inSent <= KEYFRAMES) {
-                    val idx = setupEnc.dequeueInputBuffer(10_000L)
+                    val idx = sEnc.dequeueInputBuffer(10_000L)
                     if (idx >= 0) {
-                        val buf = setupEnc.getInputBuffer(idx)!!; buf.clear()
+                        val buf = sEnc.getInputBuffer(idx)!!; buf.clear()
                         val ySize = W * H; val uvSize = W * H / 4
                         for (i in 0 until ySize) buf.put(((i / W + inSent * 8) and 0xFF).toByte())
                         for (i in 0 until uvSize) { buf.put(128.toByte()); buf.put(128.toByte()) }
                         val f = if (inSent == KEYFRAMES) MediaCodec.BUFFER_FLAG_END_OF_STREAM else 0
-                        setupEnc.queueInputBuffer(idx, 0, buf.position(), inSent * 33_333L, f)
+                        sEnc.queueInputBuffer(idx, 0, buf.position(), inSent * 33_333L, f)
                         inSent++
                     }
                 }
-                val outIdx = setupEnc.dequeueOutputBuffer(setupInfo, 10_000L)
+                val outIdx = sEnc.dequeueOutputBuffer(setupInfo, 10_000L)
                 if (outIdx >= 0) {
-                    val buf = setupEnc.getOutputBuffer(outIdx)!!
+                    val buf = sEnc.getOutputBuffer(outIdx)!!
                     val bytes = ByteArray(setupInfo.size)
                     buf.position(setupInfo.offset); buf.limit(setupInfo.offset + setupInfo.size)
                     buf.get(bytes)
                     chunks.add(Chunk(bytes, setupInfo.flags, setupInfo.presentationTimeUs))
-                    setupEnc.releaseOutputBuffer(outIdx, false)
+                    sEnc.releaseOutputBuffer(outIdx, false)
                     if (setupInfo.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) setupDone = true
                 }
             }
-            setupEnc.stop(); setupEnc.release()
+            sEnc.stop(); sEnc.release(); setupEnc = null
             val csdChunks = chunks.filter { it.flags and MediaCodec.BUFFER_FLAG_CODEC_CONFIG != 0 }
             val idrChunks = chunks.filter { it.flags and MediaCodec.BUFFER_FLAG_CODEC_CONFIG == 0 && it.data.isNotEmpty() }
             if (idrChunks.isEmpty()) return 0.0
@@ -851,9 +864,11 @@ class ProductivityBenchmarkViewModel(
                 setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 1)
                 setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface)
             }
-            val outEnc = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_VIDEO_AVC)
-            outEnc.configure(outFmt, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
-            val encSurface = outEnc.createInputSurface(); outEnc.start()
+            outEnc = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_VIDEO_AVC)
+            val oEnc = outEnc!!
+            oEnc.configure(outFmt, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
+            encSurface = oEnc.createInputSurface()
+            oEnc.start()
 
             // AGSL colour grade shader (hue rotation in YIQ)
             val agsl = """
@@ -885,20 +900,42 @@ class ProductivityBenchmarkViewModel(
             """.trimIndent()
             val gradeShader = RuntimeShader(agsl)
 
-            val renderer = HardwareRenderer()
-            renderer.setSurface(encSurface); renderer.start()
+            renderer = HardwareRenderer()
+            val rdr = renderer!!
+            rdr.setSurface(encSurface); rdr.start()
             val rootNode = RenderNode("xcode_frame"); rootNode.setPosition(0, 0, W, H)
-            renderer.setContentRoot(rootNode)
+            rdr.setContentRoot(rootNode)
 
-            // HW decoder
+            // Setup ImageReader for zero-copy pipeline
+            imgReader = ImageReader.newInstance(W, H, PixelFormat.RGBA_8888, 3)
+            val reader = imgReader!!
+            handlerThread = HandlerThread("transcode_img_reader")
+            handlerThread.start()
+            val handler = Handler(handlerThread.looper)
+            reader.setOnImageAvailableListener({ r ->
+                val img = try {
+                    r.acquireNextImage()
+                } catch (e: Exception) {
+                    null
+                }
+                if (img != null) {
+                    if (!imageQueue.offer(img)) {
+                        img.close()
+                    }
+                }
+            }, handler)
+
+            // HW decoder configured with ImageReader surface
             val decFmt = MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC, W, H)
-            val dec = MediaCodec.createDecoderByType(MediaFormat.MIMETYPE_VIDEO_AVC)
-            dec.configure(decFmt, null, null, 0); dec.start()
+            dec = MediaCodec.createDecoderByType(MediaFormat.MIMETYPE_VIDEO_AVC)
+            val d = dec!!
+            d.configure(decFmt, reader.surface, null, 0); d.start()
+
             for (csd in csdChunks) {
-                val idx = dec.dequeueInputBuffer(10_000L)
+                val idx = d.dequeueInputBuffer(10_000L)
                 if (idx >= 0) {
-                    val buf = dec.getInputBuffer(idx)!!; buf.clear(); buf.put(csd.data)
-                    dec.queueInputBuffer(idx, 0, csd.data.size, 0, MediaCodec.BUFFER_FLAG_CODEC_CONFIG)
+                    val buf = d.getInputBuffer(idx)!!; buf.clear(); buf.put(csd.data)
+                    d.queueInputBuffer(idx, 0, csd.data.size, 0, MediaCodec.BUFFER_FLAG_CODEC_CONFIG)
                 }
             }
 
@@ -909,59 +946,80 @@ class ProductivityBenchmarkViewModel(
 
             while (System.currentTimeMillis() < endMs) {
                 // Feed next compressed frame to decoder
-                val inIdx = dec.dequeueInputBuffer(5_000L)
+                val inIdx = d.dequeueInputBuffer(5_000L)
                 if (inIdx >= 0) {
                     val chunk = idrChunks[idrIdx++ % idrChunks.size]
-                    val buf = dec.getInputBuffer(inIdx)!!; buf.clear(); buf.put(chunk.data)
-                    dec.queueInputBuffer(inIdx, 0, chunk.data.size, ptsAcc, 0)
+                    val buf = d.getInputBuffer(inIdx)!!; buf.clear(); buf.put(chunk.data)
+                    d.queueInputBuffer(inIdx, 0, chunk.data.size, ptsAcc, 0)
                     ptsAcc += 33_333L
                 }
 
-                // Drain decoder → get decoded Bitmap
-                val outIdx = dec.dequeueOutputBuffer(decInfo, 5_000L)
+                // Drain decoder
+                val outIdx = d.dequeueOutputBuffer(decInfo, 5_000L)
                 if (outIdx >= 0) {
-                    // Use decoded image to create a source bitmap for GPU grade
-                    // (decoder output in byte-buffer mode → wrap in Bitmap directly)
-                    dec.releaseOutputBuffer(outIdx, false)
+                    if (decInfo.flags and MediaCodec.BUFFER_FLAG_CODEC_CONFIG == 0 && decInfo.size > 0) {
+                        // Release output buffer to surface (rendering it to ImageReader)
+                        d.releaseOutputBuffer(outIdx, true)
 
-                    // Render graded frame via HardwareRenderer → HW encoder surface
-                    val hueAngle = (frames * 0.05f) % (2f * Math.PI.toFloat())
-                    // Use a simple test-pattern bitmap as source for GPU grade pass
-                    val srcBmp = Bitmap.createBitmap(W / 8, H / 8, Bitmap.Config.ARGB_8888)
-                    val tmpC = Canvas(srcBmp)
-                    val p = Paint(); p.color = Color.HSVToColor(floatArrayOf((frames * 3.7f) % 360f, 0.9f, 0.9f))
-                    tmpC.drawRect(0f, 0f, (W / 8).toFloat(), (H / 8).toFloat(), p)
+                        // Wait for decoded image to arrive in queue
+                        val image = imageQueue.poll(150, TimeUnit.MILLISECONDS)
+                        if (image != null) {
+                            val hardwareBuffer = image.hardwareBuffer
+                            if (hardwareBuffer != null) {
+                                val bitmap = Bitmap.wrapHardwareBuffer(hardwareBuffer, ColorSpace.get(ColorSpace.Named.SRGB))
+                                if (bitmap != null) {
+                                    val hueAngle = (frames * 0.05f) % (2f * Math.PI.toFloat())
+                                    gradeShader.setInputShader("inputTexture",
+                                        BitmapShader(bitmap, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP))
+                                    gradeShader.setFloatUniform("hueAngle", hueAngle)
+                                    gradeShader.setFloatUniform("saturation", 1.0f + kotlin.math.sin(frames * 0.03f).toFloat() * 0.3f)
+                                    gradePaint.shader = gradeShader
 
-                    gradeShader.setInputShader("inputTexture",
-                        BitmapShader(srcBmp, Shader.TileMode.REPEAT, Shader.TileMode.REPEAT))
-                    gradeShader.setFloatUniform("hueAngle", hueAngle)
-                    gradeShader.setFloatUniform("saturation", 1.0f + kotlin.math.sin(frames * 0.03f).toFloat() * 0.3f)
-                    gradePaint.shader = gradeShader
-
-                    val canvas = rootNode.beginRecording()
-                    canvas.drawRect(0f, 0f, W.toFloat(), H.toFloat(), gradePaint)
-                    rootNode.endRecording()
-                    renderer.createRenderRequest().syncAndDraw()
-                    srcBmp.recycle()
+                                    val canvas = rootNode.beginRecording()
+                                    canvas.drawRect(0f, 0f, W.toFloat(), H.toFloat(), gradePaint)
+                                    rootNode.endRecording()
+                                    rdr.createRenderRequest().syncAndDraw()
+                                    bitmap.recycle()
+                                }
+                                hardwareBuffer.close()
+                            }
+                            image.close()
+                        }
+                    } else {
+                        d.releaseOutputBuffer(outIdx, false)
+                    }
 
                     // Drain encoder
-                    var encOut = outEnc.dequeueOutputBuffer(encInfo, 0)
+                    var encOut = oEnc.dequeueOutputBuffer(encInfo, 0)
                     while (encOut >= 0) {
                         if (encInfo.flags and MediaCodec.BUFFER_FLAG_CODEC_CONFIG == 0 && encInfo.size > 0) frames++
-                        outEnc.releaseOutputBuffer(encOut, false)
-                        encOut = outEnc.dequeueOutputBuffer(encInfo, 0)
+                        oEnc.releaseOutputBuffer(encOut, false)
+                        encOut = oEnc.dequeueOutputBuffer(encInfo, 0)
                     }
                     if (frames % 20L == 0L && frames > 0)
-                        liveDetail = "HW Transcode #$frames  •  ${dec.codecInfo.name}→AGSL→${outEnc.codecInfo.name}"
+                        liveDetail = "HW Transcode #$frames  •  ${d.codecInfo.name}→AGSL→${oEnc.codecInfo.name}"
                 }
             }
 
-            renderer.stop(); renderer.destroy(); encSurface.release()
-            dec.stop(); dec.release(); outEnc.stop(); outEnc.release()
             frames.toDouble() / (durationMs / 1000.0)
         } catch (e: Exception) {
             android.util.Log.e("ProdBench", "HW transcode failed: ${e.message}", e)
             0.0
+        } finally {
+            renderer?.stop(); renderer?.destroy()
+            encSurface?.release()
+            try { dec?.stop() } catch (ignored: Exception) {}
+            dec?.release()
+            try { outEnc?.stop() } catch (ignored: Exception) {}
+            outEnc?.release()
+            try { setupEnc?.stop() } catch (ignored: Exception) {}
+            setupEnc?.release()
+            imgReader?.close()
+            handlerThread?.quitSafely()
+            var img: Image?
+            while (imageQueue.poll().also { img = it } != null) {
+                img?.close()
+            }
         }
     }
 
@@ -1100,23 +1158,27 @@ class ProductivityBenchmarkViewModel(
      */
     private fun benchCompression(durationMs: Long): Double {
         val blockSize = 1024 * 1024
-        val input = ByteArray(blockSize)
         val rng = Random(77777L)
-        for (i in input.indices) {
-            input[i] = if (i % 10 < 6) (i % 251).toByte() else rng.nextInt(256).toByte()
+        val inputBlocks = Array(4) {
+            val block = ByteArray(blockSize)
+            for (i in block.indices) {
+                block[i] = if (i % 10 < 6) (i % 251).toByte() else rng.nextInt(256).toByte()
+            }
+            block
         }
         val output = ByteArray(blockSize + 1024)
         val deflater = Deflater(Deflater.BEST_COMPRESSION)
-        var totalBytes = 0L; var blocks = 0L
+        var totalBytes = 0L; var blocksCount = 0L
         val endMs = System.currentTimeMillis() + durationMs
 
         while (System.currentTimeMillis() < endMs) {
+            val input = inputBlocks[(blocksCount % 4).toInt()]
             deflater.reset(); deflater.setInput(input); deflater.finish()
             var outLen = 0
             while (!deflater.finished()) outLen += deflater.deflate(output, outLen, output.size - outLen)
-            totalBytes += blockSize.toLong(); blocks++
-            if (blocks % 5L == 0L)
-                liveDetail = "Block #$blocks  •  1MB→${outLen / 1024}KB  •  " +
+            totalBytes += blockSize.toLong(); blocksCount++
+            if (blocksCount % 5L == 0L)
+                liveDetail = "Block #$blocksCount  •  1MB→${outLen / 1024}KB  •  " +
                     "${"%.1f".format((1.0 - outLen.toDouble() / blockSize) * 100)}% saved"
         }
 

@@ -135,9 +135,12 @@ fun GpuBenchmarkScreen(
         }
     }
 
-    // Create renderer once
+    // Create renderer once — also wire GL info callback so ViewModel gets real GPU name
     val renderer = remember {
-        GpuBenchmarkRenderer { fps, ft -> viewModel.onFrameMetrics(fps, ft) }
+        GpuBenchmarkRenderer(
+            onFrameMetrics = { fps, ft -> viewModel.onFrameMetrics(fps, ft) },
+            onGpuInfo      = { r, v  -> viewModel.onGpuInfo(r, v) }
+        )
     }
 
     // Sync scene change from VM → renderer
@@ -400,10 +403,10 @@ private fun GpuLeftPanel(
                     accentColor = Color(0xFFB0FF70)
                 )
                 GpuHUDMetric(
-                    icon = Icons.Default.Thermostat,
-                    label = "CPU TEMP",
-                    value = "${"%.0f".format(uiState.cpuTempC)}°C",
-                    accentColor = tempColor(uiState.cpuTempC)
+                    icon = Icons.Default.Bolt,
+                    label = "WATTAGE",
+                    value = if (uiState.powerWatts > 0f) "${"%.1f".format(uiState.powerWatts)} W" else "— W",
+                    accentColor = Color(0xFFFFD740)
                 )
             }
         }
@@ -491,7 +494,7 @@ private fun GpuRightPanel(
                 )
             }
 
-            // Test Title & Description
+            // Test Title, Description & API chip
             Column(modifier = Modifier.fillMaxWidth()) {
                 Text(
                     text = "CURRENT SCENE",
@@ -508,6 +511,14 @@ private fun GpuRightPanel(
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
+                Spacer(modifier = Modifier.height(6.dp))
+                // GL API indicator chip
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    ApiChip(label = uiState.glApiLabel, color = Color(0xFF4FC3F7))
+                    if (uiState.gpuName.isNotEmpty()) {
+                        ApiChip(label = uiState.gpuName, color = Color(0xFFB0FF70))
+                    }
+                }
             }
 
             // Progress Tracking
@@ -816,7 +827,32 @@ private fun GpuFrametimeSparkline(
     }
 }
 
+// ─────────────────────────────────────────────────────────────────────────
+// API Chip — small pill badge for graphics API / GPU name
+// ─────────────────────────────────────────────────────────────────────────
+@Composable
+private fun ApiChip(label: String, color: Color) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(6.dp))
+            .background(color.copy(alpha = 0.10f))
+            .border(0.5.dp, color.copy(alpha = 0.45f), RoundedCornerShape(6.dp))
+            .padding(horizontal = 7.dp, vertical = 3.dp)
+    ) {
+        Text(
+            text = label,
+            color = color,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 9.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
 private fun fpsColor(fps: Float) = when {
+
     fps >= 55f -> Color(0xFF40FF80) // Green
     fps >= 30f -> Color(0xFFFFD840) // Yellow
     fps > 0f   -> Color(0xFFFF5050) // Red
@@ -836,7 +872,7 @@ private fun rememberGlSurfaceView(renderer: GpuBenchmarkRenderer): GLSurfaceView
 
     val glView = remember {
         GLSurfaceView(context).apply {
-            setEGLContextClientVersion(2)
+            setEGLContextClientVersion(3)
             setEGLConfigChooser(8, 8, 8, 8, 16, 0)
             preserveEGLContextOnPause = true
             setRenderer(renderer)

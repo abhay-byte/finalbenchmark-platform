@@ -14,6 +14,7 @@
  */
 
 #include <jni.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -24,6 +25,37 @@
 #ifdef __ARM_NEON
 #  include <arm_neon.h>
 #endif
+
+/* Detect L3 cache size on Linux/Android. Returns size in bytes. */
+static size_t detect_l3_cache_size(void) {
+    const char *paths[] = {
+        "/sys/devices/system/cpu/cpu0/cache/index3/size",
+        "/sys/devices/system/cpu/cpu0/cache/index4/size",
+        "/sys/devices/system/cpu/cpu1/cache/index3/size",
+        "/sys/devices/system/cpu/cpu4/cache/index3/size",
+    };
+    for (int p = 0; p < 4; p++) {
+        FILE *f = fopen(paths[p], "r");
+        if (f) {
+            char buf[64];
+            if (fgets(buf, sizeof(buf), f)) {
+                fclose(f);
+                char *end;
+                double val = strtod(buf, &end);
+                if (val > 0) {
+                    if (*end == 'K' || *end == 'k') val *= 1024;
+                    else if (*end == 'M' || *end == 'm') val *= 1024 * 1024;
+                    else if (*end == 'G' || *end == 'g') val *= 1024 * 1024 * 1024;
+                    return (size_t)val;
+                }
+            } else {
+                fclose(f);
+            }
+        }
+    }
+    /* Fallback default: 12 MB (SD 8 Gen 3 baseline is 12MB) */
+    return 12UL * 1024UL * 1024UL;
+}
 
 #define LOG_TAG  "RamBenchNative"
 #define LOGI(...)  __android_log_print(ANDROID_LOG_INFO,  LOG_TAG, __VA_ARGS__)
@@ -64,7 +96,11 @@ JNIEXPORT jdouble JNICALL
 Java_com_ivarna_finalbenchmark2_utils_RamNativeBridge_nativeSeqRead(
         JNIEnv *env, jclass cls, jlong durationMs)
 {
-    const size_t BUF = 64UL * 1024UL * 1024UL;  /* 64 MB */
+    size_t l3_size = detect_l3_cache_size();
+    size_t BUF = 64UL * 1024UL * 1024UL;  /* 64 MB */
+    if (l3_size * 2 > BUF) {
+        BUF = l3_size * 2;
+    }
     uint8_t *buf = (uint8_t*)malloc(BUF);
     if (!buf) { LOGE("seqRead alloc failed"); return 0.0; }
     memset(buf, 0xA5, BUF);   /* fault all pages in before clock starts */
@@ -120,7 +156,11 @@ JNIEXPORT jdouble JNICALL
 Java_com_ivarna_finalbenchmark2_utils_RamNativeBridge_nativeSeqWrite(
         JNIEnv *env, jclass cls, jlong durationMs)
 {
-    const size_t BUF = 64UL * 1024UL * 1024UL;
+    size_t l3_size = detect_l3_cache_size();
+    size_t BUF = 64UL * 1024UL * 1024UL;
+    if (l3_size * 2 > BUF) {
+        BUF = l3_size * 2;
+    }
     uint8_t *buf = (uint8_t*)malloc(BUF);
     if (!buf) { LOGE("seqWrite alloc failed"); return 0.0; }
     memset(buf, 0, BUF);   /* fault all pages in */
@@ -131,28 +171,30 @@ Java_com_ivarna_finalbenchmark2_utils_RamNativeBridge_nativeSeqWrite(
 
     while (now_ns() < end_ns) {
         COMPILER_BARRIER();
-#ifdef __ARM_NEON
-        uint64x2_t val = vdupq_n_u64(pattern++);
         uint8_t *p   = buf;
         uint8_t *end = buf + BUF;
+        uint64_t val_u64 = pattern++;
         while (p < end) {
             __builtin_prefetch(p + 512, 1, 0);
-            vst1q_u64((uint64_t*)(p +  0), val);
-            vst1q_u64((uint64_t*)(p + 16), val);
-            vst1q_u64((uint64_t*)(p + 32), val);
-            vst1q_u64((uint64_t*)(p + 48), val);
+#ifdef __ARM_NEON
+            uint64x2_t val0 = vdupq_n_u64(val_u64 + 0);
+            uint64x2_t val1 = vdupq_n_u64(val_u64 + 1);
+            uint64x2_t val2 = vdupq_n_u64(val_u64 + 2);
+            uint64x2_t val3 = vdupq_n_u64(val_u64 + 3);
+            vst1q_u64((uint64_t*)(p +  0), val0);
+            vst1q_u64((uint64_t*)(p + 16), val1);
+            vst1q_u64((uint64_t*)(p + 32), val2);
+            vst1q_u64((uint64_t*)(p + 48), val3);
+            val_u64 += 4;
+#else
+            ((uint64_t*)p)[0] = val_u64++; ((uint64_t*)p)[1] = val_u64++;
+            ((uint64_t*)p)[2] = val_u64++; ((uint64_t*)p)[3] = val_u64++;
+            ((uint64_t*)p)[4] = val_u64++; ((uint64_t*)p)[5] = val_u64++;
+            ((uint64_t*)p)[6] = val_u64++; ((uint64_t*)p)[7] = val_u64++;
+#endif
             p += 64;
         }
-#else
-        uint64_t *p   = (uint64_t*)buf;
-        uint64_t *end = (uint64_t*)(buf + BUF);
-        uint64_t v = pattern++;
-        while (p < end) {
-            p[0] = v; p[1] = v; p[2] = v; p[3] = v;
-            p[4] = v; p[5] = v; p[6] = v; p[7] = v;
-            p += 8;
-        }
-#endif
+        pattern = val_u64;
         total_bytes += (int64_t)BUF;
         COMPILER_BARRIER();
     }
@@ -172,22 +214,34 @@ JNIEXPORT jdouble JNICALL
 Java_com_ivarna_finalbenchmark2_utils_RamNativeBridge_nativeRandAccess(
         JNIEnv *env, jclass cls, jlong durationMs)
 {
-    const size_t COUNT = 16UL * 1024UL * 1024UL / sizeof(int32_t); /* 4M entries */
-    int32_t *chain = (int32_t*)malloc(COUNT * sizeof(int32_t));
-    if (!chain) { LOGE("randAccess alloc failed"); return 999.0; }
+    size_t l3_size = detect_l3_cache_size();
+    size_t target_rand_buf_size = 16UL * 1024UL * 1024UL; /* 16 MB */
+    if (l3_size * 2 > target_rand_buf_size) {
+        target_rand_buf_size = l3_size * 2;
+    }
+    const size_t COUNT = target_rand_buf_size / sizeof(int32_t);
+
+    int32_t *perm = (int32_t*)malloc(COUNT * sizeof(int32_t));
+    if (!perm) { LOGE("randAccess perm alloc failed"); return 999.0; }
 
     /* Build a random permutation using Knuth shuffle */
-    for (size_t i = 0; i < COUNT; i++) chain[i] = (int32_t)i;
+    for (size_t i = 0; i < COUNT; i++) perm[i] = (int32_t)i;
     /* Simple LCG for deterministic, fast shuffle (seed = 42) */
     uint64_t rng = 42ULL;
     for (size_t i = COUNT - 1; i > 0; i--) {
         rng = rng * 6364136223846793005ULL + 1442695040888963407ULL;
         size_t j = (rng >> 33) % (i + 1);
-        int32_t tmp = chain[i]; chain[i] = chain[j]; chain[j] = tmp;
+        int32_t tmp = perm[i]; perm[i] = perm[j]; perm[j] = tmp;
     }
-    /* Rewrite as a closed-cycle pointer chain: chain[i] = next_index */
-    /* chain[perm[i]] = perm[(i+1) % COUNT] already forms a Hamiltonian path */
-    /* We directly use chain[idx] = chain[chain[idx]] as the next hop */
+
+    int32_t *chain = (int32_t*)malloc(COUNT * sizeof(int32_t));
+    if (!chain) { free(perm); LOGE("randAccess chain alloc failed"); return 999.0; }
+
+    /* Rewrite as a closed-cycle Hamiltonian pointer chain: chain[perm[i]] = perm[(i+1) % COUNT] */
+    for (size_t i = 0; i < COUNT; i++) {
+        chain[perm[i]] = perm[(i + 1) % COUNT];
+    }
+    free(perm);
 
     /* Touch all pages */
     volatile int32_t dummy = 0;
@@ -242,7 +296,11 @@ JNIEXPORT jdouble JNICALL
 Java_com_ivarna_finalbenchmark2_utils_RamNativeBridge_nativeMemCopy(
         JNIEnv *env, jclass cls, jlong durationMs)
 {
-    const size_t BUF = 64UL * 1024UL * 1024UL;
+    size_t l3_size = detect_l3_cache_size();
+    size_t BUF = 64UL * 1024UL * 1024UL;
+    if (l3_size * 2 > BUF) {
+        BUF = l3_size * 2;
+    }
     uint8_t *src = (uint8_t*)malloc(BUF);
     uint8_t *dst = (uint8_t*)malloc(BUF);
     if (!src || !dst) { free(src); free(dst); return 0.0; }
@@ -252,22 +310,16 @@ Java_com_ivarna_finalbenchmark2_utils_RamNativeBridge_nativeMemCopy(
     /* Warm-up: fault all pages before the timed section */
     do_memcpy_once(dst, src, BUF);
 
-    /* Estimate how many reps fit in durationMs using a calibration run */
-    const int64_t cal_t0 = now_ns();
-    do_memcpy_once(dst, src, BUF);
-    const int64_t one_copy_ns = now_ns() - cal_t0;
-
-    /* Clamp reps to [4, 64] so we get a stable average without hanging */
-    int reps = (one_copy_ns > 0)
-               ? (int)((int64_t)durationMs * 1000000LL / one_copy_ns)
-               : 8;
-    if (reps < 4)  reps = 4;
-    if (reps > 64) reps = 64;
-
     COMPILER_BARRIER();
     const int64_t t0 = now_ns();
-    for (int i = 0; i < reps; i++) {
+    const int64_t end_ns = t0 + (int64_t)durationMs * 1000000LL;
+    int64_t total_bytes = 0;
+
+    while (now_ns() < end_ns) {
+        COMPILER_BARRIER();
         do_memcpy_once(dst, src, BUF);
+        total_bytes += (int64_t)BUF;
+        COMPILER_BARRIER();
     }
     const int64_t elapsed_ns = now_ns() - t0;
     COMPILER_BARRIER();
@@ -275,8 +327,7 @@ Java_com_ivarna_finalbenchmark2_utils_RamNativeBridge_nativeMemCopy(
     free(src); free(dst);
     if (elapsed_ns <= 0) return 0.0;
 
-    const double total_bytes = (double)BUF * reps;
-    return total_bytes / ((double)elapsed_ns / 1.0e9) / (1024.0 * 1024.0);
+    return (double)total_bytes / ((double)elapsed_ns / 1.0e9) / (1024.0 * 1024.0);
 }
 
 /* ── Multi-threaded Bandwidth ─────────────────────────────────────────────── */
@@ -338,11 +389,17 @@ JNIEXPORT jdouble JNICALL
 Java_com_ivarna_finalbenchmark2_utils_RamNativeBridge_nativeMultiThread(
         JNIEnv *env, jclass cls, jint numThreads, jlong durationMs)
 {
-    const int   T       = (numThreads < 1 || numThreads > 8) ? 4 : (int)numThreads;
-    const size_t BUF_T  = 16UL * 1024UL * 1024UL;  /* 16 MB per thread */
+    const int   T       = (numThreads < 1 || numThreads > 64) ? 4 : (int)numThreads;
+    size_t l3_size = detect_l3_cache_size();
+    size_t BUF_T  = 16UL * 1024UL * 1024UL;  /* 16 MB per thread */
+    size_t min_aggregate = l3_size * 2;
+    if (BUF_T * T < min_aggregate) {
+        BUF_T = min_aggregate / T;
+        BUF_T = (BUF_T + 63) & ~63UL;
+    }
 
-    MtArg         args[8];
-    pthread_t     tids[8];
+    MtArg         args[64];
+    pthread_t     tids[64];
     const int64_t end_ns = now_ns() + (int64_t)durationMs * 1000000LL;
 
     for (int i = 0; i < T; i++) {

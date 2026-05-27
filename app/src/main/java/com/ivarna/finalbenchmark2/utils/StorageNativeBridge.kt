@@ -64,4 +64,7 @@ object StorageNativeBridge {
         chunkSize: Int,
         durationMs: Long
     ): Double
+
+    /** Evict page cache for a file path. */
+    external fun nativeEvictCache(path: String): Boolean
 }

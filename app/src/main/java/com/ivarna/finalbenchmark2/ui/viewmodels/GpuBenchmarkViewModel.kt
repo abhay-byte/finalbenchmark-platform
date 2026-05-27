@@ -9,7 +9,9 @@ import com.ivarna.finalbenchmark2.data.database.entities.BenchmarkResultEntity
 import com.ivarna.finalbenchmark2.data.database.entities.GenericTestDetailEntity
 import com.ivarna.finalbenchmark2.data.repository.HistoryRepository
 import com.ivarna.finalbenchmark2.gpu.GpuScene
+import com.ivarna.finalbenchmark2.utils.GpuFrequencyReader
 import com.ivarna.finalbenchmark2.utils.PerformanceMonitor
+import com.ivarna.finalbenchmark2.utils.PowerUtils
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -22,6 +24,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONObject
+import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.DoubleAdder
 import kotlin.math.roundToInt
 
 // ── Data types ────────────────────────────────────────────────────────────
@@ -54,7 +58,11 @@ data class GpuBenchmarkUiState(
     val gpuFreqMhz: Int = 0,
     val gpuTempC: Float = 0f,
     val gpuLoadPercent: Float = 0f,
-    val cpuTempC: Float = 0f,
+    // Real-time power draw in Watts (from PowerUtils)
+    val powerWatts: Float = 0f,
+    // GPU hardware identity (from GL_RENDERER / GL_VERSION)
+    val gpuName: String = "",
+    val glApiLabel: String = "OpenGL ES 3.0",
 
     val completedTests: List<GpuTestResult> = emptyList(),
     val totalScore: Int = 0,
@@ -67,20 +75,28 @@ private val GPU_SCENES = GpuScene.values().toList()
 
 /**
  * Reference FPS per scene on Snapdragon 8 Gen 3 / Adreno 750 (baseline = 100 pts).
- * Derived from measured results on the reference device with 4× draw passes.
+ * Scenes 1,3,5: 1× fragment pre-pass + geometry overlay → GPU ALU-bound, not CPU/API-bound.
+ * Scenes 2,4,6-10: 4× fullscreen passes → GPU compute-bound.
  * Any device matching these FPS values scores exactly 100.
  */
 private val GPU_REFERENCE_FPS = mapOf(
-    GpuScene.TRIANGLE_RENDERING to 20.0,
-    GpuScene.COMPUTE_MATRIX     to 15.0,  // after branchless Julia fix
-    GpuScene.PARTICLE_SYSTEM    to  7.0,
-    GpuScene.TEXTURE_SAMPLING   to 24.0,
-    GpuScene.WIREFRAME_MESH     to 23.0,
-    GpuScene.MANDELBROT_DEEP    to 16.0,
-    GpuScene.PHONG_MULTI_LIGHT  to  7.0,
-    GpuScene.RAY_MARCH_SDF      to 24.0,
-    GpuScene.DOMAIN_WARP        to 20.0,
-    GpuScene.SUPER_SAMPLE       to  3.5
+    GpuScene.TRIANGLE_RENDERING to  86.5,  // 1x DomainWarp pre-pass + 10K triangles
+    GpuScene.COMPUTE_MATRIX     to  41.7,  // 4x Julia/matrix compute
+    GpuScene.PARTICLE_SYSTEM    to  28.1,  // 1x MultiLight pre-pass + 5K particles
+    GpuScene.TEXTURE_SAMPLING   to  25.3,  // 4x 12-octave FBM
+    GpuScene.WIREFRAME_MESH     to  84.3,  // 1x RayMarch pre-pass + 250x250 mesh
+    GpuScene.MANDELBROT_DEEP    to  17.4,  // 4x Mandelbrot 512 iter
+    GpuScene.PHONG_MULTI_LIGHT  to   7.0,  // 4x Phong 128-light
+    GpuScene.RAY_MARCH_SDF      to  21.9,  // 4x RayMarch SDF+shadows
+    GpuScene.DOMAIN_WARP        to  20.9,  // 4x triple domain-warp FBM
+    GpuScene.SUPER_SAMPLE       to   3.7,  // 4x 64x super-sampled fractal
+    // GAP scenes — reference on Adreno 750 (conservative estimates until first run calibration)
+    GpuScene.SHADER_COMPILE     to  60.0,  // GAP-2: static display; high FPS expected
+    GpuScene.MEM_BANDWIDTH      to  45.0,  // GAP-3: 16 dependent texture reads/pixel
+    GpuScene.MSAA_4X            to  22.0,  // GAP-4: 4× MSAA + blit-resolve overhead
+    GpuScene.VRAM_PRESSURE      to  38.0,  // GAP-5: 8 textures × 512×512 per pixel
+    GpuScene.TESSELLATION       to  15.0,  // GAP-6: ES 3.2 tess patches (or Phong fallback)
+    GpuScene.MULTI_PASS_BLOOM   to  12.0   // GAP-7: 3-pass bloom at 1920×1080
 )
 
 /**
@@ -98,17 +114,26 @@ private fun calculateGpuGeometricMean(results: List<GpuTestResult>): Double {
 }
 
 private fun GpuScene.displayName() = when (this) {
-    GpuScene.TRIANGLE_RENDERING -> "Triangle Rendering (10K)"
-    GpuScene.COMPUTE_MATRIX     -> "Julia / Matrix Compute"
-    GpuScene.PARTICLE_SYSTEM    -> "Particle System (50K)"
-    GpuScene.TEXTURE_SAMPLING   -> "12-Octave FBM Texture"
-    GpuScene.WIREFRAME_MESH     -> "Wave Mesh (250×250)"
-    GpuScene.MANDELBROT_DEEP    -> "Mandelbrot Deep (512 iter)"
-    GpuScene.PHONG_MULTI_LIGHT  -> "Phong 128-Light Array"
-    GpuScene.RAY_MARCH_SDF      -> "Ray March SDF + Shadows"
-    GpuScene.DOMAIN_WARP        -> "Triple Domain Warp FBM"
-    GpuScene.SUPER_SAMPLE       -> "64× Super-Sampled Fractal"
+    GpuScene.TRIANGLE_RENDERING  -> "Domain Warp + Triangles (10K)"
+    GpuScene.COMPUTE_MATRIX      -> "Julia / Matrix Compute"
+    GpuScene.PARTICLE_SYSTEM     -> "Phong + Particles (5K)"
+    GpuScene.TEXTURE_SAMPLING    -> "12-Octave FBM Texture"
+    GpuScene.WIREFRAME_MESH      -> "Ray March + Mesh (250\u00d7250)"
+    GpuScene.MANDELBROT_DEEP     -> "Mandelbrot Deep (512 iter)"
+    GpuScene.PHONG_MULTI_LIGHT   -> "Phong 128-Light Array"
+    GpuScene.RAY_MARCH_SDF       -> "Ray March SDF + Shadows"
+    GpuScene.DOMAIN_WARP         -> "Triple Domain Warp FBM"
+    GpuScene.SUPER_SAMPLE        -> "64\u00d7 Super-Sampled Fractal"
+    // GAP scenes
+    GpuScene.SHADER_COMPILE      -> "Shader Compile Speed (GAP-2)"
+    GpuScene.MEM_BANDWIDTH       -> "Memory Bandwidth (GAP-3)"
+    GpuScene.MSAA_4X             -> "MSAA 4\u00d7 Resolve (GAP-4)"
+    GpuScene.VRAM_PRESSURE       -> "VRAM Pressure 8\u00d7 Tex (GAP-5)"
+    GpuScene.TESSELLATION        -> "Tessellation ES 3.2 (GAP-6)"
+    GpuScene.MULTI_PASS_BLOOM    -> "Multi-Pass Bloom (GAP-7)"
 }
+
+
 
 private const val WARMUP_MS = 2_000L
 private const val TEST_MS   = 6_000L
@@ -128,14 +153,52 @@ class GpuBenchmarkViewModel(
     @Volatile private var latestFps: Float = 0f
     @Volatile private var latestFrameMs: Float = 16.67f
 
+    // Thread-safe metrics accumulators (BUG-4)
+    private val frameCount = AtomicInteger(0)
+    private val totalRenderTimeMs = DoubleAdder()
+
     private var runJob: Job? = null
     private val performanceMonitor = PerformanceMonitor(application)
 
-    // Simple mock hw values (for display in HUD only — real perf metrics come from PerformanceMonitor)
+    // ── Hardware telemetry ─────────────────────────────────────────────────
+    // Real reads via GpuFrequencyReader (sysfs); mocks used only as fallback
+    private val gpuFreqReader   = GpuFrequencyReader()
+    private val powerUtils      = PowerUtils(application)
+    // Mock fallbacks (used when sysfs is unavailable)
     private val mockBaseFreq    = (500..800).random()
     private val mockBaseTemp    = (35..45).random()
-    private val mockBaseCpuTemp = (38..48).random()
-    private var fpsAccum = 0.0; private var ftAccum = 0.0; private var fpsCount = 0
+
+    /**
+     * Returns a triple of (freqMhz, tempC, loadPercent) from sysfs or mocks.
+     * Called from coroutine tick — runs on IO dispatcher inside GpuFrequencyReader.
+     */
+    private suspend fun readGpuTelemetry(): Triple<Int, Float, Float> {
+        return try {
+            val state = gpuFreqReader.readGpuFrequency()
+            if (state is GpuFrequencyReader.GpuFrequencyState.Available) {
+                val d = state.data
+                val freq = d.currentFrequencyMhz.toInt().coerceIn(0, 3000)
+                val temp = d.temperatureCelsius?.toFloat()?.coerceIn(0f, 120f) ?: mockGpuTemp()
+                val load = d.utilizationPercent?.toFloat()?.coerceIn(0f, 100f) ?: mockGpuLoad(latestFps)
+                Triple(freq, temp, load)
+            } else {
+                Triple(mockGpuFreq(), mockGpuTemp(), mockGpuLoad(latestFps))
+            }
+        } catch (e: Exception) {
+            Triple(mockGpuFreq(), mockGpuTemp(), mockGpuLoad(latestFps))
+        }
+    }
+
+    /** Called from GpuBenchmarkScreen when the GL context reveals the real GPU name/version. */
+    fun onGpuInfo(renderer: String, version: String) {
+        // Strip vendor prefix noise: "Adreno (TM) 750" → "Adreno 750"
+        val cleanName = renderer
+            .replace("(TM)", "").replace("(tm)", "")
+            .replace(Regex("\\s+"), " ").trim()
+        // Extract major ES version from e.g. "OpenGL ES 3.2 ..."
+        val esVersion = Regex("OpenGL ES (\\d+\\.\\d+)").find(version)?.groupValues?.get(1) ?: "3.0"
+        _uiState.update { it.copy(gpuName = cleanName, glApiLabel = "OpenGL ES $esVersion") }
+    }
 
     fun start(preset: String) {
         runJob?.cancel()
@@ -153,6 +216,8 @@ class GpuBenchmarkViewModel(
     fun onFrameMetrics(fps: Float, frametime: Float) {
         latestFps     = fps
         latestFrameMs = frametime
+        frameCount.incrementAndGet()
+        totalRenderTimeMs.add(frametime.toDouble())
     }
 
     private suspend fun runBenchmark() {
@@ -169,21 +234,25 @@ class GpuBenchmarkViewModel(
                     overallProgress = index.toFloat() / GPU_SCENES.size
                 )
             }
-            fpsAccum = 0.0; ftAccum = 0.0; fpsCount = 0
-
             // warm-up
             val warmupSteps = (WARMUP_MS / TICK_MS).toInt()
             repeat(warmupSteps) { step ->
                 delay(TICK_MS)
+                val (freq, temp, load) = readGpuTelemetry()
                 _uiState.update { s ->
                     s.copy(
                         currentTestProgress = step.toFloat() / warmupSteps * 0.15f,
                         currentFps = latestFps, currentFrametimeMs = latestFrameMs,
-                        gpuFreqMhz = mockGpuFreq(), gpuTempC = mockGpuTemp(),
-                        gpuLoadPercent = mockGpuLoad(latestFps), cpuTempC = mockCpuTemp()
+                        gpuFreqMhz = freq, gpuTempC = temp,
+                        gpuLoadPercent = load,
+                        powerWatts = powerUtils.estimatePowerConsumption().coerceAtLeast(0f)
                     )
                 }
             }
+
+            // reset accumulators before measure phase (BUG-4)
+            frameCount.set(0)
+            totalRenderTimeMs.reset()
 
             // measure
             _uiState.update { it.copy(isWarmingUp = false, isRunning = true) }
@@ -191,27 +260,33 @@ class GpuBenchmarkViewModel(
             val history = ArrayDeque<Float>(60)
             repeat(measureSteps) { step ->
                 delay(TICK_MS)
-                val fps = latestFps; val ft = latestFrameMs
-                if (fps > 1f) { fpsAccum += fps; ftAccum += ft; fpsCount++ }
+                val currentCount = frameCount.get()
+                val currentTotalTime = totalRenderTimeMs.sum()
+                val avgFps = if (currentTotalTime > 0.0) (currentCount * 1000.0 / currentTotalTime).toFloat() else latestFps
+                
                 if (history.size >= 60) history.removeFirst()
-                history.addLast(ft)
+                history.addLast(latestFrameMs)
                 val overall = (index + 0.15f + (step + 1).toFloat() / measureSteps * 0.85f) / GPU_SCENES.size
+                val (freq, temp, load) = readGpuTelemetry()
                 _uiState.update { s ->
                     s.copy(
                         isRunning = true,
                         currentTestProgress = 0.15f + (step + 1).toFloat() / measureSteps * 0.85f,
                         overallProgress = overall,
-                        currentFps = fps,
-                        avgFps = if (fpsCount > 0) (fpsAccum / fpsCount).toFloat() else fps,
-                        currentFrametimeMs = ft, frametimeHistory = history.toList(),
-                        gpuFreqMhz = mockGpuFreq(), gpuTempC = mockGpuTemp(),
-                        gpuLoadPercent = mockGpuLoad(fps), cpuTempC = mockCpuTemp()
+                        currentFps = latestFps,
+                        avgFps = avgFps,
+                        currentFrametimeMs = latestFrameMs, frametimeHistory = history.toList(),
+                        gpuFreqMhz = freq, gpuTempC = temp,
+                        gpuLoadPercent = load,
+                        powerWatts = powerUtils.estimatePowerConsumption().coerceAtLeast(0f)
                     )
                 }
             }
 
-            val avgFps = if (fpsCount > 0) (fpsAccum / fpsCount).toFloat() else 30f
-            val avgFt  = if (fpsCount > 0) (ftAccum  / fpsCount).toFloat() else (1000f / avgFps)
+            val finalCount = frameCount.get()
+            val finalTotalTime = totalRenderTimeMs.sum()
+            val avgFps = if (finalTotalTime > 0.0) (finalCount * 1000.0 / finalTotalTime).toFloat() else 30f
+            val avgFt  = if (finalCount > 0) (finalTotalTime / finalCount).toFloat() else (1000f / avgFps)
             // Per-scene score: ratio vs reference × 100 (SD 8 Gen 3 = 100 pts per scene)
             val refFps = GPU_REFERENCE_FPS[scene] ?: 20.0
             val score  = ((avgFps.toDouble() / refFps) * 100.0).roundToInt().coerceAtLeast(0)
@@ -315,7 +390,7 @@ class GpuBenchmarkViewModel(
         }.toString()
     }
 
-    // ── Mock HUD hardware values ──────────────────────────────────────────
+    // ── Mock HUD hardware fallbacks (used when sysfs unavailable) ────────
 
     private fun mockGpuFreq(): Int {
         val load = (latestFps / 60f).coerceIn(0f, 1f)
@@ -326,7 +401,6 @@ class GpuBenchmarkViewModel(
         return (mockBaseTemp + extra + (-1f..1f).random()).coerceIn(30f, 90f)
     }
     private fun mockGpuLoad(fps: Float) = (fps / 60f * 95f + (-2.5f..2.5f).random()).coerceIn(0f, 100f)
-    private fun mockCpuTemp() = (mockBaseCpuTemp + (-2f..2f).random()).coerceIn(30f, 85f)
 
     private fun ClosedFloatingPointRange<Float>.random(): Float {
         val range = endInclusive - start

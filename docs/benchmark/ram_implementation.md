@@ -14,7 +14,7 @@ The RAM benchmark measures five distinct aspects of memory subsystem performance
 | JNI call overhead per loop | ~100–300 ns per call | Zero (loop is inside JNI call) |
 | `-O3` dead-store elimination | JIT can't prove writes aren't dead | Requires `noinline` + asm constraint trick |
 
-**Measured gap**: JVM LongArray reads ≈ 6,500 MB/s vs native NEON reads ≈ 27,000 MB/s on the same SD 8 Gen 3 / LPDDR5X device.
+**Measured gap**: JVM LongArray reads ≈ 6,500 MB/s vs native NEON reads ≈ 34,112 MB/s on the same SD 8 Gen 3 / LPDDR5X device.
 
 ---
 
@@ -100,9 +100,9 @@ while (now_ns() < end_ns) {
 **Goal**: Measure single-thread DRAM read bandwidth.
 
 **Algorithm**:
-1. `malloc(64MB)` + `memset(buf, 0xA5, 64MB)` — faults all pages into physical RAM before timer starts
+1. Detect L3 cache size. Allocate `max(64MB, 2 × L3 cache)` + `memset(buf, 0xA5, BUF)` — faults all pages into physical RAM before timer starts.
 2. Timed loop (`while now_ns() < end_ns`):
-   - Inner loop over 64MB buffer in 64-byte strides:
+   - Inner loop over buffer in 64-byte strides:
      ```c
      __builtin_prefetch(p + 512, 0, 0);   // prefetch 8 cache lines ahead
      acc0 = vaddq_u64(acc0, vld1q_u64((uint64_t*)(p +  0)));
@@ -118,49 +118,50 @@ while (now_ns() < end_ns) {
 
 **Non-x86 fallback**: 8× `uint64_t` word reads per iteration (compiler auto-vectorises).
 
-**Reference (SD 8 Gen 3 / LPDDR5X)**: 27,000 MB/s
+**Reference (SD 8 Gen 3 / LPDDR5X)**: 34,112 MB/s
 
 ### 3.4 Test 2 — Sequential Write (`nativeSeqWrite`)
 
 **Goal**: Measure single-thread DRAM write bandwidth.
 
 **Algorithm**:
-1. `malloc(64MB)` + `memset(buf, 0, 64MB)` — page fault before timer
+1. Detect L3 cache size. Allocate `max(64MB, 2 × L3 cache)` + `memset(buf, 0, BUF)` — page fault before timer.
 2. Timed loop with inner loop in 64-byte strides:
    ```c
    COMPILER_BARRIER();
-   // Construct two unique 16-byte pattern vectors (prevent compiler optimising identical writes)
-   uint64x2_t pat0 = vcombine_u64(vcreate_u64(i*17+1), vcreate_u64(i*13+2));
-   uint64x2_t pat1 = vcombine_u64(vcreate_u64(i*19+3), vcreate_u64(i*23+4));
+   // Write a rolling pattern sequentially incrementing per store to break write-combining
+   uint8_t *p   = buf;
+   uint8_t *end = buf + BUF;
+   uint64_t val_u64 = pattern++;
    while (p < end) {
-       vst1q_u64((uint64_t*)(p +  0), pat0);
-       vst1q_u64((uint64_t*)(p + 16), pat1);
-       vst1q_u64((uint64_t*)(p + 32), pat0);
-       vst1q_u64((uint64_t*)(p + 48), pat1);
+       __builtin_prefetch(p + 512, 1, 0);
+       uint64x2_t val0 = vdupq_n_u64(val_u64 + 0);
+       uint64x2_t val1 = vdupq_n_u64(val_u64 + 1);
+       uint64x2_t val2 = vdupq_n_u64(val_u64 + 2);
+       uint64x2_t val3 = vdupq_n_u64(val_u64 + 3);
+       vst1q_u64((uint64_t*)(p +  0), val0);
+       vst1q_u64((uint64_t*)(p + 16), val1);
+       vst1q_u64((uint64_t*)(p + 32), val2);
+       vst1q_u64((uint64_t*)(p + 48), val3);
+       val_u64 += 4;
        p += 64;
    }
+   pattern = val_u64;
    sink += buf[BUF/2];  // anti-DCE read
    ```
-3. Varied write patterns (`pat0/pat1` change each outer iteration) prevent the optimizer from knowing they're the same, defeating whole-buffer dead-store elimination.
+3. Varied write patterns prevent the optimizer from knowing they're the same, defeating whole-buffer dead-store elimination.
 4. Returns **MB/s**
 
-**Reference (SD 8 Gen 3 / LPDDR5X)**: 15,000 MB/s
+**Reference (SD 8 Gen 3 / LPDDR5X)**: 20,864 MB/s
 
 ### 3.5 Test 3 — Random Access Latency (`nativeRandAccess`)
 
 **Goal**: Measure DRAM access latency (defeats CPU prefetcher via pointer-chase).
 
-**Algorithm** (Knuth-shuffle pointer chain):
-1. Allocate `int32_t chain[N]` where `N = 16MB / 4 = 4M elements`
-2. Build random permutation via Knuth shuffle (LCG seed = 42):
-   ```c
-   for (int i = N-1; i > 0; i--) {
-       seed = seed * 1664525UL + 1013904223UL;  // fast LCG
-       int j = (int)(seed % (uint32_t)(i + 1));
-       int tmp = chain[i]; chain[i] = chain[j]; chain[j] = tmp;
-   }
-   ```
-3. Chain traversal: `chain[i]` stores the index of the next element to visit — creates an unpredictable pointer-chase that defeats hardware prefetching
+**Algorithm** (Hamiltonian pointer chain):
+1. Detect L3 cache size. Scale the working set buffer size to `max(16 MB, 2 × L3 cache)` to ensure it spills out of the CPU cache. Let `COUNT = target_rand_buf_size / sizeof(int32_t)`.
+2. Build a random permutation `perm` of size `COUNT` using Knuth shuffle (LCG seed = 42).
+3. Build a true **Hamiltonian path** by mapping `chain[perm[i]] = perm[(i+1) % COUNT]`. This guarantees a single closed cycle visiting all elements exactly once, preventing sub-cycle caching and ensuring a DRAM access at every single hop.
 4. Timed loop (8× unrolled to reduce loop overhead without hiding load latency):
    ```c
    while (now_ns() < end_ns) {
@@ -170,75 +171,53 @@ while (now_ns() < end_ns) {
    ```
 5. Returns `elapsed_ns / ops` → **ns/op** (lower = better)
 
-**Why 16MB working set?** Exceeds typical L2 cache (3–8MB on Cortex-X4) but is small enough to fit in L3, giving a mix of L3 cache hits and DRAM accesses. True DRAM latency requires working sets larger than L3.
+**Why 2x L3 working set?** Guarantees that the pointer chase hits DRAM instead of being cached in the last-level cache.
 
-**Reference (SD 8 Gen 3)**: 120 ns/op
+**Reference (SD 8 Gen 3)**: 93.2 ns/op
 
 ### 3.6 Test 5 — Multi-threaded Bandwidth (`nativeMultiThread`)
 
 **Goal**: Measure aggregate memory bandwidth across multiple CPU cores.
 
 **Algorithm**:
-1. Thread count = `min(availableProcessors, 4)` — bounded to not OOM
-2. Each thread independently:
-   - Allocates and faults its own 16MB NEON read buffer
+1. Thread count = `detectBigCoreCount()` (cores with max frequency >= 75% of maximum core frequency, clamped between 2 and 16).
+2. Buffer size per thread is dynamically scaled so that the aggregate size of all threads combined exceeds `2 × L3 cache size` (`BUF_T = max(16MB, 2xL3 / T)`).
+3. Each thread independently:
+   - Allocates and faults its own NEON read buffer
    - Runs same NEON `vld1q_u64` × 4 loop with COMPILER_BARRIER
    - Accumulates `bytes_done` in thread-private variable (no lock needed)
-3. Main thread joins all via `pthread_join`
-4. Returns **sum of all thread byte_counts** / elapsed / MB → **aggregate MB/s**
+4. Main thread joins all via `pthread_join` (supports up to 64 threads).
+5. Returns **sum of all thread byte_counts** / elapsed / MB → **aggregate MB/s**
 
 **Thread creation**: `pthread_create` with default stack; no affinity pinning (Android restricts this without root). Threads naturally spread across cores under scheduler.
 
-**Reference (SD 8 Gen 3 / 4 threads on LPDDR5X)**: 58,000 MB/s
+**Reference (SD 8 Gen 3 / LPDDR5X)**: 49,720 MB/s
 
-### 3.7 Test 4 — Memory Copy (`nativeMemCopy`) — Hardest to Get Right
+### 3.7 Test 4 — Memory Copy (`nativeMemCopy`)
 
 **Goal**: Measure Bionic libc `memcpy` throughput (hand-written NEON in Android's libc).
 
-**The Two Bugs Encountered**:
-
-**Bug 1**: `-O3` hoisted `clock_gettime` out of the `while (now_ns() < end_ns)` loop (same root cause as §3.2). Fixed by `COMPILER_BARRIER()` around the `memcpy` call. But this was insufficient — led to Bug 2.
-
-**Bug 2**: Clang 17 (`NDK 27.3`) inlines `memcpy(dst, src, 64*1024*1024)` (constant size). Because `dst` is a local malloc pointer that is only `free()`d and never read back, Clang proves all writes to `dst` are **dead stores** and eliminates the memcpy body entirely. Result: the while-loop spun for 2 seconds doing nothing, accumulating 875,054,368 MB/s.
-
-**Fix**: Two-part:
+**Dead-Store Elimination Prevention**:
+Clang inlines `memcpy(dst, src, BUF)` (constant size). Because `dst` is a local malloc pointer that is only `free()`d and never read back, Clang proves all writes to `dst` are **dead stores** and eliminates the memcpy body entirely.
+This was fixed using a no-inline wrapper and an asm input constraint:
 
 ```c
-// Part A: noinline prevents Clang from inlining the memcpy body
+// noinline prevents Clang from inlining the memcpy body
 __attribute__((noinline)) static void do_memcpy_once(void *dst, const void *src, size_t n) {
     memcpy(dst, src, n);
-    // Part B: "r"(dst) forces compiler to consider dst as "observed" (read)
-    // This defeats dead-store elimination: if dst is "read" here, writes to it are not dead
+    // "r"(dst) forces compiler to consider dst as "observed" (read), defeating dead-store elimination
     __asm__ volatile("" :: "r"(dst) : "memory");
 }
 ```
 
-**Third fix**: Switch from a `while (now_ns() < end_ns)` loop to **calibrated fixed-repetitions timing**:
-```c
-// Calibration: time one copy to estimate per-copy duration
-const int64_t cal_t0 = now_ns();
-do_memcpy_once(dst, src, BUF);
-const int64_t one_copy_ns = now_ns() - cal_t0;
+**Algorithm**:
+1. Detect L3 cache size. Allocate source and destination buffers with size `max(64 MB, 2 × L3 cache)`.
+2. Timed loop (`while now_ns() < end_ns`):
+   - Call `do_memcpy_once(dst, src, BUF)`
+   - Accumulate `total_bytes += BUF`
+3. Returns `total_bytes / elapsed_sec / (1024×1024)` → **MB/s**
 
-// Compute reps to fill durationMs, clamped to [4, 64]
-int reps = (int)((int64_t)durationMs * 1000000LL / one_copy_ns);
-if (reps < 4) reps = 4;
-if (reps > 64) reps = 64;
-
-// Timed block
-COMPILER_BARRIER();
-const int64_t t0 = now_ns();
-for (int i = 0; i < reps; i++) do_memcpy_once(dst, src, BUF);
-const int64_t elapsed_ns = now_ns() - t0;
-COMPILER_BARRIER();
-
-double total_bytes = (double)BUF * reps;
-return total_bytes / ((double)elapsed_ns / 1e9) / (1024.0 * 1024.0);
-```
-
-This eliminates the failure mode: even if `do_memcpy_once` were somehow a no-op, we'd measure near-zero time for a fixed rep count, not an infinite count.
-
-**Reference (SD 8 Gen 3 / Bionic NEON memcpy / 64MB)**: 15,000 MB/s
+**Reference (SD 8 Gen 3 / Bionic NEON memcpy)**: 20,071 MB/s
 
 ---
 
@@ -309,11 +288,11 @@ Two reference maps are defined; the active one is selected at init time:
 
 ```kotlin
 private val RAM_REFERENCE_NATIVE = mapOf(
-    RamTest.SEQ_READ     to 27_000.0,  // MB/s  (measured 26,976 on SD 8 Gen 3)
-    RamTest.SEQ_WRITE    to 15_000.0,  // MB/s  (measured 14,944 on SD 8 Gen 3)
-    RamTest.RAND_ACCESS  to 120.0,     // ns/op (measured 119.1 on SD 8 Gen 3)
-    RamTest.MEM_COPY     to 15_000.0,  // MB/s  (measured 15,339 on SD 8 Gen 3)
-    RamTest.MULTI_THREAD to 58_000.0,  // MB/s  (measured 57,864 on SD 8 Gen 3)
+    RamTest.SEQ_READ     to 34_112.0,  // MB/s  (measured 34112 on SD 8 Gen 3)
+    RamTest.SEQ_WRITE    to 20_864.0,  // MB/s  (measured 20864 on SD 8 Gen 3)
+    RamTest.RAND_ACCESS  to 93.2,      // ns/op (measured 93.2 on SD 8 Gen 3; lower=better)
+    RamTest.MEM_COPY     to 20_071.0,  // MB/s  (measured 20071 on SD 8 Gen 3)
+    RamTest.MULTI_THREAD to 49_720.0,  // MB/s  (measured 49720 on SD 8 Gen 3)
 )
 private val RAM_REFERENCE_JVM = mapOf(
     RamTest.SEQ_READ     to 6_500.0,
@@ -349,7 +328,7 @@ For each test:
 | Native v2 (Bug 1) | MemCopy returned 924 billion MB/s | Bug: -O3 hoisted clock |
 | Native v3 | Added `noinline` + COMPILER_BARRIER | MemCopy returned 875 trillion MB/s (Bug 2 still present) |
 | Native v4 | `do_memcpy_once` + fixed-rep timing | All 5 tests give correct results |
-| Calibrated | Actual measurements on SD 8 Gen 3 | SeqRead 27000, SeqWrite 15000, Rand 120 ns, MemCopy 15000, MT 58000 |
+| Calibrated | Actual measurements on SD 8 Gen 3 | SeqRead 34112, SeqWrite 20864, Rand 93.2 ns, MemCopy 20071, MT 49720 |
 
 ---
 

@@ -26,20 +26,35 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fomit-frame-pointer")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ffunction-sections")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fdata-sections")
 
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -ffast-math")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -funroll-loops")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fomit-frame-pointer")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -ffunction-sections")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fdata-sections")
+
 # Architecture-specific optimizations
 if(ANDROID_ABI STREQUAL "arm64-v8a")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=armv8-a+crypto")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mtune=cortex-a76")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=armv8-a+crypto")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mtune=cortex-a76")
 elseif(ANDROID_ABI STREQUAL "armeabi-v7a")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=armv7-a")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mfpu=neon")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mfloat-abi=softfp")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=armv7-a")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mfpu=neon")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mfloat-abi=softfp")
 elseif(ANDROID_ABI STREQUAL "x86_64")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=x86-64")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mtune=generic")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=x86-64")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mtune=generic")
 elseif(ANDROID_ABI STREQUAL "x86")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=i686")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mtune=generic")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=i686")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mtune=generic")
 endif()
 
 # ============================================
@@ -71,10 +86,13 @@ add_library(
     vulkan_native
     SHARED
     vulkan_info.cpp
-    cpu_info.cpp       # CPU info native implementation
-    cpu_affinity.cpp   # CPU affinity control for single-core benchmarks
-    ram_benchmark.c    # RAM bandwidth/latency benchmarks (NEON + pthreads)
-    storage_benchmark.c  # Storage UFS benchmarks (posix_fadvise + fdatasync)
+    vulkan_benchmark.cpp        # Phase 2: Vulkan compute/render benchmark
+    vulkan_perf_query.cpp       # Phase 4: VK_KHR_performance_query counter enumeration
+    opencl_benchmark.cpp        # Phase 3: OpenCL via dlopen (no link-time dep)
+    cpu_info.cpp                # CPU info native implementation
+    cpu_affinity.cpp            # CPU affinity control for single-core benchmarks
+    ram_benchmark.c             # RAM bandwidth/latency benchmarks (NEON + pthreads)
+    storage_benchmark.c         # Storage UFS benchmarks (posix_fadvise + fdatasync)
 )
 
 # Find required libraries
@@ -94,6 +112,12 @@ find_library(
     vulkan
 )
 
+# Find dl library for dlopen (OpenCL runtime loading — Phase 3)
+find_library(
+    dl-lib
+    dl
+)
+
 # Check if Vulkan library exists
 if(NOT vulkan-lib)
     message(WARNING "Vulkan library not found. This is expected on some Android devices.")
@@ -105,6 +129,7 @@ target_link_libraries(
     ${log-lib}
     ${android-lib}
     ${vulkan-lib}
+    ${dl-lib}
 )
 
 # Set include directories

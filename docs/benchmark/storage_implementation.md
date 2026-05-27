@@ -82,7 +82,7 @@ Kotlin (viewModelScope)
 **Why not Java?**: `FileInputStream.read()` cannot call `posix_fadvise`. Without page-cache eviction each subsequent pass reads from RAM (~6 GB/s), not from UFS (~1 400 MB/s).
 
 **Unit**: MB/s  
-**Reference** (SD 8 Gen 3 + UFS 4.0 baseline): 1 750 MB/s
+**Reference** (SD 8 Gen 3 + UFS 4.0 baseline): 2 133 MB/s
 
 ---
 
@@ -104,7 +104,7 @@ Kotlin (viewModelScope)
 **Why `fdatasync` is inside the timed loop**: Without it we only measure how fast we can fill the Linux dirty-page writeback queue (RAM speed). With `fdatasync` we measure what the UFS controller must actually sustain.
 
 **Unit**: MB/s  
-**Reference**: 1 150 MB/s
+**Reference**: 939 MB/s
 
 ---
 
@@ -118,10 +118,10 @@ Kotlin (viewModelScope)
 3. Timed loop: LCG seed (`seed = seed * 6364136223846793005L + 1442695040888963407L`) to generate a 4 KB-aligned offset → `raf.seek(offset)` → `raf.read(buf, 0, 4096)`.
 4. Returns `totalBytes / (durationMs / 1000) / (1024 × 1024)` → **MB/s**
 
-**Note on page cache**: All 128 MB fit comfortably in the page cache after the first few passes, so subsequent reads are from RAM. This is intentional — it matches what apps experience for their working-set data.
+**Note on page cache**: The page cache is periodically evicted every 512 reads (2 MB) using the JNI call `nativeEvictCache` to prevent RAM caching, measuring true UFS controller read latency and hardware speed rather than operating system caching.
 
 **Unit**: MB/s  
-**Reference**: 850 MB/s
+**Reference**: 42 MB/s
 
 ---
 
@@ -137,7 +137,7 @@ Kotlin (viewModelScope)
 4. Count total files created; divide by `(durationMs / 1000)` → **files/s**
 
 **Unit**: files/s  
-**Reference**: 20 000 files/s
+**Reference**: 4 300 files/s
 
 ---
 
@@ -157,7 +157,7 @@ Kotlin (viewModelScope)
 6. Returns `txns / (durationMs / 1000)` → **txn/s**
 
 **Unit**: txn/s  
-**Reference**: 4 500 txn/s
+**Reference**: 10 626 txn/s
 
 ---
 
@@ -173,7 +173,7 @@ Kotlin (viewModelScope)
 2. `composite_MB_per_s = (seqBytes + randBytes + sfBytes) / (elapsedMs / 1000) / (1024 × 1024)`
 
 **Unit**: MB/s  
-**Reference**: 3 100 MB/s
+**Reference**: 620 MB/s
 
 ---
 
@@ -284,18 +284,18 @@ private fun calculateStorageGeometricMean(results: List<StorageTestResult>): Dou
 }
 ```
 
-Geometric mean of 6 test ratios × 100. A device exactly matching all references → score = 100. The SD 8 Gen 3 / UFS 4.0 baseline (OnePlus CPH2691) scores ~83.
+Geometric mean of 6 test ratios × 100. A device exactly matching all references → score = 100. The SD 8 Gen 3 / UFS 4.0 baseline (OnePlus CPH2691) scores 100.
 
 ### Reference values
 
 | Test | Reference | Basis |
 |---|---|---|
-| SEQ_READ | 1 750 MB/s | Measured 1 451 MB/s + 20% headroom |
-| SEQ_WRITE | 1 150 MB/s | Measured 939 MB/s + 22% headroom |
-| RAND_4K | 850 MB/s | Measured 702 MB/s + 21% headroom |
-| SMALL_FILES | 20 000 files/s | Measured 16 900 + 18% headroom |
-| SQLITE | 4 500 txn/s | Measured 3 636 + 24% headroom |
-| MIXED | 3 100 MB/s | Measured 2 576 MB/s + 20% headroom |
+| SEQ_READ | 2 133 MB/s | Calibrated to 100 pts on OnePlus SD 8 Gen 3 |
+| SEQ_WRITE | 939 MB/s | Calibrated to 100 pts on OnePlus SD 8 Gen 3 |
+| RAND_4K | 42 MB/s | Calibrated to 100 pts on OnePlus SD 8 Gen 3 (with native cache eviction) |
+| SMALL_FILES | 4 300 files/s | Calibrated to 100 pts on OnePlus SD 8 Gen 3 (with fsync) |
+| SQLITE | 10 626 txn/s | Calibrated to 100 pts on OnePlus SD 8 Gen 3 (WAL, NORMAL, un-transacted SELECT) |
+| MIXED | 620 MB/s | Calibrated to 100 pts on OnePlus SD 8 Gen 3 (with fsync + native evict) |
 
 All references are ~20% above the best measured ceiling on the baseline device.  
 A device scoring exactly 100 on every test would be ~20% faster than a flagship SD 8 Gen 3.

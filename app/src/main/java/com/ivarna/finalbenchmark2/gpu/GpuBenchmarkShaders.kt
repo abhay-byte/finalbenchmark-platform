@@ -515,4 +515,139 @@ void main() {
     gl_FragColor = vec4(acc / N, 1.0);
 }"""
 
+    // ─── GAP-3: Memory Bandwidth — dependent texture reads ─────────────────
+    // Allocates one 1024×1024 RGBA texture (4MB); samples it with offset chain
+    // so GPU can't coalesce → stresses texture cache & memory bandwidth.
+    const val MEM_BW_FRAG = """
+precision highp float;
+varying vec2 v_UV;
+uniform sampler2D u_Tex;
+uniform float u_Time;
+void main() {
+    vec2 uv = v_UV;
+    vec4 c = vec4(0.0);
+    // 16 dependent reads: each sample offset depends on previous result → no cache reuse
+    for (int i = 0; i < 16; i++) {
+        vec4 s = texture2D(u_Tex, uv);
+        c += s;
+        float fi = float(i);
+        uv = fract(uv + s.xy * 0.05 + vec2(0.031 * cos(fi + u_Time * 0.1),
+                                             0.017 * sin(fi + u_Time * 0.13)));
+    }
+    gl_FragColor = vec4(c.rgb / 16.0, 1.0);
+}"""
+
+    // ─── GAP-5: VRAM Pressure — 8 large textures per pixel ─────────────────
+    // 8 × 512×512 RGBA8 textures uploaded once; all sampled per pixel.
+    // Tests VRAM residency under pressure — eviction shows as FPS drop.
+    const val VRAM_PRESSURE_FRAG = """
+precision highp float;
+varying vec2 v_UV;
+uniform sampler2D u_T0, u_T1, u_T2, u_T3, u_T4, u_T5, u_T6, u_T7;
+uniform float u_Time;
+void main() {
+    vec2 uv0 = v_UV;
+    vec2 uv1 = fract(v_UV * 1.3 + 0.1);
+    vec2 uv2 = fract(v_UV * 0.7 + 0.2);
+    vec2 uv3 = fract(v_UV * 1.7 + 0.3);
+    vec4 c  = texture2D(u_T0, uv0) + texture2D(u_T1, uv1)
+            + texture2D(u_T2, uv2) + texture2D(u_T3, uv3)
+            + texture2D(u_T4, fract(uv0 + 0.5)) + texture2D(u_T5, fract(uv1 + 0.5))
+            + texture2D(u_T6, fract(uv2 + 0.5)) + texture2D(u_T7, fract(uv3 + 0.5));
+    gl_FragColor = vec4(c.rgb / 8.0, 1.0);
+}"""
+
+    // ─── GAP-4: MSAA helper — solid animated color (rendered 4× per MSAA) ──
+    const val MSAA_TEST_FRAG = """
+precision highp float;
+varying vec2 v_UV;
+uniform float u_Time;
+// Cheap but realistic: Mandelbrot at 64-iter inside MSAA resolve path
+vec3 mandel(vec2 c) {
+    vec2 z = c; int i = 0;
+    for (int j = 0; j < 64; j++) { if (dot(z,z) > 4.0) break; z = vec2(z.x*z.x - z.y*z.y, 2.0*z.x*z.y) + c; i = j; }
+    float t = float(i) / 64.0;
+    return vec3(t * 0.9, t * 0.5, 1.0 - t);
+}
+void main() {
+    vec2 c = (v_UV - 0.5) * 3.5 + vec2(-0.7, 0.0);
+    c += 0.3 * vec2(cos(u_Time * 0.05), sin(u_Time * 0.07));
+    gl_FragColor = vec4(mandel(c), 1.0);
+}"""
+
+    // ─── GAP-7: Bloom — horizontal gaussian pass ────────────────────────────
+    const val BLOOM_HORIZ_FRAG = """
+precision highp float;
+varying vec2 v_UV;
+uniform sampler2D u_Tex;
+uniform float u_Time;
+void main() {
+    vec2 sz = vec2(1.0 / 1920.0, 0.0);
+    vec4 c = texture2D(u_Tex, v_UV) * 0.1415;
+    c += (texture2D(u_Tex, v_UV + sz*1.0) + texture2D(u_Tex, v_UV - sz*1.0)) * 0.1379;
+    c += (texture2D(u_Tex, v_UV + sz*2.0) + texture2D(u_Tex, v_UV - sz*2.0)) * 0.1295;
+    c += (texture2D(u_Tex, v_UV + sz*3.0) + texture2D(u_Tex, v_UV - sz*3.0)) * 0.1109;
+    c += (texture2D(u_Tex, v_UV + sz*4.0) + texture2D(u_Tex, v_UV - sz*4.0)) * 0.0863;
+    c += (texture2D(u_Tex, v_UV + sz*5.0) + texture2D(u_Tex, v_UV - sz*5.0)) * 0.0610;
+    c += (texture2D(u_Tex, v_UV + sz*6.0) + texture2D(u_Tex, v_UV - sz*6.0)) * 0.0391;
+    c += (texture2D(u_Tex, v_UV + sz*7.0) + texture2D(u_Tex, v_UV - sz*7.0)) * 0.0228;
+    gl_FragColor = c;
+}"""
+
+    // ─── GAP-7: Bloom — vertical gaussian pass ──────────────────────────────
+    const val BLOOM_VERT_FRAG = """
+precision highp float;
+varying vec2 v_UV;
+uniform sampler2D u_Tex;
+uniform float u_Time;
+void main() {
+    vec2 sz = vec2(0.0, 1.0 / 1080.0);
+    vec4 c = texture2D(u_Tex, v_UV) * 0.1415;
+    c += (texture2D(u_Tex, v_UV + sz*1.0) + texture2D(u_Tex, v_UV - sz*1.0)) * 0.1379;
+    c += (texture2D(u_Tex, v_UV + sz*2.0) + texture2D(u_Tex, v_UV - sz*2.0)) * 0.1295;
+    c += (texture2D(u_Tex, v_UV + sz*3.0) + texture2D(u_Tex, v_UV - sz*3.0)) * 0.1109;
+    c += (texture2D(u_Tex, v_UV + sz*4.0) + texture2D(u_Tex, v_UV - sz*4.0)) * 0.0863;
+    c += (texture2D(u_Tex, v_UV + sz*5.0) + texture2D(u_Tex, v_UV - sz*5.0)) * 0.0610;
+    c += (texture2D(u_Tex, v_UV + sz*6.0) + texture2D(u_Tex, v_UV - sz*6.0)) * 0.0391;
+    c += (texture2D(u_Tex, v_UV + sz*7.0) + texture2D(u_Tex, v_UV - sz*7.0)) * 0.0228;
+    c.rgb += max(c.rgb - 0.6, 0.0) * 2.5;
+    gl_FragColor = c;
+}"""
+
+    // ─── GAP-6: Tessellation passthrough vert (ES 3.2 path; no tess = skip) ─
+    // Actual tess uses GLES30.glDrawArrays + patch primitive; shaders injected at runtime
+    const val TESS_BASE_FRAG = """
+precision highp float;
+varying vec2 v_UV;
+uniform float u_Time;
+// Phong shading on tessellated Bezier surface — color by patch normal
+void main() {
+    vec3 N = normalize(vec3(v_UV * 2.0 - 1.0, sqrt(max(0.0,
+        1.0 - dot(v_UV*2.0-1.0, v_UV*2.0-1.0)))));
+    vec3 L = normalize(vec3(cos(u_Time*0.5), sin(u_Time*0.5), 1.0));
+    float diff = max(dot(N, L), 0.0);
+    float spec = pow(max(dot(reflect(-L, N), vec3(0,0,1)), 0.0), 32.0);
+    vec3 col = vec3(0.2, 0.5, 0.9) * diff + vec3(1.0) * spec * 0.6;
+    gl_FragColor = vec4(col, 1.0);
+}"""
+
+    // ─── GAP-2: Shader Compilation — result display frag ───────────────────
+    // The scene measures wall-clock time to compile a pool of 6 shaders.
+    // This frag visualises result: compile time heat-map.
+    const val SHADER_TIMING_FRAG = """
+precision highp float;
+varying vec2 v_UV;
+uniform float u_Time;   // repurposed: compile_ms normalised 0-1
+void main() {
+    // Green (fast) → Red (slow) bar chart feel
+    float t = clamp(u_Time, 0.0, 1.0);
+    vec3 fast = vec3(0.1, 0.9, 0.3);
+    vec3 slow = vec3(1.0, 0.2, 0.1);
+    vec3 col = mix(fast, slow, t);
+    // Scanline pattern
+    float grid = step(0.02, fract(v_UV.y * 20.0));
+    col *= 0.7 + 0.3 * grid;
+    gl_FragColor = vec4(col, 1.0);
+}"""
+
 }

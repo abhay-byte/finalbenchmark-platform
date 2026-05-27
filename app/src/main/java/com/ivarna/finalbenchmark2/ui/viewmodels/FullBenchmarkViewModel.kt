@@ -60,28 +60,19 @@ class FullBenchmarkViewModel(application: Application) : AndroidViewModel(applic
         /**
          * Category weights: CPU 25%, AI 15%, GPU 25%, RAM 10%, Storage 10%, Productivity 15%.
          *
-         * maxScore = reference value for each category, calibrated from actual SD8 Gen 3
-         * (OnePlus CPH2691 / Android 16) measurements with +15% headroom so the reference
-         * device scores ~87% (~868 pts) rather than 100%, leaving room for faster hardware.
-         *
-         * Measured SD8Gen3 → maxScore (+15%):
-         *   CPU:          261  → 300    (single+multi-core weighted sum via SCORING_FACTORS)
-         *   AI:           217  → 250    (geometric-mean-based normalised score)
-         *   RAM:          128  → 150    (geometric-mean MB/s across RAM tests)
-         *   Storage:      168  → 195    (geometric-mean across UFS tests)
-         *   GPU:          103  → 120    (composite FPS-based normalised score)
-         *   Productivity: 112  → 130    (multi-workload composite score)
+         * maxScore = reference value for each category.
+         * Baseline scores: CPU=300, GPU=100, Storage=100, Productivity=100, AI=100, RAM=100.
          *
          * Formula: score = Σ( min(raw/maxScore, 1) × weight ) × 1000
          * Weights sum to 1.0 → max possible score = 1000 (perfect across all categories).
          */
         val PHASES = listOf(
             FullBenchmarkPhase(BenchmarkCategory.CPU,          "CPU Performance",     0.25f, 300.0),
-            FullBenchmarkPhase(BenchmarkCategory.AI,           "AI / ML",             0.15f, 250.0),
-            FullBenchmarkPhase(BenchmarkCategory.RAM,          "RAM Performance",     0.10f, 150.0),
-            FullBenchmarkPhase(BenchmarkCategory.STORAGE,      "Storage Performance", 0.10f, 195.0),
-            FullBenchmarkPhase(BenchmarkCategory.GPU,          "GPU Performance",     0.25f, 120.0),
-            FullBenchmarkPhase(BenchmarkCategory.PRODUCTIVITY, "Productivity",        0.15f, 130.0),
+            FullBenchmarkPhase(BenchmarkCategory.AI,           "AI / ML",             0.15f, 100.0),
+            FullBenchmarkPhase(BenchmarkCategory.RAM,          "RAM Performance",     0.10f, 100.0),
+            FullBenchmarkPhase(BenchmarkCategory.STORAGE,      "Storage Performance", 0.10f, 100.0),
+            FullBenchmarkPhase(BenchmarkCategory.GPU,          "GPU Performance",     0.25f, 100.0),
+            FullBenchmarkPhase(BenchmarkCategory.PRODUCTIVITY, "Productivity",        0.15f, 100.0),
         )
 
         /** Grade thresholds (0–1000 scale). */

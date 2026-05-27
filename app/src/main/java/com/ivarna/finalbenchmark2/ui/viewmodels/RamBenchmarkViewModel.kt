@@ -83,11 +83,11 @@ private val RAM_TESTS = RamTest.values().toList()
 // Reference values calibrated from ACTUAL SD 8 Gen 3 measurements with native code.
 // Targeting SD 8 Gen 3 (LPDDR5X) = 100 pts on each test.
 private val RAM_REFERENCE_NATIVE = mapOf(
-    RamTest.SEQ_READ     to 27_000.0,  // MB/s  (measured 26976 on SD 8 Gen 3)
-    RamTest.SEQ_WRITE    to 15_000.0,  // MB/s  (measured 14944 on SD 8 Gen 3)
-    RamTest.RAND_ACCESS  to 120.0,     // ns/op (measured 119.1 on SD 8 Gen 3; lower=better)
-    RamTest.MEM_COPY     to 15_000.0,  // MB/s  (measured 15339 on SD 8 Gen 3 after DSE fix)
-    RamTest.MULTI_THREAD to 58_000.0,  // MB/s  (measured 57864 on SD 8 Gen 3)
+    RamTest.SEQ_READ     to 34_112.0,  // MB/s  (measured 34112 on SD 8 Gen 3)
+    RamTest.SEQ_WRITE    to 20_864.0,  // MB/s  (measured 20864 on SD 8 Gen 3)
+    RamTest.RAND_ACCESS  to 93.2,      // ns/op (measured 93.2 on SD 8 Gen 3; lower=better)
+    RamTest.MEM_COPY     to 20_071.0,  // MB/s  (measured 20071 on SD 8 Gen 3)
+    RamTest.MULTI_THREAD to 49_720.0,  // MB/s  (measured 49720 on SD 8 Gen 3)
 )
 
 private val RAM_REFERENCE_JVM = mapOf(
@@ -242,6 +242,28 @@ class RamBenchmarkViewModel(
         _completionEvent.emit(resultJson)
     }
 
+    private fun detectBigCoreCount(): Int {
+        val numCores = Runtime.getRuntime().availableProcessors()
+        val freqs = mutableListOf<Long>()
+        for (i in 0 until numCores) {
+            val file = java.io.File("/sys/devices/system/cpu/cpu$i/cpufreq/cpuinfo_max_freq")
+            if (file.exists()) {
+                try {
+                    file.readText().trim().toLongOrNull()?.let { freqs.add(it) }
+                } catch (e: Exception) {
+                    // ignore
+                }
+            }
+        }
+        if (freqs.isEmpty()) {
+            return (numCores / 2).coerceIn(2, 8)
+        }
+        val maxFreq = freqs.maxOrNull() ?: return (numCores / 2).coerceIn(2, 8)
+        val threshold = (maxFreq * 0.75).toLong()
+        val bigCores = freqs.count { it >= threshold }
+        return bigCores.coerceIn(2, 16)
+    }
+
     // ── Benchmark implementations (called on Dispatchers.Default) ─────────
 
     private fun runTest(test: RamTest, durationMs: Long): Double {
@@ -254,7 +276,7 @@ class RamBenchmarkViewModel(
                 RamTest.RAND_ACCESS  -> RamNativeBridge.nativeRandAccess(durationMs)
                 RamTest.MEM_COPY     -> RamNativeBridge.nativeMemCopy(durationMs)
                 RamTest.MULTI_THREAD -> RamNativeBridge.nativeMultiThread(
-                    Runtime.getRuntime().availableProcessors().coerceIn(2, 4), durationMs
+                    detectBigCoreCount(), durationMs
                 )
             }
         }
@@ -363,7 +385,7 @@ class RamBenchmarkViewModel(
      * Returns aggregate MB/s across all threads.
      */
     private fun benchMultiThread(durationMs: Long): Double {
-        val threads = Runtime.getRuntime().availableProcessors().coerceIn(2, 4)
+        val threads = detectBigCoreCount()
         val longCount = 16 * 1024 * 1024 / 8     // 16 MB per thread as LongArray
         val sizeBytes = longCount * 8L
         // Allocate & touch pages BEFORE starting the clock

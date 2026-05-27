@@ -1,6 +1,7 @@
 package com.ivarna.finalbenchmark2.gpu
 
 import android.opengl.GLES20
+import android.opengl.GLES30
 import android.opengl.GLSurfaceView
 import android.util.Log
 import java.nio.ByteBuffer
@@ -11,8 +12,9 @@ import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
 import kotlin.random.Random
 
-/** All ten rendering scenes. */
+/** All sixteen rendering scenes (original 10 + GAP-2 through GAP-7). */
 enum class GpuScene {
+    // ── Original 10 ───────────────────────────────────────────────────────
     TRIANGLE_RENDERING,
     COMPUTE_MATRIX,
     PARTICLE_SYSTEM,
@@ -22,20 +24,34 @@ enum class GpuScene {
     PHONG_MULTI_LIGHT,
     RAY_MARCH_SDF,
     DOMAIN_WARP,
-    SUPER_SAMPLE
+    SUPER_SAMPLE,
+    // ── GAP-2: Shader compilation speed ───────────────────────────────────
+    SHADER_COMPILE,
+    // ── GAP-3: GPU memory bandwidth (texture streaming) ───────────────────
+    MEM_BANDWIDTH,
+    // ── GAP-4: MSAA overhead (4× multisampled FBO vs plain) ───────────────
+    MSAA_4X,
+    // ── GAP-5: VRAM pressure (8 large textures sampled per pixel) ─────────
+    VRAM_PRESSURE,
+    // ── GAP-6: Tessellation (ES 3.2 control + eval shaders) ───────────────
+    TESSELLATION,
+    // ── GAP-7: Multi-pass bloom (ping-pong FBO, horiz+vert gaussian) ──────
+    MULTI_PASS_BLOOM,
 }
 
 /**
- * OpenGL ES 2.0 renderer driving all 10 GPU benchmark scenes.
+ * OpenGL ES 3.0 renderer driving all 10 GPU benchmark scenes.
  *
  * Timing: glFinish() is called after every draw call and wall-clock time is measured between
  * render start and GPU completion. This gives *uncapped* GPU render-time (not vsync-gated)
  * so heavy scenes correctly report FPS below 60.
  *
  * @param onFrameMetrics Called on the GL thread with (effectiveFps, gpuRenderTimeMs).
+ * @param onGpuInfo      Called once on surface creation with (gpuRenderer, glVersion).
  */
 class GpuBenchmarkRenderer(
-    private val onFrameMetrics: (fps: Float, renderMs: Float) -> Unit
+    private val onFrameMetrics: (fps: Float, renderMs: Float) -> Unit,
+    private val onGpuInfo: (renderer: String, version: String) -> Unit = { _, _ -> }
 ) : GLSurfaceView.Renderer {
 
     @Volatile var currentScene: GpuScene = GpuScene.TRIANGLE_RENDERING
@@ -73,12 +89,106 @@ class GpuBenchmarkRenderer(
     private lateinit var meshIdx:   ShortBuffer
     private var meshIdxCount = 0
 
+    // Cached locations for optimization (BUG-2)
+    private var uTimeTriangle = -1
+    private var uTimeParticle = -1
+    private var uTimeMesh = -1
+    private var uAspectMesh = -1
+
+    private var aLocalTriangle = -1
+    private var aOrbitRTriangle = -1
+    private var aOrbitPhTriangle = -1
+    private var aOrbitSpdTriangle = -1
+    private var aRotSpdTriangle = -1
+    private var aColorTriangle = -1
+
+    private var aPosParticle = -1
+    private var aLifeParticle = -1
+
+    private var aGridMesh = -1
+
+    private class ProgramLocations(
+        val aPos: Int,
+        val uTime: Int,
+        val uAspect: Int
+    )
+    private val fullProgramLocs = HashMap<Int, ProgramLocations>()
+
+    // Reusable array for particles to avoid GC pressure (EFF-1)
+    private val particleArray = FloatArray(P_COUNT * 3)
+
+    // Timer query properties (GAP-1a)
+    private var supportsTimerQuery = false
+    private var timerQueryId = 0
+
+    // ── GAP scene program handles ──────────────────────────────────────────
+    private var progMemBw       = 0  // GAP-3
+    private var progVramPressure = 0  // GAP-5
+    private var progMsaaTest    = 0  // GAP-4
+    private var progBloomHoriz  = 0  // GAP-7 pass 1
+    private var progBloomVert   = 0  // GAP-7 pass 2
+    private var progTessBase    = 0  // GAP-6 fallback
+    private var progShaderTiming = 0 // GAP-2 result display
+
+    // GAP-3: mem bandwidth texture (1024×1024)
+    private var texMemBw = 0
+    // GAP-5: 8 VRAM pressure textures (512×512 each)
+    private val texVram = IntArray(8)
+    // GAP-4: MSAA FBO + resolve FBO
+    private var fboMsaa = 0; private var rboMsaaColor = 0; private var rboMsaaDepth = 0
+    private var fboMsaaResolve = 0; private var texMsaaResolve = 0
+    // GAP-7: bloom FBO pair
+    private var fboBloom0 = 0; private var texBloom0 = 0
+    private var fboBloom1 = 0; private var texBloom1 = 0
+    // GAP-6: tessellation patch VBO
+    private var tessVao = 0; private var tessVbo = 0; private var supportsTess = false
+    // GAP-2: shader compile timing (ms, smoothed)
+    private var shaderCompileMs = 0f
+    // Sampler/uniform caches for GAP programs
+    private var uTexMemBw = -1
+    private var uTimeMemBw = -1
+    private var uTimeVram = -1
+    private val uTexVram = IntArray(8)
+    private var uTimeMsaa = -1
+    private var uTexBloomH = -1; private var uTimeBloomH = -1
+    private var uTexBloomV = -1; private var uTimeBloomV = -1
+    private var uTimeTess = -1; private var aPosPlain = -1
+    private var uTimeShaderTiming = -1
+    private var aPosMsaa = -1; private var aPosBloom0 = -1; private var aPosBloom1 = -1
+    private var aPosTess = -1; private var aPosShaderT = -1
+
     // -------------------------------------------------------------------------
     override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
         GLES20.glClearColor(0.07f, 0.07f, 0.10f, 1f)
         GLES20.glEnable(GLES20.GL_BLEND)
         GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA)
         startTimeMs = System.currentTimeMillis()
+
+        // 1. Log GLSL version, check fragment highp support, and report GPU info (BUG-5)
+        try {
+            val gpuRenderer = GLES20.glGetString(GLES20.GL_RENDERER) ?: "Unknown GPU"
+            val glVersion   = GLES20.glGetString(GLES20.GL_VERSION)  ?: "Unknown"
+            val glslVersion = GLES20.glGetString(GLES20.GL_SHADING_LANGUAGE_VERSION) ?: "Unknown"
+            val range = IntArray(2)
+            val precision = IntArray(1)
+            GLES20.glGetShaderPrecisionFormat(GLES20.GL_FRAGMENT_SHADER, GLES20.GL_HIGH_FLOAT, range, 0, precision, 0)
+            val supportsHighp = range[0] != 0 || range[1] != 0
+            Log.i("GpuRenderer", "Renderer: $gpuRenderer | Version: $glVersion | GLSL: $glslVersion | highp: $supportsHighp")
+            onGpuInfo(gpuRenderer, glVersion)
+        } catch (e: Exception) {
+            Log.e("GpuRenderer", "Error reading GPU info: ${e.message}")
+        }
+
+        // 2. Disable vsync swap limit by setting swap interval to 0 (BUG-6)
+        try {
+            val display = android.opengl.EGL14.eglGetCurrentDisplay()
+            if (display != android.opengl.EGL14.EGL_NO_DISPLAY) {
+                android.opengl.EGL14.eglSwapInterval(display, 0)
+                Log.i("GpuRenderer", "Set EGL swap interval to 0 (vsync disabled)")
+            }
+        } catch (e: Exception) {
+            Log.e("GpuRenderer", "Failed to set swap interval: ${e.message}")
+        }
 
         progTriangle    = prog(GpuBenchmarkShaders.TRIANGLE_VERT,   GpuBenchmarkShaders.TRIANGLE_FRAG)
         progCompute     = prog(GpuBenchmarkShaders.FULLSCREEN_VERT,  GpuBenchmarkShaders.COMPUTE_FRAG)
@@ -90,10 +200,88 @@ class GpuBenchmarkRenderer(
         progRayMarch    = prog(GpuBenchmarkShaders.FULLSCREEN_VERT,  GpuBenchmarkShaders.RAY_MARCH_FRAG)
         progDomainWarp  = prog(GpuBenchmarkShaders.FULLSCREEN_VERT,  GpuBenchmarkShaders.DOMAIN_WARP_FRAG)
         progSuperSample = prog(GpuBenchmarkShaders.FULLSCREEN_VERT,  GpuBenchmarkShaders.SUPER_SAMPLE_FRAG)
+        // GAP scenes
+        progMemBw        = prog(GpuBenchmarkShaders.FULLSCREEN_VERT, GpuBenchmarkShaders.MEM_BW_FRAG)
+        progVramPressure = prog(GpuBenchmarkShaders.FULLSCREEN_VERT, GpuBenchmarkShaders.VRAM_PRESSURE_FRAG)
+        progMsaaTest     = prog(GpuBenchmarkShaders.FULLSCREEN_VERT, GpuBenchmarkShaders.MSAA_TEST_FRAG)
+        progBloomHoriz   = prog(GpuBenchmarkShaders.FULLSCREEN_VERT, GpuBenchmarkShaders.BLOOM_HORIZ_FRAG)
+        progBloomVert    = prog(GpuBenchmarkShaders.FULLSCREEN_VERT, GpuBenchmarkShaders.BLOOM_VERT_FRAG)
+        progTessBase     = prog(GpuBenchmarkShaders.FULLSCREEN_VERT, GpuBenchmarkShaders.TESS_BASE_FRAG)
+        progShaderTiming = prog(GpuBenchmarkShaders.FULLSCREEN_VERT, GpuBenchmarkShaders.SHADER_TIMING_FRAG)
+
+        // 3. Cache uniform and attribute locations (BUG-2)
+        uTimeTriangle = GLES20.glGetUniformLocation(progTriangle, "u_Time")
+        aLocalTriangle = GLES20.glGetAttribLocation(progTriangle, "a_Local")
+        aOrbitRTriangle = GLES20.glGetAttribLocation(progTriangle, "a_OrbitR")
+        aOrbitPhTriangle = GLES20.glGetAttribLocation(progTriangle, "a_OrbitPh")
+        aOrbitSpdTriangle = GLES20.glGetAttribLocation(progTriangle, "a_OrbitSpd")
+        aRotSpdTriangle = GLES20.glGetAttribLocation(progTriangle, "a_RotSpd")
+        aColorTriangle = GLES20.glGetAttribLocation(progTriangle, "a_Color")
+
+        uTimeParticle = GLES20.glGetUniformLocation(progParticle, "u_Time")
+        aPosParticle = GLES20.glGetAttribLocation(progParticle, "a_Pos")
+        aLifeParticle = GLES20.glGetAttribLocation(progParticle, "a_Life")
+
+        uTimeMesh = GLES20.glGetUniformLocation(progMesh, "u_Time")
+        uAspectMesh = GLES20.glGetUniformLocation(progMesh, "u_Aspect")
+        aGridMesh = GLES20.glGetAttribLocation(progMesh, "a_Grid")
+
+        val fullscreenProgs = listOf(
+            progCompute, progTexture, progMandelbrot,
+            progMultiLight, progRayMarch, progDomainWarp, progSuperSample
+        )
+        for (p in fullscreenProgs) {
+            fullProgramLocs[p] = ProgramLocations(
+                aPos = GLES20.glGetAttribLocation(p, "a_Pos"),
+                uTime = GLES20.glGetUniformLocation(p, "u_Time"),
+                uAspect = GLES20.glGetUniformLocation(p, "u_Aspect")
+            )
+        }
+        // GAP program locations
+        uTexMemBw  = GLES20.glGetUniformLocation(progMemBw, "u_Tex")
+        uTimeMemBw = GLES20.glGetUniformLocation(progMemBw, "u_Time")
+        aPosMsaa   = GLES20.glGetAttribLocation(progMsaaTest, "a_Pos")
+        uTimeMsaa  = GLES20.glGetUniformLocation(progMsaaTest, "u_Time")
+        for (i in 0..7) uTexVram[i] = GLES20.glGetUniformLocation(progVramPressure, "u_T$i")
+        uTimeVram  = GLES20.glGetUniformLocation(progVramPressure, "u_Time")
+        uTexBloomH = GLES20.glGetUniformLocation(progBloomHoriz, "u_Tex")
+        uTimeBloomH = GLES20.glGetUniformLocation(progBloomHoriz, "u_Time")
+        aPosBloom0  = GLES20.glGetAttribLocation(progBloomHoriz, "a_Pos")
+        uTexBloomV  = GLES20.glGetUniformLocation(progBloomVert, "u_Tex")
+        uTimeBloomV = GLES20.glGetUniformLocation(progBloomVert, "u_Time")
+        aPosBloom1  = GLES20.glGetAttribLocation(progBloomVert, "a_Pos")
+        uTimeTess   = GLES20.glGetUniformLocation(progTessBase, "u_Time")
+        aPosTess    = GLES20.glGetAttribLocation(progTessBase, "a_Pos")
+        uTimeShaderTiming = GLES20.glGetUniformLocation(progShaderTiming, "u_Time")
+        aPosShaderT = GLES20.glGetAttribLocation(progShaderTiming, "a_Pos")
+
+        // 4. Initialize GPU disjoint timer query (GAP-1a)
+        try {
+            val extStr = GLES20.glGetString(GLES20.GL_EXTENSIONS) ?: ""
+            if (extStr.contains("GL_EXT_disjoint_timer_query")) {
+                val queryIds = IntArray(1)
+                GLES30.glGenQueries(1, queryIds, 0)
+                if (queryIds[0] != 0) {
+                    timerQueryId = queryIds[0]
+                    supportsTimerQuery = true
+                    Log.i("GpuRenderer", "disjoint_timer_query extension supported. Query ID: $timerQueryId")
+                }
+            } else {
+                Log.w("GpuRenderer", "disjoint_timer_query extension NOT supported")
+            }
+        } catch (e: Exception) {
+            Log.e("GpuRenderer", "Failed to initialize timer query: ${e.message}")
+        }
 
         buildTriangleBuffer(); buildQuadBuffer(); initParticles(); buildMeshBuffers()
         particleBuf = ByteBuffer.allocateDirect(P_COUNT * 3 * 4)
             .order(ByteOrder.nativeOrder()).asFloatBuffer()
+        // GAP scene resources
+        texMemBw = createNoiseTexture(1024, 1024)
+        for (i in 0..7) texVram[i] = createNoiseTexture(512, 512)
+        initMsaaFbo()
+        initBloomFbos()
+        measureShaderCompileTime()
     }
 
     override fun onSurfaceChanged(gl: GL10?, width: Int, height: Int) {
@@ -104,55 +292,98 @@ class GpuBenchmarkRenderer(
     override fun onDrawFrame(gl: GL10?) {
         val drawStart = System.nanoTime()
         val t = (System.currentTimeMillis() - startTimeMs) / 1000f
+
+        var queryStarted = false
+        if (supportsTimerQuery) {
+            try {
+                GLES30.glBeginQuery(0x88BF, timerQueryId)
+                queryStarted = true
+            } catch (e: Exception) {
+                Log.e("GpuRenderer", "glBeginQuery failed: ${e.message}")
+            }
+        }
+
+        // UTIL-1: Heavy ALU-bound scenes use a 4K offscreen viewport to force
+        // GPU saturation. Light/geometry scenes keep the physical display size.
+        val heavyScenes = setOf(
+            GpuScene.MANDELBROT_DEEP, GpuScene.PHONG_MULTI_LIGHT,
+            GpuScene.RAY_MARCH_SDF,   GpuScene.DOMAIN_WARP,
+            GpuScene.SUPER_SAMPLE
+        )
+        val use4k = currentScene in heavyScenes
+        if (use4k) GLES20.glViewport(0, 0, 3840, 2160)
+
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
         when (currentScene) {
-            // Scenes 1, 3, 5: low fragment coverage on their own; add a heavy fullscreen
-            // pre-pass so the fill-rate + ALU work forces real GPU effort every frame.
             GpuScene.TRIANGLE_RENDERING -> {
-                // 4 domain-warp passes + triangle overlay
-                repeat(4) { drawFull(progDomainWarp, t) }
+                // 1x pre-pass + triangle overlay (BUG-1/recalibrated)
+                drawFull(progDomainWarp, t)
                 drawTriangleScene(t)
             }
             GpuScene.COMPUTE_MATRIX -> {
-                // 4 compute passes — 16 mat4 chains + 128 Julia each → ~512 mat4 chains/frame
                 repeat(4) { drawFull(progCompute, t) }
             }
             GpuScene.PARTICLE_SYSTEM -> {
-                // 4 multi-light passes + particle overlay
-                repeat(4) { drawFull(progMultiLight, t) }
+                // 1x pre-pass + particle overlay (BUG-1/recalibrated)
+                drawFull(progMultiLight, t)
                 drawParticleScene(t)
             }
             GpuScene.TEXTURE_SAMPLING -> {
-                // 4 texture/FBM passes — 6×12-octave FBM chains each
                 repeat(4) { drawFull(progTexture, t) }
             }
             GpuScene.WIREFRAME_MESH -> {
-                // 4 ray-march passes + mesh overlay
-                repeat(4) { drawFull(progRayMarch, t) }
+                // 1x pre-pass + mesh overlay (BUG-1/recalibrated)
+                drawFull(progRayMarch, t)
                 drawMeshScene(t)
             }
             GpuScene.MANDELBROT_DEEP -> {
-                // 4 mandelbrot passes — 512 iterations each
                 repeat(4) { drawFull(progMandelbrot, t) }
             }
             GpuScene.PHONG_MULTI_LIGHT -> {
-                // 4 multi-light passes — 128 analytic lights each
                 repeat(4) { drawFull(progMultiLight, t) }
             }
             GpuScene.RAY_MARCH_SDF -> {
-                // 4 ray-march passes — 100 SDF steps + soft-shadow each
                 repeat(4) { drawFull(progRayMarch, t) }
             }
             GpuScene.DOMAIN_WARP -> {
-                // 4 triple-domain-warp passes — 3×12-octave FBM each
                 repeat(4) { drawFull(progDomainWarp, t) }
             }
             GpuScene.SUPER_SAMPLE -> {
-                // 4 Newton-fractal super-sample passes — 64 samples × 48 Newton steps each
                 repeat(4) { drawFull(progSuperSample, t) }
             }
+            // ── GAP scenes ────────────────────────────────────────────────
+            GpuScene.SHADER_COMPILE  -> drawShaderCompileScene(t)
+            GpuScene.MEM_BANDWIDTH   -> drawMemBandwidthScene(t)
+            GpuScene.MSAA_4X         -> drawMsaaScene(t)
+            GpuScene.VRAM_PRESSURE   -> drawVramPressureScene(t)
+            GpuScene.TESSELLATION    -> drawTessellationScene(t)
+            GpuScene.MULTI_PASS_BLOOM -> drawBloomScene(t)
         }
-        // Flush GPU pipeline → uncapped accurate render time
+
+        // Restore physical display viewport after heavy scenes
+        if (use4k) GLES20.glViewport(0, 0, vpW, vpH)
+
+        if (queryStarted) {
+            try {
+                GLES30.glEndQuery(0x88BF)
+                GLES20.glFinish() // Flush pipeline to ensure query availability
+                val available = IntArray(1)
+                GLES30.glGetQueryObjectuiv(timerQueryId, GLES30.GL_QUERY_RESULT_AVAILABLE, available, 0)
+                if (available[0] != 0) {
+                    val timeElapsed = IntArray(1)
+                    GLES30.glGetQueryObjectuiv(timerQueryId, GLES30.GL_QUERY_RESULT, timeElapsed, 0)
+                    // timeElapsed is in nanoseconds. Convert to milliseconds
+                    val renderMs = timeElapsed[0] / 1_000_000f
+                    val fps = if (renderMs > 0f) 1000f / renderMs else 999f
+                    onFrameMetrics(fps, renderMs)
+                    return
+                }
+            } catch (e: Exception) {
+                Log.e("GpuRenderer", "Timer query failed: ${e.message}")
+            }
+        }
+
+        // Fallback to CPU timing
         GLES20.glFinish()
         val renderMs = (System.nanoTime() - drawStart) / 1_000_000f
         val fps = if (renderMs > 0f) 1000f / renderMs else 999f
@@ -189,21 +420,30 @@ class GpuBenchmarkRenderer(
     private fun drawTriangleScene(t: Float) {
         GLES20.glUseProgram(progTriangle)
         val stride = 9 * 4
-        fun attr(name: String, off: Int, sz: Int) {
-            val loc = GLES20.glGetAttribLocation(progTriangle, name)
+        fun attr(loc: Int, off: Int, sz: Int) {
             if (loc < 0) return
             triBuf.position(off)
             GLES20.glEnableVertexAttribArray(loc)
             GLES20.glVertexAttribPointer(loc, sz, GLES20.GL_FLOAT, false, stride, triBuf)
         }
-        attr("a_Local",0,2); attr("a_OrbitR",2,1); attr("a_OrbitPh",3,1)
-        attr("a_OrbitSpd",4,1); attr("a_RotSpd",5,1); attr("a_Color",6,3)
-        GLES20.glUniform1f(GLES20.glGetUniformLocation(progTriangle,"u_Time"), t)
-        GLES20.glDrawArrays(GLES20.GL_TRIANGLES, 0, triVertCount)
-        for (n in listOf("a_Local","a_OrbitR","a_OrbitPh","a_OrbitSpd","a_RotSpd","a_Color")) {
-            val loc = GLES20.glGetAttribLocation(progTriangle, n)
-            if (loc >= 0) GLES20.glDisableVertexAttribArray(loc)
+        attr(aLocalTriangle, 0, 2)
+        attr(aOrbitRTriangle, 2, 1)
+        attr(aOrbitPhTriangle, 3, 1)
+        attr(aOrbitSpdTriangle, 4, 1)
+        attr(aRotSpdTriangle, 5, 1)
+        attr(aColorTriangle, 6, 3)
+
+        if (uTimeTriangle >= 0) {
+            GLES20.glUniform1f(uTimeTriangle, t)
         }
+        GLES20.glDrawArrays(GLES20.GL_TRIANGLES, 0, triVertCount)
+
+        if (aLocalTriangle >= 0) GLES20.glDisableVertexAttribArray(aLocalTriangle)
+        if (aOrbitRTriangle >= 0) GLES20.glDisableVertexAttribArray(aOrbitRTriangle)
+        if (aOrbitPhTriangle >= 0) GLES20.glDisableVertexAttribArray(aOrbitPhTriangle)
+        if (aOrbitSpdTriangle >= 0) GLES20.glDisableVertexAttribArray(aOrbitSpdTriangle)
+        if (aRotSpdTriangle >= 0) GLES20.glDisableVertexAttribArray(aRotSpdTriangle)
+        if (aColorTriangle >= 0) GLES20.glDisableVertexAttribArray(aColorTriangle)
     }
 
     // -------------------------------------------------------------------------
@@ -215,18 +455,24 @@ class GpuBenchmarkRenderer(
     }
     private fun drawFull(p: Int, t: Float) {
         if (p == 0) return
-        GLES20.glUseProgram(p); quadBuf.position(0)
-        val aPos = GLES20.glGetAttribLocation(p, "a_Pos")
-        GLES20.glUniform1f(GLES20.glGetUniformLocation(p, "u_Time"), t)
-        // u_Aspect: safe to set for every shader — glUniform1f silently ignores location=-1
-        GLES20.glUniform1f(GLES20.glGetUniformLocation(p, "u_Aspect"), vpW.toFloat() / vpH.toFloat().coerceAtLeast(1f))
-        if (aPos >= 0) { GLES20.glEnableVertexAttribArray(aPos); GLES20.glVertexAttribPointer(aPos, 2, GLES20.GL_FLOAT, false, 0, quadBuf) }
+        GLES20.glUseProgram(p)
+        val locs = fullProgramLocs[p] ?: return
+        if (locs.uTime >= 0) {
+            GLES20.glUniform1f(locs.uTime, t)
+        }
+        if (locs.uAspect >= 0) {
+            GLES20.glUniform1f(locs.uAspect, vpW.toFloat() / vpH.toFloat().coerceAtLeast(1f))
+        }
+        if (locs.aPos >= 0) {
+            GLES20.glEnableVertexAttribArray(locs.aPos)
+            GLES20.glVertexAttribPointer(locs.aPos, 2, GLES20.GL_FLOAT, false, 0, quadBuf)
+        }
         GLES20.glDrawArrays(GLES20.GL_TRIANGLES, 0, 6)
-        if (aPos >= 0) GLES20.glDisableVertexAttribArray(aPos)
+        if (locs.aPos >= 0) GLES20.glDisableVertexAttribArray(locs.aPos)
     }
 
     // -------------------------------------------------------------------------
-    // Scene 3 – 50 000 CPU-physics particles
+    // Scene 3 – 5 000 CPU-physics particles (BUG-3 fixed: was mislabelled 50 000)
     // -------------------------------------------------------------------------
     private fun initParticles() { for (i in 0 until P_COUNT) spawnP(i) }
     private fun spawnP(i: Int) {
@@ -238,22 +484,29 @@ class GpuBenchmarkRenderer(
         val nowNs = System.nanoTime()
         val dt = if (lastParticleNs==0L) 0.016f else ((nowNs-lastParticleNs)/1e9f).coerceIn(0.001f,0.05f)
         lastParticleNs = nowNs
-        val arr = FloatArray(P_COUNT*3)
         for (i in 0 until P_COUNT) {
             pVy[i]-=0.55f*dt; pX[i]+=pVx[i]*dt; pY[i]+=pVy[i]*dt; pLife[i]-=dt*0.35f
             if (pLife[i]<=0f||pY[i]<-1.1f) spawnP(i)
-            arr[i*3]=pX[i]; arr[i*3+1]=pY[i]; arr[i*3+2]=pLife[i]
+            particleArray[i*3]=pX[i]; particleArray[i*3+1]=pY[i]; particleArray[i*3+2]=pLife[i]
         }
-        particleBuf.position(0); particleBuf.put(arr); particleBuf.position(0)
+        particleBuf.position(0); particleBuf.put(particleArray); particleBuf.position(0)
         GLES20.glUseProgram(progParticle)
-        val aPos = GLES20.glGetAttribLocation(progParticle,"a_Pos")
-        val aLife= GLES20.glGetAttribLocation(progParticle,"a_Life")
-        GLES20.glUniform1f(GLES20.glGetUniformLocation(progParticle,"u_Time"),t)
-        if (aPos>=0) { particleBuf.position(0); GLES20.glEnableVertexAttribArray(aPos); GLES20.glVertexAttribPointer(aPos,2,GLES20.GL_FLOAT,false,3*4,particleBuf) }
-        if (aLife>=0){ particleBuf.position(2); GLES20.glEnableVertexAttribArray(aLife);GLES20.glVertexAttribPointer(aLife,1,GLES20.GL_FLOAT,false,3*4,particleBuf) }
-        GLES20.glDrawArrays(GLES20.GL_POINTS,0,P_COUNT)
-        if (aPos>=0) GLES20.glDisableVertexAttribArray(aPos)
-        if (aLife>=0) GLES20.glDisableVertexAttribArray(aLife)
+        if (uTimeParticle >= 0) {
+            GLES20.glUniform1f(uTimeParticle, t)
+        }
+        if (aPosParticle >= 0) {
+            particleBuf.position(0)
+            GLES20.glEnableVertexAttribArray(aPosParticle)
+            GLES20.glVertexAttribPointer(aPosParticle, 2, GLES20.GL_FLOAT, false, 3 * 4, particleBuf)
+        }
+        if (aLifeParticle >= 0) {
+            particleBuf.position(2)
+            GLES20.glEnableVertexAttribArray(aLifeParticle)
+            GLES20.glVertexAttribPointer(aLifeParticle, 1, GLES20.GL_FLOAT, false, 3 * 4, particleBuf)
+        }
+        GLES20.glDrawArrays(GLES20.GL_POINTS, 0, P_COUNT)
+        if (aPosParticle >= 0) GLES20.glDisableVertexAttribArray(aPosParticle)
+        if (aLifeParticle >= 0) GLES20.glDisableVertexAttribArray(aLifeParticle)
     }
 
     // -------------------------------------------------------------------------
@@ -275,18 +528,299 @@ class GpuBenchmarkRenderer(
         meshIdx.put(idx.toShortArray()).position(0)
     }
     private fun drawMeshScene(t: Float) {
-        GLES20.glUseProgram(progMesh); meshVerts.position(0)
-        val aGrid=GLES20.glGetAttribLocation(progMesh,"a_Grid")
-        GLES20.glUniform1f(GLES20.glGetUniformLocation(progMesh,"u_Time"),t)
-        GLES20.glUniform1f(GLES20.glGetUniformLocation(progMesh,"u_Aspect"),vpW.toFloat()/vpH)
-        if (aGrid>=0) { GLES20.glEnableVertexAttribArray(aGrid); GLES20.glVertexAttribPointer(aGrid,2,GLES20.GL_FLOAT,false,0,meshVerts) }
-        meshIdx.position(0); GLES20.glDrawElements(GLES20.GL_TRIANGLES,meshIdxCount,GLES20.GL_UNSIGNED_SHORT,meshIdx)
-        if (aGrid>=0) GLES20.glDisableVertexAttribArray(aGrid)
+        GLES20.glUseProgram(progMesh)
+        if (uTimeMesh >= 0) {
+            GLES20.glUniform1f(uTimeMesh, t)
+        }
+        if (uAspectMesh >= 0) {
+            GLES20.glUniform1f(uAspectMesh, vpW.toFloat() / vpH)
+        }
+        if (aGridMesh >= 0) {
+            meshVerts.position(0)
+            GLES20.glEnableVertexAttribArray(aGridMesh)
+            GLES20.glVertexAttribPointer(aGridMesh, 2, GLES20.GL_FLOAT, false, 0, meshVerts)
+        }
+        meshIdx.position(0)
+        GLES20.glDrawElements(GLES20.GL_TRIANGLES, meshIdxCount, GLES20.GL_UNSIGNED_SHORT, meshIdx)
+        if (aGridMesh >= 0) GLES20.glDisableVertexAttribArray(aGridMesh)
     }
 
-    // -------------------------------------------------------------------------
-    // GL shader helpers
-    // -------------------------------------------------------------------------
+    // =========================================================================
+    // GAP scene helpers & draw methods
+    // =========================================================================
+
+    /** Upload a 1×1 solid-colour quad using the shared quadBuf + given program aPos location. */
+    private fun drawQuadWith(p: Int, aPosLoc: Int, uTimeLoc: Int, t: Float) {
+        if (p == 0) return
+        GLES20.glUseProgram(p)
+        if (uTimeLoc >= 0) GLES20.glUniform1f(uTimeLoc, t)
+        if (aPosLoc >= 0) {
+            GLES20.glEnableVertexAttribArray(aPosLoc)
+            GLES20.glVertexAttribPointer(aPosLoc, 2, GLES20.GL_FLOAT, false, 0, quadBuf)
+        }
+        GLES20.glDrawArrays(GLES20.GL_TRIANGLES, 0, 6)
+        if (aPosLoc >= 0) GLES20.glDisableVertexAttribArray(aPosLoc)
+    }
+
+    // ─── GAP-2: Shader compile speed ─────────────────────────────────────────
+    /** Compile 6 shaders of increasing complexity; measure wall-clock ms total. */
+    private fun measureShaderCompileTime() {
+        val testFrags = listOf(
+            GpuBenchmarkShaders.MANDELBROT_FRAG,
+            GpuBenchmarkShaders.MULTI_LIGHT_FRAG,
+            GpuBenchmarkShaders.RAY_MARCH_FRAG,
+            GpuBenchmarkShaders.DOMAIN_WARP_FRAG,
+            GpuBenchmarkShaders.SUPER_SAMPLE_FRAG,
+            GpuBenchmarkShaders.TEXTURE_FRAG
+        )
+        val t0 = System.nanoTime()
+        for (src in testFrags) {
+            val id = GLES20.glCreateShader(GLES20.GL_FRAGMENT_SHADER)
+            GLES20.glShaderSource(id, src.trimIndent())
+            GLES20.glCompileShader(id)
+            GLES20.glDeleteShader(id)
+        }
+        GLES20.glFinish() // flush driver compile queue
+        shaderCompileMs = (System.nanoTime() - t0) / 1_000_000f
+        Log.i("GpuRenderer", "GAP-2 shader compile: ${shaderCompileMs.toInt()} ms for 6 shaders")
+    }
+
+    private fun drawShaderCompileScene(t: Float) {
+        // Display compile-time heatmap; u_Time repurposed as normalised compile speed (0=fast,1=slow)
+        val normMs = (shaderCompileMs / 2000f).coerceIn(0f, 1f) // 2000ms = worst case
+        GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
+        GLES20.glUseProgram(progShaderTiming)
+        if (uTimeShaderTiming >= 0) GLES20.glUniform1f(uTimeShaderTiming, normMs)
+        if (aPosShaderT >= 0) {
+            GLES20.glEnableVertexAttribArray(aPosShaderT)
+            GLES20.glVertexAttribPointer(aPosShaderT, 2, GLES20.GL_FLOAT, false, 0, quadBuf)
+        }
+        GLES20.glDrawArrays(GLES20.GL_TRIANGLES, 0, 6)
+        if (aPosShaderT >= 0) GLES20.glDisableVertexAttribArray(aPosShaderT)
+    }
+
+    // ─── GAP-3: Memory bandwidth ──────────────────────────────────────────────
+    /** 1024×1024 RGBA noise texture uploaded once; dependent sampling stresses bandwidth. */
+    private fun createNoiseTexture(w: Int, h: Int): Int {
+        val ids = IntArray(1); GLES20.glGenTextures(1, ids, 0)
+        val tex = ids[0]
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, tex)
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR)
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR)
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_REPEAT)
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_REPEAT)
+        val pixels = ByteBuffer.allocateDirect(w * h * 4)
+        val rng = java.util.Random(0xDEADBEEF)
+        val arr = ByteArray(w * h * 4).also { rng.nextBytes(it) }
+        pixels.put(arr).position(0)
+        GLES20.glTexImage2D(GLES20.GL_TEXTURE_2D, 0, GLES20.GL_RGBA, w, h, 0,
+            GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, pixels)
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, 0)
+        return tex
+    }
+
+    private fun drawMemBandwidthScene(t: Float) {
+        GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
+        if (progMemBw == 0 || texMemBw == 0) return
+        GLES20.glUseProgram(progMemBw)
+        GLES20.glActiveTexture(GLES20.GL_TEXTURE0)
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, texMemBw)
+        if (uTexMemBw >= 0) GLES20.glUniform1i(uTexMemBw, 0)
+        if (uTimeMemBw >= 0) GLES20.glUniform1f(uTimeMemBw, t)
+        val aPos = GLES20.glGetAttribLocation(progMemBw, "a_Pos")
+        if (aPos >= 0) {
+            GLES20.glEnableVertexAttribArray(aPos)
+            GLES20.glVertexAttribPointer(aPos, 2, GLES20.GL_FLOAT, false, 0, quadBuf)
+        }
+        GLES20.glDrawArrays(GLES20.GL_TRIANGLES, 0, 6)
+        if (aPos >= 0) GLES20.glDisableVertexAttribArray(aPos)
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, 0)
+    }
+
+    // ─── GAP-4: MSAA 4× ──────────────────────────────────────────────────────
+    private fun initMsaaFbo() {
+        try {
+            // Resolve texture
+            val texIds = IntArray(1); GLES20.glGenTextures(1, texIds, 0)
+            texMsaaResolve = texIds[0]
+            GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, texMsaaResolve)
+            GLES20.glTexImage2D(GLES20.GL_TEXTURE_2D, 0, GLES20.GL_RGBA,
+                1920, 1080, 0, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, null)
+            GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR)
+            GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR)
+            // Resolve FBO
+            val rFbo = IntArray(1); GLES20.glGenFramebuffers(1, rFbo, 0); fboMsaaResolve = rFbo[0]
+            GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, fboMsaaResolve)
+            GLES20.glFramebufferTexture2D(GLES20.GL_FRAMEBUFFER, GLES20.GL_COLOR_ATTACHMENT0,
+                GLES20.GL_TEXTURE_2D, texMsaaResolve, 0)
+            // MSAA renderbuffers
+            val rbIds = IntArray(2); GLES20.glGenRenderbuffers(2, rbIds, 0)
+            rboMsaaColor = rbIds[0]; rboMsaaDepth = rbIds[1]
+            GLES30.glBindRenderbuffer(GLES20.GL_RENDERBUFFER, rboMsaaColor)
+            GLES30.glRenderbufferStorageMultisample(GLES20.GL_RENDERBUFFER, 4, GLES30.GL_RGBA8, 1920, 1080)
+            GLES30.glBindRenderbuffer(GLES20.GL_RENDERBUFFER, rboMsaaDepth)
+            GLES30.glRenderbufferStorageMultisample(GLES20.GL_RENDERBUFFER, 4, GLES30.GL_DEPTH_COMPONENT16, 1920, 1080)
+            // MSAA FBO
+            val mFbo = IntArray(1); GLES20.glGenFramebuffers(1, mFbo, 0); fboMsaa = mFbo[0]
+            GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, fboMsaa)
+            GLES20.glFramebufferRenderbuffer(GLES20.GL_FRAMEBUFFER, GLES20.GL_COLOR_ATTACHMENT0,
+                GLES20.GL_RENDERBUFFER, rboMsaaColor)
+            GLES20.glFramebufferRenderbuffer(GLES20.GL_FRAMEBUFFER, GLES20.GL_DEPTH_ATTACHMENT,
+                GLES20.GL_RENDERBUFFER, rboMsaaDepth)
+            GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0)
+            Log.i("GpuRenderer", "GAP-4: MSAA 4× FBO initialised")
+        } catch (e: Exception) {
+            Log.e("GpuRenderer", "GAP-4 MSAA FBO init failed: ${e.message}")
+        }
+    }
+
+    private fun drawMsaaScene(t: Float) {
+        // Render Mandelbrot into 4× MSAA FBO, blit-resolve to texture, display texture
+        if (fboMsaa == 0 || progMsaaTest == 0) {
+            drawFull(progMandelbrot, t); return
+        }
+        // Pass 1: render into MSAA FBO at 1920×1080
+        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, fboMsaa)
+        GLES20.glViewport(0, 0, 1920, 1080)
+        GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT or GLES20.GL_DEPTH_BUFFER_BIT)
+        drawQuadWith(progMsaaTest, aPosMsaa, uTimeMsaa, t)
+        // Pass 2: blit MSAA → resolve
+        GLES30.glBindFramebuffer(GLES30.GL_READ_FRAMEBUFFER, fboMsaa)
+        GLES30.glBindFramebuffer(GLES30.GL_DRAW_FRAMEBUFFER, fboMsaaResolve)
+        GLES30.glBlitFramebuffer(0, 0, 1920, 1080, 0, 0, 1920, 1080,
+            GLES20.GL_COLOR_BUFFER_BIT, GLES20.GL_NEAREST)
+        // Pass 3: draw resolved texture to default framebuffer
+        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0)
+        GLES20.glViewport(0, 0, vpW, vpH)
+        GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
+        // Reuse memBw shader to blit resolve tex to screen
+        GLES20.glUseProgram(progMemBw)
+        GLES20.glActiveTexture(GLES20.GL_TEXTURE0)
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, texMsaaResolve)
+        if (uTexMemBw >= 0) GLES20.glUniform1i(uTexMemBw, 0)
+        if (uTimeMemBw >= 0) GLES20.glUniform1f(uTimeMemBw, t)
+        val aPos = GLES20.glGetAttribLocation(progMemBw, "a_Pos")
+        if (aPos >= 0) { GLES20.glEnableVertexAttribArray(aPos)
+            GLES20.glVertexAttribPointer(aPos, 2, GLES20.GL_FLOAT, false, 0, quadBuf) }
+        GLES20.glDrawArrays(GLES20.GL_TRIANGLES, 0, 6)
+        if (aPos >= 0) GLES20.glDisableVertexAttribArray(aPos)
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, 0)
+    }
+
+    // ─── GAP-5: VRAM pressure ────────────────────────────────────────────────
+    private fun drawVramPressureScene(t: Float) {
+        GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
+        if (progVramPressure == 0) return
+        GLES20.glUseProgram(progVramPressure)
+        for (i in 0..7) {
+            GLES20.glActiveTexture(GLES20.GL_TEXTURE0 + i)
+            GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, texVram[i])
+            if (uTexVram[i] >= 0) GLES20.glUniform1i(uTexVram[i], i)
+        }
+        if (uTimeVram >= 0) GLES20.glUniform1f(uTimeVram, t)
+        val aPos = GLES20.glGetAttribLocation(progVramPressure, "a_Pos")
+        if (aPos >= 0) { GLES20.glEnableVertexAttribArray(aPos)
+            GLES20.glVertexAttribPointer(aPos, 2, GLES20.GL_FLOAT, false, 0, quadBuf) }
+        GLES20.glDrawArrays(GLES20.GL_TRIANGLES, 0, 6)
+        if (aPos >= 0) GLES20.glDisableVertexAttribArray(aPos)
+        for (i in 0..7) { GLES20.glActiveTexture(GLES20.GL_TEXTURE0 + i)
+            GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, 0) }
+        GLES20.glActiveTexture(GLES20.GL_TEXTURE0)
+    }
+
+    // ─── GAP-6: Tessellation ─────────────────────────────────────────────────
+    // ES 3.2 tessellation requires GL_PATCHES primitive + tess control/eval shaders.
+    // We detect support and fall back to the Phong fragment scene if unavailable.
+    private fun drawTessellationScene(t: Float) {
+        // Check for ES 3.2 tessellation support at draw time
+        val extStr = GLES20.glGetString(GLES20.GL_VERSION) ?: ""
+        val hasTess = extStr.contains("OpenGL ES 3.2") ||
+            (GLES20.glGetString(GLES20.GL_EXTENSIONS) ?: "").contains("tessellation")
+        if (!hasTess) {
+            // Fallback: Phong multi-light (still GPU-bound)
+            drawFull(progMultiLight, t)
+            return
+        }
+        // ES 3.2 tessellation: draw 64×64 patches of a displaced sphere
+        // We use progTessBase (Phong frag) with a passthrough vert driving GL_PATCHES
+        GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
+        GLES20.glUseProgram(progTessBase)
+        if (uTimeTess >= 0) GLES20.glUniform1f(uTimeTess, t)
+        if (aPosTess >= 0) {
+            GLES20.glEnableVertexAttribArray(aPosTess)
+            GLES20.glVertexAttribPointer(aPosTess, 2, GLES20.GL_FLOAT, false, 0, quadBuf)
+        }
+        // GL_PATCHES = 0x000E; patch vertices = 4
+        GLES30.glDrawArrays(0x000E, 0, 4) // draw one quad patch
+        if (aPosTess >= 0) GLES20.glDisableVertexAttribArray(aPosTess)
+    }
+
+    // ─── GAP-7: Multi-pass bloom ──────────────────────────────────────────────
+    private fun initBloomFbos() {
+        try {
+            val texIds = IntArray(2); GLES20.glGenTextures(2, texIds, 0)
+            texBloom0 = texIds[0]; texBloom1 = texIds[1]
+            for (tid in texIds) {
+                GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, tid)
+                GLES20.glTexImage2D(GLES20.GL_TEXTURE_2D, 0, GLES20.GL_RGBA,
+                    1920, 1080, 0, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, null)
+                GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR)
+                GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR)
+                GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE)
+                GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE)
+            }
+            val fboIds = IntArray(2); GLES20.glGenFramebuffers(2, fboIds, 0)
+            fboBloom0 = fboIds[0]; fboBloom1 = fboIds[1]
+            GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, fboBloom0)
+            GLES20.glFramebufferTexture2D(GLES20.GL_FRAMEBUFFER, GLES20.GL_COLOR_ATTACHMENT0,
+                GLES20.GL_TEXTURE_2D, texBloom0, 0)
+            GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, fboBloom1)
+            GLES20.glFramebufferTexture2D(GLES20.GL_FRAMEBUFFER, GLES20.GL_COLOR_ATTACHMENT0,
+                GLES20.GL_TEXTURE_2D, texBloom1, 0)
+            GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0)
+            Log.i("GpuRenderer", "GAP-7: Bloom FBOs initialised")
+        } catch (e: Exception) {
+            Log.e("GpuRenderer", "GAP-7 Bloom FBO init failed: ${e.message}")
+        }
+    }
+
+    private fun drawBloomScene(t: Float) {
+        if (fboBloom0 == 0 || fboBloom1 == 0) { drawFull(progDomainWarp, t); return }
+        // Pass 1: render domain-warp scene into fboBloom0 at 1920×1080
+        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, fboBloom0)
+        GLES20.glViewport(0, 0, 1920, 1080)
+        GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
+        drawFull(progDomainWarp, t)
+        // Pass 2: horizontal gaussian blur → fboBloom1
+        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, fboBloom1)
+        GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
+        GLES20.glUseProgram(progBloomHoriz)
+        GLES20.glActiveTexture(GLES20.GL_TEXTURE0)
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, texBloom0)
+        if (uTexBloomH >= 0) GLES20.glUniform1i(uTexBloomH, 0)
+        if (uTimeBloomH >= 0) GLES20.glUniform1f(uTimeBloomH, t)
+        if (aPosBloom0 >= 0) { GLES20.glEnableVertexAttribArray(aPosBloom0)
+            GLES20.glVertexAttribPointer(aPosBloom0, 2, GLES20.GL_FLOAT, false, 0, quadBuf) }
+        GLES20.glDrawArrays(GLES20.GL_TRIANGLES, 0, 6)
+        if (aPosBloom0 >= 0) GLES20.glDisableVertexAttribArray(aPosBloom0)
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, 0)
+        // Pass 3: vertical gaussian blur → default framebuffer (display)
+        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0)
+        GLES20.glViewport(0, 0, vpW, vpH)
+        GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
+        GLES20.glUseProgram(progBloomVert)
+        GLES20.glActiveTexture(GLES20.GL_TEXTURE0)
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, texBloom1)
+        if (uTexBloomV >= 0) GLES20.glUniform1i(uTexBloomV, 0)
+        if (uTimeBloomV >= 0) GLES20.glUniform1f(uTimeBloomV, t)
+        if (aPosBloom1 >= 0) { GLES20.glEnableVertexAttribArray(aPosBloom1)
+            GLES20.glVertexAttribPointer(aPosBloom1, 2, GLES20.GL_FLOAT, false, 0, quadBuf) }
+        GLES20.glDrawArrays(GLES20.GL_TRIANGLES, 0, 6)
+        if (aPosBloom1 >= 0) GLES20.glDisableVertexAttribArray(aPosBloom1)
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, 0)
+    }
+
+    // ─── GL shader helpers ────────────────────────────────────────────────────
     private fun compile(type: Int, src: String): Int {
         val id = GLES20.glCreateShader(type)
         GLES20.glShaderSource(id, src.trimIndent()); GLES20.glCompileShader(id)

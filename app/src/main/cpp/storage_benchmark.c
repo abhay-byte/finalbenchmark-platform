@@ -17,6 +17,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <time.h>
+#include <sys/stat.h>
 #include <android/log.h>
 
 #define LOG_TAG  "StorageBenchNative"
@@ -68,37 +69,43 @@ Java_com_ivarna_finalbenchmark2_utils_StorageNativeBridge_nativeStorageSeqRead(
     for (int i = 0; i < chunkSize; i++) buf[i] = (uint8_t)(i ^ 0xA5);
 
     /* ── Pre-create test file (outside timing) ── */
-    int wfd = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0600);
-    if (wfd < 0) {
-        LOGE("seqRead: open for write failed: %s", path);
-        free(buf);
-        (*env)->ReleaseStringUTFChars(env, jpath, path);
-        return 0.0;
+    struct stat st;
+    int needs_creation = 1;
+    if (stat(path, &st) == 0) {
+        if ((jlong)st.st_size == fileSizeBytes) {
+            needs_creation = 0;
+        }
     }
-    int64_t rem = fileSizeBytes;
-    while (rem > 0) {
-        ssize_t toW = (rem < (int64_t)chunkSize) ? (ssize_t)rem : (ssize_t)chunkSize;
-        ssize_t written = write(wfd, buf, (size_t)toW);
-        if (written <= 0) break;
-        rem -= written;
+
+    if (needs_creation) {
+        int wfd = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0600);
+        if (wfd < 0) {
+            LOGE("seqRead: open for write failed: %s", path);
+            free(buf);
+            (*env)->ReleaseStringUTFChars(env, jpath, path);
+            return 0.0;
+        }
+        int64_t rem = fileSizeBytes;
+        while (rem > 0) {
+            ssize_t toW = (rem < (int64_t)chunkSize) ? (ssize_t)rem : (ssize_t)chunkSize;
+            ssize_t written = write(wfd, buf, (size_t)toW);
+            if (written <= 0) break;
+            rem -= written;
+        }
+        fdatasync(wfd);   /* ensure all bytes are physically on UFS before reading */
+        close(wfd);
     }
-    fdatasync(wfd);   /* ensure all bytes are physically on UFS before reading */
-    close(wfd);
 
     /* ── Timed read loop ── */
     int64_t totalBytes = 0;
     const int64_t endMs = now_ms() + (int64_t)durationMs;
 
     while (now_ms() < endMs) {
-        /* Evict the file's pages from page cache so reads hit real UFS storage */
-        int evFd = open(path, O_RDONLY);
-        if (evFd >= 0) {
-            posix_fadvise(evFd, 0, 0, POSIX_FADV_DONTNEED);
-            close(evFd);
-        }
-
         int rfd = open(path, O_RDONLY);
         if (rfd < 0) break;
+
+        /* Evict the file's pages from page cache so reads hit real UFS storage */
+        posix_fadvise(rfd, 0, 0, POSIX_FADV_DONTNEED);
 
         ssize_t n;
         while ((n = read(rfd, buf, (size_t)chunkSize)) > 0 && now_ms() < endMs) {
@@ -107,7 +114,6 @@ Java_com_ivarna_finalbenchmark2_utils_StorageNativeBridge_nativeStorageSeqRead(
         close(rfd);
     }
 
-    unlink(path);
     free(buf);
     (*env)->ReleaseStringUTFChars(env, jpath, path);
 
@@ -176,3 +182,21 @@ Java_com_ivarna_finalbenchmark2_utils_StorageNativeBridge_nativeStorageSeqWrite(
     if (totalBytes == 0) return 0.0;
     return (double)totalBytes / ((double)durationMs / 1000.0) / (1024.0 * 1024.0);
 }
+
+JNIEXPORT jboolean JNICALL
+Java_com_ivarna_finalbenchmark2_utils_StorageNativeBridge_nativeEvictCache(
+        JNIEnv *env, jclass cls, jstring jpath)
+{
+    const char *path = (*env)->GetStringUTFChars(env, jpath, NULL);
+    if (!path) return JNI_FALSE;
+    int fd = open(path, O_RDONLY);
+    if (fd >= 0) {
+        posix_fadvise(fd, 0, 0, POSIX_FADV_DONTNEED);
+        close(fd);
+        (*env)->ReleaseStringUTFChars(env, jpath, path);
+        return JNI_TRUE;
+    }
+    (*env)->ReleaseStringUTFChars(env, jpath, path);
+    return JNI_FALSE;
+}
+

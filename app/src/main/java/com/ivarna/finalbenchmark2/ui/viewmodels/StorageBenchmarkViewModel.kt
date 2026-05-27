@@ -87,22 +87,14 @@ private val STORAGE_TESTS = StorageTest.values().toList()
  *   MIXED       — 64MB seq read + 500 rand-4K + 50 small files, composite MB/s
  */
 private val STORAGE_REFERENCE = mapOf(
-    // Reference = ~15% above the best measured values on SD 8 Gen 3 + UFS 4.0
-    // (OnePlus CPH2691, Android 16). 15% headroom means this device scores ~85/100;
-    // a meaningfully faster device could score higher, nothing inflates to 100.
-    // Measured → reference:
-    //   SEQ_READ:    1451 MB/s  → 1700 MB/s
-    //   SEQ_WRITE:    939 MB/s  → 1100 MB/s
-    //   RAND_4K:      702 MB/s  →  800 MB/s
-    //   SMALL_FILES: 16900 f/s  → 20000 files/s
-    //   SQLITE:      3636 txn/s →  4500 txn/s
-    //   MIXED:       2576 MB/s  →  3000 MB/s
-    StorageTest.SEQ_READ    to 1_700.0,
-    StorageTest.SEQ_WRITE   to 1_100.0,
-    StorageTest.RAND_4K     to   800.0,
-    StorageTest.SMALL_FILES to 20_000.0,
-    StorageTest.SQLITE      to 4_500.0,
-    StorageTest.MIXED       to 3_000.0,
+    // Reference calibrated from ACTUAL SD 8 Gen 3 + UFS 4.0 measurements.
+    // Targeting SD 8 Gen 3 (UFS 4.0) = 100 pts on each test.
+    StorageTest.SEQ_READ    to 2_133.0,
+    StorageTest.SEQ_WRITE   to 939.0,
+    StorageTest.RAND_4K     to 42.0,
+    StorageTest.SMALL_FILES to 4_300.0,
+    StorageTest.SQLITE      to 10_626.0,
+    StorageTest.MIXED       to 620.0,
 )
 
 private fun StorageTest.displayName() = when (this) {
@@ -187,6 +179,7 @@ class StorageBenchmarkViewModel(
     // ── Benchmark loop ─────────────────────────────────────────────────────
 
     private suspend fun runBenchmark() {
+        StorageNativeBridge.load()
         val results = mutableListOf<StorageTestResult>()
         performanceMonitor.start()
 
@@ -294,7 +287,6 @@ class StorageBenchmarkViewModel(
         // Use JNI + posix_fadvise(POSIX_FADV_DONTNEED) to evict page cache before
         // each read pass, giving true UFS 4.0 sequential read speed (~3500-4200 MB/s)
         // instead of Linux page-cache speed (~6 GB/s).
-        StorageNativeBridge.load()
         if (StorageNativeBridge.isAvailable) {
             val path = File(cacheDir, "bench_seqread_jni.bin").absolutePath
             return StorageNativeBridge.nativeStorageSeqRead(
@@ -331,7 +323,6 @@ class StorageBenchmarkViewModel(
         // Use JNI + fdatasync() per pass to measure true UFS 4.0 write speed.
         // fdatasync flushes dirty pages to UFS hardware; without it we only measure
         // how fast we can fill the Linux page cache (RAM speed).
-        StorageNativeBridge.load()
         if (StorageNativeBridge.isAvailable) {
             val path = File(cacheDir, "bench_seqwrite_jni.bin").absolutePath
             return StorageNativeBridge.nativeStorageSeqWrite(
@@ -365,6 +356,12 @@ class StorageBenchmarkViewModel(
      * Performs random 4 KB reads from a pre-created 128 MB file using
      * RandomAccessFile. Seeks to 4K-aligned random positions derived from a
      * deterministic LCG (seed=12345) so results are reproducible.
+     *
+     * Page cache is evicted every 512 reads (2 MB) via nativeEvictCache to
+     * prevent the 128 MB file from being served from RAM. Without this, the
+     * benchmark reports ~2,100 MB/s (RAM speed) instead of real UFS random
+     * read speed (~150-250 MB/s).
+     *
      * Returns MB/s (= IOPS × 4 KB).
      */
     private fun benchRand4K(durationMs: Long): Double {
@@ -377,16 +374,23 @@ class StorageBenchmarkViewModel(
         val numBlocks = (fileSize / RAND_4K).toInt()
         var seed = 12345L
         var totalBytes = 0L
+        var readCount = 0L
         val endMs = System.currentTimeMillis() + durationMs
 
         RandomAccessFile(file, "r").use { raf ->
             while (System.currentTimeMillis() < endMs) {
-                // LCG random position generation (deterministic, fast)
                 seed = seed * 6364136223846793005L + 1442695040888963407L
                 val block = ((seed ushr 33) % numBlocks).toInt().let { if (it < 0) -it else it }
                 raf.seek(block.toLong() * RAND_4K)
                 raf.readFully(buf)
                 totalBytes += RAND_4K
+                readCount++
+                // Evict page cache every 512 reads (2 MB) to prevent RAM-cached
+                // reads from inflating the measurement. 512 reads = ~2-3 ms at
+                // uncached speed; collision rate within this window is ~0.8%.
+                if (readCount % 512L == 0L && StorageNativeBridge.isAvailable) {
+                    StorageNativeBridge.nativeEvictCache(file.absolutePath)
+                }
             }
         }
         if (totalBytes == 0L) return 0.0
@@ -412,7 +416,10 @@ class StorageBenchmarkViewModel(
             for (i in 0 until SMALL_FILE_COUNT) {
                 if (System.currentTimeMillis() >= endMs) break
                 val f = File(dir, "f$i.bin")
-                f.writeBytes(buf)
+                FileOutputStream(f).use { fos ->
+                    fos.write(buf)
+                    fos.fd.sync()
+                }
                 totalOps++
             }
             // Delete batch
@@ -480,15 +487,9 @@ class StorageBenchmarkViewModel(
                 }
                 if (System.currentTimeMillis() >= endMs) break
 
-                // SELECT transaction (indexed query)
-                db.beginTransaction()
-                try {
-                    db.rawQuery("SELECT COUNT(*) FROM items WHERE value > 500", null).use { c -> c.moveToFirst() }
-                    db.setTransactionSuccessful()
-                    txns++
-                } finally {
-                    db.endTransaction()
-                }
+                // SELECT query (indexed query) - no transaction wrapper
+                db.rawQuery("SELECT COUNT(*) FROM items WHERE value > 500", null).use { c -> c.moveToFirst() }
+                txns++
 
                 // Keep table small to avoid unbounded growth slowing inserts
                 if (txns % 20L == 0L) {
@@ -534,7 +535,10 @@ class StorageBenchmarkViewModel(
         val endMs = System.currentTimeMillis() + durationMs
 
         while (System.currentTimeMillis() < endMs) {
-            // (a) Read 16 MB sequentially
+            // (a) Read 16 MB sequentially (evicting page cache if native available)
+            if (StorageNativeBridge.isAvailable) {
+                StorageNativeBridge.nativeEvictCache(seqFile.absolutePath)
+            }
             var seqRead = 0
             FileInputStream(seqFile).use { fis ->
                 var n = 0
@@ -558,11 +562,14 @@ class StorageBenchmarkViewModel(
             }
             if (System.currentTimeMillis() >= endMs) break
 
-            // (c) 50 small file creates + deletes
+            // (c) 50 small file creates + deletes (with fsync)
             for (i in 0 until 50) {
                 if (System.currentTimeMillis() >= endMs) break
                 val f = File(smallDir, "m$i.bin")
-                f.writeBytes(smallBuf)
+                FileOutputStream(f).use { fos ->
+                    fos.write(smallBuf)
+                    fos.fd.sync()
+                }
                 totalBytes += SMALL_FILE_SIZE
                 f.delete()
             }
@@ -593,15 +600,11 @@ class StorageBenchmarkViewModel(
      * (not zero — zero pages may be handled specially by the kernel/UFS firmware).
      */
     private fun createTestFile(file: File, sizeBytes: Long) {
-        val pattern = ByteArray(256) { (it % 251).toByte() }
-        val chunk = ByteArray(SEQ_CHUNK_BYTES)
-        // Fill chunk with repeating pattern
-        for (off in chunk.indices) chunk[off] = pattern[off % pattern.size]
         FileOutputStream(file).use { fos ->
             var remaining = sizeBytes
             while (remaining > 0) {
                 val toWrite = minOf(remaining, SEQ_CHUNK_BYTES.toLong()).toInt()
-                fos.write(chunk, 0, toWrite)
+                fos.write(testFileChunk, 0, toWrite)
                 remaining -= toWrite
             }
             fos.fd.sync()
@@ -609,7 +612,7 @@ class StorageBenchmarkViewModel(
     }
 
     private fun fillRandom(buf: ByteArray) {
-        var seed = System.nanoTime()
+        var seed = 12345L
         for (i in buf.indices) {
             seed = seed xor (seed shl 13); seed = seed xor (seed ushr 7); seed = seed xor (seed shl 17)
             buf[i] = seed.toByte()
@@ -705,6 +708,13 @@ class StorageBenchmarkViewModel(
     // ── Factory ────────────────────────────────────────────────────────────
 
     companion object {
+        private val testFileChunk by lazy {
+            val pattern = ByteArray(256) { (it % 251).toByte() }
+            ByteArray(SEQ_CHUNK_BYTES).apply {
+                for (off in indices) this[off] = pattern[off % pattern.size]
+            }
+        }
+
         fun factory(
             historyRepository: HistoryRepository?,
             application: Application
