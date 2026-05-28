@@ -60,32 +60,36 @@ object ModelDownloader {
                 return@withContext null
             }
 
-            val body = response.body
-            if (body == null) {
-                Log.e(TAG, "Download failed: Response body is null")
-                return@withContext null
-            }
+        val body = response.body
+        if (body == null) {
+            Log.e(TAG, "Download failed: Response body is null")
+            return@withContext null
+        }
 
-            val contentLength = body.contentLength()
-            val inputStream = body.byteStream()
-            val outputStream = FileOutputStream(file)
+        val contentLength = body.contentLength()
 
-            val data = ByteArray(8192)
-            var total: Long = 0
-            var count: Int
-            
-            while (inputStream.read(data).also { count = it } != -1) {
-                total += count.toLong()
-                if (contentLength > 0L) {
-                    onProgress(total.toFloat() / contentLength)
-                }
-                outputStream.write(data, 0, count)
+        // Fix #20: Stream body directly to file — never buffer entire response in memory.
+        // Uses 64 KB chunks for better throughput on large models (Gemma ~300 MB).
+        val inputStream = body.byteStream()
+        val outputStream = FileOutputStream(file)
+
+        val data = ByteArray(65536) // 64 KB chunks
+        var total: Long = 0
+        var count: Int
+
+        while (inputStream.read(data).also { count = it } != -1) {
+            total += count.toLong()
+            if (contentLength > 0L) {
+                onProgress(total.toFloat() / contentLength)
             }
-            
-            outputStream.flush()
-            outputStream.close()
-            inputStream.close()
-            response.close()
+            outputStream.write(data, 0, count)
+        }
+
+        outputStream.flush()
+        outputStream.close()
+        inputStream.close()
+        body.close()
+        response.close()
             
             Log.d(TAG, "Download complete: ${file.absolutePath} (${file.length()} bytes)")
             onProgress(1.0f)
