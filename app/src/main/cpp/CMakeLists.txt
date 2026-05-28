@@ -118,9 +118,13 @@ find_library(
     dl
 )
 
-# Check if Vulkan library exists
-if(NOT vulkan-lib)
-    message(WARNING "Vulkan library not found. This is expected on some Android devices.")
+# Check if Vulkan library exists — define macro for runtime guard
+if(vulkan-lib)
+    message(STATUS "Vulkan library found: ${vulkan-lib}")
+    target_compile_definitions(vulkan_native PRIVATE HAS_VULKAN=1)
+else()
+    message(WARNING "Vulkan library not found. Vulkan benchmark will be disabled at runtime.")
+    target_compile_definitions(vulkan_native PRIVATE HAS_VULKAN=0)
 endif()
 
 # Link libraries to the native library
@@ -128,9 +132,13 @@ target_link_libraries(
     vulkan_native
     ${log-lib}
     ${android-lib}
-    ${vulkan-lib}
     ${dl-lib}
 )
+
+# Only link Vulkan if found — linking missing lib causes runtime SIGSEGV
+if(vulkan-lib)
+    target_link_libraries(vulkan_native ${vulkan-lib})
+endif()
 
 # Set include directories
 target_include_directories(

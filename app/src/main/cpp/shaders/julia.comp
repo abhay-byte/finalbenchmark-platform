@@ -1,0 +1,31 @@
+#version 450
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+
+layout(push_constant) uniform PushConstants {
+    float cx;
+    float cy;
+    float maxIter;
+} pc;
+
+layout(std430, binding = 0) buffer Output {
+    float data[];
+} outBuf;
+
+void main() {
+    uint px = gl_GlobalInvocationID.x;
+    uint py = gl_GlobalInvocationID.y;
+    if (px >= 3840u || py >= 2160u) return;
+
+    float zr = float(px) / 3840.0 * 3.5 - 1.75;
+    float zi = float(py) / 2160.0 * 2.0 - 1.0;
+    int i = 0;
+    int maxI = int(pc.maxIter);
+    for (; i < maxI; i++) {
+        float r2 = zr * zr - zi * zi + pc.cx;
+        float i2 = 2.0 * zr * zi + pc.cy;
+        zr = r2;
+        zi = i2;
+        if (zr * zr + zi * zi > 4.0) break;
+    }
+    outBuf.data[py * 3840u + px] = float(i) / pc.maxIter;
+}

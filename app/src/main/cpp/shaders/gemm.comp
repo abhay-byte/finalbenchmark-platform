@@ -1,0 +1,24 @@
+#version 450
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+layout(push_constant) uniform PushConstants {
+    int N;
+} pc;
+
+layout(std430, binding = 0) buffer Matrices {
+    float data[];
+} mat;
+
+void main() {
+    uint row = gl_GlobalInvocationID.y;
+    uint col = gl_GlobalInvocationID.x;
+    uint N = uint(pc.N);
+    if (row >= N || col >= N) return;
+
+    uint NN = N * N;
+    float sum = 0.0;
+    for (uint k = 0u; k < N; k++) {
+        sum += mat.data[NN + row * N + k] * mat.data[2u * NN + k * N + col];
+    }
+    mat.data[row * N + col] = sum;
+}

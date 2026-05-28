@@ -459,6 +459,7 @@ void main() {
 precision highp float;
 varying vec2  v_UV;
 uniform float u_Time;
+uniform float u_Aspect;
 
 vec2 cmul(vec2 a, vec2 b) { return vec2(a.x*b.x - a.y*b.y, a.x*b.y + a.y*b.x); }
 vec2 cdiv(vec2 a, vec2 b) {
@@ -508,8 +509,7 @@ void main() {
     for (int i = 0; i < 64; i++) {
         vec2 jitter = halton(i) * PIX;
         vec2 uv = (v_UV - 0.5) * scale * 2.5 + jitter;
-        uv.x += 0.15 * cos(u_Time * 0.03);
-        uv.y += 0.15 * sin(u_Time * 0.04);
+        uv.x *= u_Aspect;
         acc += newton(uv);
     }
     gl_FragColor = vec4(acc / N, 1.0);
@@ -523,20 +523,16 @@ precision highp float;
 varying vec2 v_UV;
 uniform sampler2D u_Tex;
 uniform float u_Time;
+float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123); }
 void main() {
-    vec2 uv = v_UV;
     vec4 c = vec4(0.0);
-    // 32 dependent reads: each sample offset depends on previous result -> no cache reuse
-    for (int i = 0; i < 16; i++) {
-        vec4 s = texture2D(u_Tex, uv);
-        c += s;
+    // 32 independent texture samples with hash-based UV offsets (no dependency chain).
+    // Each sample at unique coordinate → maximal texture bandwidth pressure, zero serial stall.
+    for (int i = 0; i < 32; i++) {
         float fi = float(i);
-        uv = fract(uv + s.xy * 0.07 + vec2(0.031 * cos(fi + u_Time * 0.1),
-                                             0.017 * sin(fi + u_Time * 0.13)));
-        vec4 s2 = texture2D(u_Tex, fract(uv + 0.5));
-        c += s2;
-        uv = fract(uv + s2.zw * 0.05 + vec2(0.019 * sin(fi + u_Time * 0.09),
-                                              0.023 * cos(fi + u_Time * 0.11)));
+        vec2 off = vec2(hash(v_UV + fi * 0.13 + u_Time * 0.07),
+                        hash(v_UV + fi * 0.19 - u_Time * 0.11));
+        c += texture2D(u_Tex, fract(v_UV + off * 0.6));
     }
     gl_FragColor = vec4(c.rgb / 32.0, 1.0);
 }"""
@@ -589,7 +585,7 @@ varying vec2 v_UV;
 uniform sampler2D u_Tex;
 uniform float u_Time;
 void main() {
-    vec2 sz = vec2(1.0 / 1920.0, 0.0);
+    vec2 sz = vec2(1.0 / 3840.0, 0.0);
     vec4 c = texture2D(u_Tex, v_UV) * 0.1415;
     c += (texture2D(u_Tex, v_UV + sz*1.0) + texture2D(u_Tex, v_UV - sz*1.0)) * 0.1379;
     c += (texture2D(u_Tex, v_UV + sz*2.0) + texture2D(u_Tex, v_UV - sz*2.0)) * 0.1295;
@@ -608,7 +604,7 @@ varying vec2 v_UV;
 uniform sampler2D u_Tex;
 uniform float u_Time;
 void main() {
-    vec2 sz = vec2(0.0, 1.0 / 1080.0);
+    vec2 sz = vec2(0.0, 1.0 / 2160.0);
     vec4 c = texture2D(u_Tex, v_UV) * 0.1415;
     c += (texture2D(u_Tex, v_UV + sz*1.0) + texture2D(u_Tex, v_UV - sz*1.0)) * 0.1379;
     c += (texture2D(u_Tex, v_UV + sz*2.0) + texture2D(u_Tex, v_UV - sz*2.0)) * 0.1295;
@@ -619,6 +615,15 @@ void main() {
     c += (texture2D(u_Tex, v_UV + sz*7.0) + texture2D(u_Tex, v_UV - sz*7.0)) * 0.0228;
     c.rgb += max(c.rgb - 0.6, 0.0) * 2.5;
     gl_FragColor = c;
+}"""
+
+    // ─── Simple Passthrough Display ──────────────────────────────────────────
+    const val PASSTHROUGH_FRAG = """
+precision highp float;
+varying vec2 v_UV;
+uniform sampler2D u_Tex;
+void main() {
+    gl_FragColor = texture2D(u_Tex, v_UV);
 }"""
 
     // ─── GAP-6: Tessellation passthrough vert (ES 3.2 path; no tess = skip) ─

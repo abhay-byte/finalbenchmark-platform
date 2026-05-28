@@ -1,0 +1,40 @@
+#version 450
+layout(local_size_x = 256, local_size_y = 1, local_size_z = 1) in;
+
+layout(push_constant) uniform PushConstants {
+    float dt;
+    float count;
+} pc;
+
+layout(std430, binding = 0) buffer Particles {
+    float data[];
+} p;
+
+void main() {
+    uint i = gl_GlobalInvocationID.x;
+    uint count = uint(pc.count);
+    if (i >= count) return;
+
+    uint base = i * 8u;
+    vec3 myPos = vec3(p.data[base], p.data[base + 1u], p.data[base + 2u]);
+    vec3 myVel = vec3(p.data[base + 4u], p.data[base + 5u], p.data[base + 6u]);
+    vec3 force = vec3(0.0);
+
+    for (uint j = 0u; j < count; j++) {
+        if (j == i) continue;
+        uint jbase = j * 8u;
+        vec3 jPos = vec3(p.data[jbase], p.data[jbase + 1u], p.data[jbase + 2u]);
+        vec3 dir = jPos - myPos;
+        float distSq = dot(dir, dir) + 0.01;
+        force += dir * inversesqrt(distSq * distSq * distSq);
+    }
+
+    myVel += force * pc.dt;
+    myPos += myVel * pc.dt;
+    p.data[base] = myPos.x;
+    p.data[base + 1u] = myPos.y;
+    p.data[base + 2u] = myPos.z;
+    p.data[base + 4u] = myVel.x;
+    p.data[base + 5u] = myVel.y;
+    p.data[base + 6u] = myVel.z;
+}

@@ -41,8 +41,10 @@ object OpenCLBenchmarkBridge {
      */
     suspend fun runScene(sceneId: Int): Float = withContext(Dispatchers.IO) {
         if (!available) return@withContext -1f
-        try { nativeRunScene(sceneId) }
-        catch (e: Exception) { Log.e(TAG, "runScene($sceneId): ${e.message}"); -1f }
+        try {
+            val result = nativeRunScene(sceneId)
+            if (result.isNaN() || result.isInfinite()) -1f else result
+        } catch (e: Exception) { Log.e(TAG, "runScene($sceneId): ${e.message}"); -1f }
     }
 
     fun destroy() {

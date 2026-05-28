@@ -43,6 +43,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.DeveloperMode
 import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Thermostat
@@ -403,9 +404,15 @@ private fun GpuLeftPanel(
                     accentColor = Color(0xFFB0FF70)
                 )
                 GpuHUDMetric(
+                    icon = Icons.Default.DeveloperMode,
+                    label = "CPU LOAD",
+                    value = "${"%.0f".format(uiState.cpuLoadPercent)}%",
+                    accentColor = Color(0xFF81D4FA)
+                )
+                GpuHUDMetric(
                     icon = Icons.Default.Bolt,
                     label = "WATTAGE",
-                    value = if (uiState.powerWatts > 0f) "${"%.1f".format(uiState.powerWatts)} W" else "— W",
+                    value = "${"%.1f".format(uiState.powerWatts)} W",
                     accentColor = Color(0xFFFFD740)
                 )
             }
@@ -512,9 +519,9 @@ private fun GpuRightPanel(
                     overflow = TextOverflow.Ellipsis
                 )
                 Spacer(modifier = Modifier.height(6.dp))
-                // GL API indicator chip
+                // API indicator chip (shows current scene's API)
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    ApiChip(label = uiState.glApiLabel, color = Color(0xFF4FC3F7))
+                    ApiChip(label = uiState.currentApiLabel, color = Color(0xFF4FC3F7))
                     if (uiState.gpuName.isNotEmpty()) {
                         ApiChip(label = uiState.gpuName, color = Color(0xFFB0FF70))
                     }

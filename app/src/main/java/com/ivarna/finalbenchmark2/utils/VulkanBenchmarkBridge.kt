@@ -46,7 +46,8 @@ object VulkanBenchmarkBridge {
     suspend fun runScene(sceneId: Int): Float = withContext(Dispatchers.IO) {
         if (!available) return@withContext -1f
         try {
-            nativeRunScene(sceneId)
+            val result = nativeRunScene(sceneId)
+            if (result.isNaN() || result.isInfinite()) -1f else result
         } catch (e: Exception) {
             Log.e(TAG, "runScene($sceneId) exception: ${e.message}")
             -1f
