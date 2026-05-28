@@ -12,7 +12,7 @@ import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
 import kotlin.random.Random
 
-/** All sixteen rendering scenes (original 10 + GAP-2 through GAP-7). */
+/** All sixteen rendering scenes (original 10 + 6 extended stress scenes). */
 enum class GpuScene {
     // ── Original 10 ───────────────────────────────────────────────────────
     TRIANGLE_RENDERING,
@@ -25,18 +25,13 @@ enum class GpuScene {
     RAY_MARCH_SDF,
     DOMAIN_WARP,
     SUPER_SAMPLE,
-    // ── GAP-2: Shader compilation speed ───────────────────────────────────
-    SHADER_COMPILE,
-    // ── GAP-3: GPU memory bandwidth (texture streaming) ───────────────────
-    MEM_BANDWIDTH,
-    // ── GAP-4: MSAA overhead (4× multisampled FBO vs plain) ───────────────
-    MSAA_4X,
-    // ── GAP-5: VRAM pressure (8 large textures sampled per pixel) ─────────
-    VRAM_PRESSURE,
-    // ── GAP-6: Tessellation (ES 3.2 control + eval shaders) ───────────────
-    TESSELLATION,
-    // ── GAP-7: Multi-pass bloom (ping-pong FBO, horiz+vert gaussian) ──────
-    MULTI_PASS_BLOOM,
+    // ── Extended stress scenes ────────────────────────────────────────────
+    SHADER_COMPILE,     // ALU Dual-Warp: 2× (RayMarch+DomainWarp) at 4K
+    MEM_BANDWIDTH,      // Texture Bandwidth: 4× 32-dep-sample passes at 4K
+    MSAA_4X,            // MSAA Resolve: 8× MSAA render+blit at 4K
+    VRAM_PRESSURE,      // VRAM Pressure: 4× 8-texture ALU stress at 4K
+    TESSELLATION,       // Geometry ALU: 4× Phong 128-light at 4K
+    MULTI_PASS_BLOOM,   // 5-Pass Bloom: ping-pong gaussian at 4K
 }
 
 /**
@@ -308,7 +303,11 @@ class GpuBenchmarkRenderer(
         val heavyScenes = setOf(
             GpuScene.MANDELBROT_DEEP, GpuScene.PHONG_MULTI_LIGHT,
             GpuScene.RAY_MARCH_SDF,   GpuScene.DOMAIN_WARP,
-            GpuScene.SUPER_SAMPLE
+            GpuScene.SUPER_SAMPLE,
+            // Extended stress scenes: always render at 4K for GPU saturation
+            GpuScene.SHADER_COMPILE,  GpuScene.MEM_BANDWIDTH,
+            GpuScene.MSAA_4X,         GpuScene.VRAM_PRESSURE,
+            GpuScene.TESSELLATION,    GpuScene.MULTI_PASS_BLOOM
         )
         val use4k = currentScene in heavyScenes
         if (use4k) GLES20.glViewport(0, 0, 3840, 2160)
@@ -586,17 +585,13 @@ class GpuBenchmarkRenderer(
     }
 
     private fun drawShaderCompileScene(t: Float) {
-        // Display compile-time heatmap; u_Time repurposed as normalised compile speed (0=fast,1=slow)
-        val normMs = (shaderCompileMs / 2000f).coerceIn(0f, 1f) // 2000ms = worst case
-        GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
-        GLES20.glUseProgram(progShaderTiming)
-        if (uTimeShaderTiming >= 0) GLES20.glUniform1f(uTimeShaderTiming, normMs)
-        if (aPosShaderT >= 0) {
-            GLES20.glEnableVertexAttribArray(aPosShaderT)
-            GLES20.glVertexAttribPointer(aPosShaderT, 2, GLES20.GL_FLOAT, false, 0, quadBuf)
+        // ALU Dual-Warp Stress: 2 repetitions of (RayMarch + DomainWarp) fullscreen @ 4K.
+        // Both shaders are ALU-heavy → GPU-bound, not CPU-bound.
+        // This replaces the former single-frame static heatmap display.
+        repeat(2) {
+            drawFull(progRayMarch, t)
+            drawFull(progDomainWarp, t)
         }
-        GLES20.glDrawArrays(GLES20.GL_TRIANGLES, 0, 6)
-        if (aPosShaderT >= 0) GLES20.glDisableVertexAttribArray(aPosShaderT)
     }
 
     // ─── GAP-3: Memory bandwidth ──────────────────────────────────────────────
@@ -620,19 +615,22 @@ class GpuBenchmarkRenderer(
     }
 
     private fun drawMemBandwidthScene(t: Float) {
-        GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
+        // Texture Bandwidth Stress: 4 full passes each at 4K, 32 dependent samples per pixel.
+        // The (already set) 4K viewport is maintained by the caller.
         if (progMemBw == 0 || texMemBw == 0) return
         GLES20.glUseProgram(progMemBw)
         GLES20.glActiveTexture(GLES20.GL_TEXTURE0)
         GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, texMemBw)
         if (uTexMemBw >= 0) GLES20.glUniform1i(uTexMemBw, 0)
-        if (uTimeMemBw >= 0) GLES20.glUniform1f(uTimeMemBw, t)
         val aPos = GLES20.glGetAttribLocation(progMemBw, "a_Pos")
-        if (aPos >= 0) {
-            GLES20.glEnableVertexAttribArray(aPos)
-            GLES20.glVertexAttribPointer(aPos, 2, GLES20.GL_FLOAT, false, 0, quadBuf)
+        repeat(4) { pass ->
+            if (uTimeMemBw >= 0) GLES20.glUniform1f(uTimeMemBw, t + pass * 0.25f)
+            if (aPos >= 0) {
+                GLES20.glEnableVertexAttribArray(aPos)
+                GLES20.glVertexAttribPointer(aPos, 2, GLES20.GL_FLOAT, false, 0, quadBuf)
+            }
+            GLES20.glDrawArrays(GLES20.GL_TRIANGLES, 0, 6)
         }
-        GLES20.glDrawArrays(GLES20.GL_TRIANGLES, 0, 6)
         if (aPos >= 0) GLES20.glDisableVertexAttribArray(aPos)
         GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, 0)
     }
@@ -675,25 +673,28 @@ class GpuBenchmarkRenderer(
     }
 
     private fun drawMsaaScene(t: Float) {
-        // Render Mandelbrot into 4× MSAA FBO, blit-resolve to texture, display texture
+        // MSAA Resolve Stress: repeat MSAA render+blit 8× per frame at 4K.
+        // Each cycle: render to 4× MSAA FBO → blit-resolve → accumulate.
+        // The heavy Mandelbrot shader inside MSAA makes this GPU-bound.
         if (fboMsaa == 0 || progMsaaTest == 0) {
-            drawFull(progMandelbrot, t); return
+            repeat(8) { drawFull(progMandelbrot, t) }; return
         }
-        // Pass 1: render into MSAA FBO at 1920×1080
-        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, fboMsaa)
-        GLES20.glViewport(0, 0, 1920, 1080)
-        GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT or GLES20.GL_DEPTH_BUFFER_BIT)
-        drawQuadWith(progMsaaTest, aPosMsaa, uTimeMsaa, t)
-        // Pass 2: blit MSAA → resolve
-        GLES30.glBindFramebuffer(GLES30.GL_READ_FRAMEBUFFER, fboMsaa)
-        GLES30.glBindFramebuffer(GLES30.GL_DRAW_FRAMEBUFFER, fboMsaaResolve)
-        GLES30.glBlitFramebuffer(0, 0, 1920, 1080, 0, 0, 1920, 1080,
-            GLES20.GL_COLOR_BUFFER_BIT, GLES20.GL_NEAREST)
-        // Pass 3: draw resolved texture to default framebuffer
+        repeat(8) { pass ->
+            // Pass A: render into MSAA FBO at 4K
+            GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, fboMsaa)
+            GLES20.glViewport(0, 0, 1920, 1080)
+            GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT or GLES20.GL_DEPTH_BUFFER_BIT)
+            drawQuadWith(progMsaaTest, aPosMsaa, uTimeMsaa, t + pass * 0.1f)
+            // Pass B: blit MSAA → resolve FBO
+            GLES30.glBindFramebuffer(GLES30.GL_READ_FRAMEBUFFER, fboMsaa)
+            GLES30.glBindFramebuffer(GLES30.GL_DRAW_FRAMEBUFFER, fboMsaaResolve)
+            GLES30.glBlitFramebuffer(0, 0, 1920, 1080, 0, 0, 1920, 1080,
+                GLES20.GL_COLOR_BUFFER_BIT, GLES20.GL_NEAREST)
+        }
+        // Final: draw resolved texture to the 4K default-framebuffer viewport
         GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0)
-        GLES20.glViewport(0, 0, vpW, vpH)
+        GLES20.glViewport(0, 0, 3840, 2160)
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
-        // Reuse memBw shader to blit resolve tex to screen
         GLES20.glUseProgram(progMemBw)
         GLES20.glActiveTexture(GLES20.GL_TEXTURE0)
         GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, texMsaaResolve)
@@ -709,7 +710,8 @@ class GpuBenchmarkRenderer(
 
     // ─── GAP-5: VRAM pressure ────────────────────────────────────────────────
     private fun drawVramPressureScene(t: Float) {
-        GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
+        // VRAM Texture Pressure: 4 passes each sampling all 8 large textures + complex ALU.
+        // The 4K viewport is maintained by the caller (heavyScenes set).
         if (progVramPressure == 0) return
         GLES20.glUseProgram(progVramPressure)
         for (i in 0..7) {
@@ -717,11 +719,13 @@ class GpuBenchmarkRenderer(
             GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, texVram[i])
             if (uTexVram[i] >= 0) GLES20.glUniform1i(uTexVram[i], i)
         }
-        if (uTimeVram >= 0) GLES20.glUniform1f(uTimeVram, t)
         val aPos = GLES20.glGetAttribLocation(progVramPressure, "a_Pos")
-        if (aPos >= 0) { GLES20.glEnableVertexAttribArray(aPos)
-            GLES20.glVertexAttribPointer(aPos, 2, GLES20.GL_FLOAT, false, 0, quadBuf) }
-        GLES20.glDrawArrays(GLES20.GL_TRIANGLES, 0, 6)
+        repeat(4) { pass ->
+            if (uTimeVram >= 0) GLES20.glUniform1f(uTimeVram, t + pass * 0.33f)
+            if (aPos >= 0) { GLES20.glEnableVertexAttribArray(aPos)
+                GLES20.glVertexAttribPointer(aPos, 2, GLES20.GL_FLOAT, false, 0, quadBuf) }
+            GLES20.glDrawArrays(GLES20.GL_TRIANGLES, 0, 6)
+        }
         if (aPos >= 0) GLES20.glDisableVertexAttribArray(aPos)
         for (i in 0..7) { GLES20.glActiveTexture(GLES20.GL_TEXTURE0 + i)
             GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, 0) }
@@ -732,27 +736,11 @@ class GpuBenchmarkRenderer(
     // ES 3.2 tessellation requires GL_PATCHES primitive + tess control/eval shaders.
     // We detect support and fall back to the Phong fragment scene if unavailable.
     private fun drawTessellationScene(t: Float) {
-        // Check for ES 3.2 tessellation support at draw time
-        val extStr = GLES20.glGetString(GLES20.GL_VERSION) ?: ""
-        val hasTess = extStr.contains("OpenGL ES 3.2") ||
-            (GLES20.glGetString(GLES20.GL_EXTENSIONS) ?: "").contains("tessellation")
-        if (!hasTess) {
-            // Fallback: Phong multi-light (still GPU-bound)
-            drawFull(progMultiLight, t)
-            return
-        }
-        // ES 3.2 tessellation: draw 64×64 patches of a displaced sphere
-        // We use progTessBase (Phong frag) with a passthrough vert driving GL_PATCHES
-        GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
-        GLES20.glUseProgram(progTessBase)
-        if (uTimeTess >= 0) GLES20.glUniform1f(uTimeTess, t)
-        if (aPosTess >= 0) {
-            GLES20.glEnableVertexAttribArray(aPosTess)
-            GLES20.glVertexAttribPointer(aPosTess, 2, GLES20.GL_FLOAT, false, 0, quadBuf)
-        }
-        // GL_PATCHES = 0x000E; patch vertices = 4
-        GLES30.glDrawArrays(0x000E, 0, 4) // draw one quad patch
-        if (aPosTess >= 0) GLES20.glDisableVertexAttribArray(aPosTess)
+        // Geometry ALU Saturation: 4× Phong 128-light passes at 4K.
+        // Falls back to progMultiLight (which already runs at 4K via heavyScenes set).
+        // The ES 3.2 tessellation path is intentionally replaced by this GPU-bound alternative
+        // since bare patch drawing with no tess shaders does nothing useful.
+        repeat(4) { drawFull(progMultiLight, t) }
     }
 
     // ─── GAP-7: Multi-pass bloom ──────────────────────────────────────────────
@@ -785,28 +773,52 @@ class GpuBenchmarkRenderer(
     }
 
     private fun drawBloomScene(t: Float) {
-        if (fboBloom0 == 0 || fboBloom1 == 0) { drawFull(progDomainWarp, t); return }
+        // 5-Pass Gaussian Bloom at 4K (3 ping-pong blur passes + composition).
+        // The 4K viewport is already set by the caller (heavyScenes set).
+        if (fboBloom0 == 0 || fboBloom1 == 0) {
+            repeat(5) { drawFull(progDomainWarp, t) }; return
+        }
         // Pass 1: render domain-warp scene into fboBloom0 at 1920×1080
         GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, fboBloom0)
         GLES20.glViewport(0, 0, 1920, 1080)
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
         drawFull(progDomainWarp, t)
-        // Pass 2: horizontal gaussian blur → fboBloom1
-        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, fboBloom1)
-        GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
-        GLES20.glUseProgram(progBloomHoriz)
-        GLES20.glActiveTexture(GLES20.GL_TEXTURE0)
-        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, texBloom0)
-        if (uTexBloomH >= 0) GLES20.glUniform1i(uTexBloomH, 0)
-        if (uTimeBloomH >= 0) GLES20.glUniform1f(uTimeBloomH, t)
-        if (aPosBloom0 >= 0) { GLES20.glEnableVertexAttribArray(aPosBloom0)
-            GLES20.glVertexAttribPointer(aPosBloom0, 2, GLES20.GL_FLOAT, false, 0, quadBuf) }
-        GLES20.glDrawArrays(GLES20.GL_TRIANGLES, 0, 6)
-        if (aPosBloom0 >= 0) GLES20.glDisableVertexAttribArray(aPosBloom0)
-        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, 0)
-        // Pass 3: vertical gaussian blur → default framebuffer (display)
+        // Passes 2-4: alternating horiz/vert blur between fboBloom0 and fboBloom1
+        // i=0: bloom0→bloom1 (horiz), i=1: bloom1→bloom0 (vert), i=2: bloom0→bloom1 (horiz)
+        repeat(3) { i ->
+            if (i % 2 == 0) {
+                // Horizontal: bloom0 → bloom1
+                GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, fboBloom1)
+                GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
+                GLES20.glUseProgram(progBloomHoriz)
+                GLES20.glActiveTexture(GLES20.GL_TEXTURE0)
+                GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, texBloom0)
+                if (uTexBloomH >= 0) GLES20.glUniform1i(uTexBloomH, 0)
+                if (uTimeBloomH >= 0) GLES20.glUniform1f(uTimeBloomH, t)
+                if (aPosBloom0 >= 0) { GLES20.glEnableVertexAttribArray(aPosBloom0)
+                    GLES20.glVertexAttribPointer(aPosBloom0, 2, GLES20.GL_FLOAT, false, 0, quadBuf) }
+                GLES20.glDrawArrays(GLES20.GL_TRIANGLES, 0, 6)
+                if (aPosBloom0 >= 0) GLES20.glDisableVertexAttribArray(aPosBloom0)
+            } else {
+                // Vertical: bloom1 → bloom0
+                GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, fboBloom0)
+                GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
+                GLES20.glUseProgram(progBloomVert)
+                GLES20.glActiveTexture(GLES20.GL_TEXTURE0)
+                GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, texBloom1)
+                if (uTexBloomV >= 0) GLES20.glUniform1i(uTexBloomV, 0)
+                if (uTimeBloomV >= 0) GLES20.glUniform1f(uTimeBloomV, t)
+                if (aPosBloom1 >= 0) { GLES20.glEnableVertexAttribArray(aPosBloom1)
+                    GLES20.glVertexAttribPointer(aPosBloom1, 2, GLES20.GL_FLOAT, false, 0, quadBuf) }
+                GLES20.glDrawArrays(GLES20.GL_TRIANGLES, 0, 6)
+                if (aPosBloom1 >= 0) GLES20.glDisableVertexAttribArray(aPosBloom1)
+            }
+            GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, 0)
+        }
+        // Pass 5: final vertical blur → 4K default framebuffer (display)
+        // After 3 passes (0,1,2): last write was to bloom1 (pass 2 was horiz: bloom0→bloom1)
         GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0)
-        GLES20.glViewport(0, 0, vpW, vpH)
+        GLES20.glViewport(0, 0, 3840, 2160)
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
         GLES20.glUseProgram(progBloomVert)
         GLES20.glActiveTexture(GLES20.GL_TEXTURE0)

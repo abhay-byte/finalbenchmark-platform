@@ -526,15 +526,15 @@ uniform float u_Time;
 void main() {
     vec2 uv = v_UV;
     vec4 c = vec4(0.0);
-    // 16 dependent reads: each sample offset depends on previous result → no cache reuse
-    for (int i = 0; i < 16; i++) {
+    // 32 dependent reads: each sample offset depends on previous result → no cache reuse
+    for (int i = 0; i < 32; i++) {
         vec4 s = texture2D(u_Tex, uv);
         c += s;
         float fi = float(i);
         uv = fract(uv + s.xy * 0.05 + vec2(0.031 * cos(fi + u_Time * 0.1),
                                              0.017 * sin(fi + u_Time * 0.13)));
     }
-    gl_FragColor = vec4(c.rgb / 16.0, 1.0);
+    gl_FragColor = vec4(c.rgb / 32.0, 1.0);
 }"""
 
     // ─── GAP-5: VRAM Pressure — 8 large textures per pixel ─────────────────

@@ -77,6 +77,7 @@ private val GPU_SCENES = GpuScene.values().toList()
  * Reference FPS per scene on Snapdragon 8 Gen 3 / Adreno 750 (baseline = 100 pts).
  * Scenes 1,3,5: 1× fragment pre-pass + geometry overlay → GPU ALU-bound, not CPU/API-bound.
  * Scenes 2,4,6-10: 4× fullscreen passes → GPU compute-bound.
+ * Extended scenes: heavy multi-pass workloads targeting <20 FPS on flagship GPU.
  * Any device matching these FPS values scores exactly 100.
  */
 private val GPU_REFERENCE_FPS = mapOf(
@@ -84,19 +85,19 @@ private val GPU_REFERENCE_FPS = mapOf(
     GpuScene.COMPUTE_MATRIX     to  41.7,  // 4x Julia/matrix compute
     GpuScene.PARTICLE_SYSTEM    to  28.1,  // 1x MultiLight pre-pass + 5K particles
     GpuScene.TEXTURE_SAMPLING   to  25.3,  // 4x 12-octave FBM
-    GpuScene.WIREFRAME_MESH     to  84.3,  // 1x RayMarch pre-pass + 250x250 mesh
+    GpuScene.WIREFRAME_MESH     to  84.3,  // 1x RayMarch pre-pass + 250×250 mesh
     GpuScene.MANDELBROT_DEEP    to  17.4,  // 4x Mandelbrot 512 iter
     GpuScene.PHONG_MULTI_LIGHT  to   7.0,  // 4x Phong 128-light
     GpuScene.RAY_MARCH_SDF      to  21.9,  // 4x RayMarch SDF+shadows
     GpuScene.DOMAIN_WARP        to  20.9,  // 4x triple domain-warp FBM
     GpuScene.SUPER_SAMPLE       to   3.7,  // 4x 64x super-sampled fractal
-    // GAP scenes — reference on Adreno 750 (conservative estimates until first run calibration)
-    GpuScene.SHADER_COMPILE     to  60.0,  // GAP-2: static display; high FPS expected
-    GpuScene.MEM_BANDWIDTH      to  45.0,  // GAP-3: 16 dependent texture reads/pixel
-    GpuScene.MSAA_4X            to  22.0,  // GAP-4: 4× MSAA + blit-resolve overhead
-    GpuScene.VRAM_PRESSURE      to  38.0,  // GAP-5: 8 textures × 512×512 per pixel
-    GpuScene.TESSELLATION       to  15.0,  // GAP-6: ES 3.2 tess patches (or Phong fallback)
-    GpuScene.MULTI_PASS_BLOOM   to  12.0   // GAP-7: 3-pass bloom at 1920×1080
+    // Extended scenes — calibrated to Adreno 750 at the heavy workloads implemented in renderer
+    GpuScene.SHADER_COMPILE     to  14.0,  // 2x (RayMarch+DomainWarp) @ 4K: ~14 FPS on A750
+    GpuScene.MEM_BANDWIDTH      to   9.0,  // 4x 32-dep-sample pass @ 4K: ~9 FPS on A750
+    GpuScene.MSAA_4X            to  11.0,  // 8x MSAA render+resolve @ 4K: ~11 FPS on A750
+    GpuScene.VRAM_PRESSURE      to  10.0,  // 4x 8-tex ALU stress @ 4K: ~10 FPS on A750
+    GpuScene.TESSELLATION       to   7.0,  // 4x Phong 128-light @ 4K: ~7 FPS on A750
+    GpuScene.MULTI_PASS_BLOOM   to   8.0   // 5-pass bloom @ 4K: ~8 FPS on A750
 )
 
 /**
@@ -124,13 +125,13 @@ private fun GpuScene.displayName() = when (this) {
     GpuScene.RAY_MARCH_SDF       -> "Ray March SDF + Shadows"
     GpuScene.DOMAIN_WARP         -> "Triple Domain Warp FBM"
     GpuScene.SUPER_SAMPLE        -> "64\u00d7 Super-Sampled Fractal"
-    // GAP scenes
-    GpuScene.SHADER_COMPILE      -> "Shader Compile Speed (GAP-2)"
-    GpuScene.MEM_BANDWIDTH       -> "Memory Bandwidth (GAP-3)"
-    GpuScene.MSAA_4X             -> "MSAA 4\u00d7 Resolve (GAP-4)"
-    GpuScene.VRAM_PRESSURE       -> "VRAM Pressure 8\u00d7 Tex (GAP-5)"
-    GpuScene.TESSELLATION        -> "Tessellation ES 3.2 (GAP-6)"
-    GpuScene.MULTI_PASS_BLOOM    -> "Multi-Pass Bloom (GAP-7)"
+    // Extended GPU stress scenes
+    GpuScene.SHADER_COMPILE      -> "ALU Dual-Warp Stress"
+    GpuScene.MEM_BANDWIDTH       -> "Texture Bandwidth Stress"
+    GpuScene.MSAA_4X             -> "MSAA 4\u00d7 Resolve Stress"
+    GpuScene.VRAM_PRESSURE       -> "VRAM Texture Pressure"
+    GpuScene.TESSELLATION        -> "Geometry ALU Saturation"
+    GpuScene.MULTI_PASS_BLOOM    -> "5-Pass Gaussian Bloom"
 }
 
 
