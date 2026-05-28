@@ -526,20 +526,22 @@ uniform float u_Time;
 void main() {
     vec2 uv = v_UV;
     vec4 c = vec4(0.0);
-    // 32 dependent reads: each sample offset depends on previous result → no cache reuse
-    for (int i = 0; i < 32; i++) {
+    // 32 dependent reads: each sample offset depends on previous result -> no cache reuse
+    for (int i = 0; i < 16; i++) {
         vec4 s = texture2D(u_Tex, uv);
         c += s;
         float fi = float(i);
-        uv = fract(uv + s.xy * 0.05 + vec2(0.031 * cos(fi + u_Time * 0.1),
+        uv = fract(uv + s.xy * 0.07 + vec2(0.031 * cos(fi + u_Time * 0.1),
                                              0.017 * sin(fi + u_Time * 0.13)));
+        vec4 s2 = texture2D(u_Tex, fract(uv + 0.5));
+        c += s2;
+        uv = fract(uv + s2.zw * 0.05 + vec2(0.019 * sin(fi + u_Time * 0.09),
+                                              0.023 * cos(fi + u_Time * 0.11)));
     }
     gl_FragColor = vec4(c.rgb / 32.0, 1.0);
 }"""
 
-    // ─── GAP-5: VRAM Pressure — 8 large textures per pixel ─────────────────
-    // 8 × 512×512 RGBA8 textures uploaded once; all sampled per pixel.
-    // Tests VRAM residency under pressure — eviction shows as FPS drop.
+    // --- VRAM Pressure: 8 large textures sampled per pixel + ALU work ---
     const val VRAM_PRESSURE_FRAG = """
 precision highp float;
 varying vec2 v_UV;
@@ -554,7 +556,12 @@ void main() {
             + texture2D(u_T2, uv2) + texture2D(u_T3, uv3)
             + texture2D(u_T4, fract(uv0 + 0.5)) + texture2D(u_T5, fract(uv1 + 0.5))
             + texture2D(u_T6, fract(uv2 + 0.5)) + texture2D(u_T7, fract(uv3 + 0.5));
-    gl_FragColor = vec4(c.rgb / 8.0, 1.0);
+    // ALU: Phong on blended normal to prevent driver from discarding texture work
+    vec3 n = normalize(c.rgb * 2.0 - 1.0);
+    vec3 L = normalize(vec3(cos(u_Time * 0.5), sin(u_Time * 0.5), 1.0));
+    float diff = max(dot(n, L), 0.0);
+    float spec = pow(max(dot(reflect(-L, n), vec3(0.0, 0.0, 1.0)), 0.0), 32.0);
+    gl_FragColor = vec4(c.rgb / 8.0 * diff + spec * 0.3, 1.0);
 }"""
 
     // ─── GAP-4: MSAA helper — solid animated color (rendered 4× per MSAA) ──
