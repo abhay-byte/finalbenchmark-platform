@@ -75,32 +75,33 @@ class KotlinBenchmarkManager(
                 BenchmarkName.SPEECH_TO_TEXT to 2.0
         )
 
-        // AI Baseline TPS: Measured on Snapdragon 8 Gen 3 (CPH2691) — actual run data.
-        // Used for geometric mean normalisation. SD8Gen3 = 100.
+        // AI Baseline TPS: Calibrated on OnePlus CPH2691 (SD8 Gen 3, Android 16).
+        // Each test scores ~100 pts on this reference device.
+        // When delegates (NNAPI/GPU) start working, these refs will need recalibration.
         val AI_REFERENCE_TPS = mapOf(
-                BenchmarkName.LLM_INFERENCE                      to 269.0,  // Synthetic fallback (real GenAI TBD)
-                BenchmarkName.IMAGE_CLASSIFICATION               to 142.0,  // MobileNet V3: measured 142.00
-                BenchmarkName.OBJECT_DETECTION                   to 22.36,  // EfficientDet Lite0: measured 22.36
-                BenchmarkName.TEXT_EMBEDDING                     to 11.73,  // MiniLM-L6: measured 11.73
-                BenchmarkName.SPEECH_TO_TEXT                     to 0.184,  // Whisper Tiny: measured 0.184
-                BenchmarkName.IMAGE_CLASSIFICATION_MOBILENET_V1  to 17.0,   // MobileNet V1: measured 17.00
-                BenchmarkName.OBJECT_DETECTION_YOLO_V8           to 2.29,   // YOLOv8n: measured 2.29
-                BenchmarkName.TEXT_CLASSIFICATION_MOBILEBERT     to 1.23,   // MobileBERT: measured 1.23
-                BenchmarkName.AUDIO_NOISE_SUPPRESSION_DTLN       to 17518.0 // DTLN: measured 17518
+                BenchmarkName.LLM_INFERENCE                      to 308.26,  // Gemma 3 fallback
+                BenchmarkName.IMAGE_CLASSIFICATION               to 336.14,  // MobileNet V3
+                BenchmarkName.OBJECT_DETECTION                   to 50.16,   // EfficientDet Lite0
+                BenchmarkName.TEXT_EMBEDDING                     to 13.05,   // MiniLM-L6
+                BenchmarkName.SPEECH_TO_TEXT                     to 0.360,   // Whisper Tiny
+                BenchmarkName.IMAGE_CLASSIFICATION_MOBILENET_V1  to 46.70,   // MobileNet V1
+                BenchmarkName.OBJECT_DETECTION_YOLO_V8           to 5.82,    // YOLOv8n
+                BenchmarkName.TEXT_CLASSIFICATION_MOBILEBERT     to 2.96,    // MobileBERT
+                BenchmarkName.AUDIO_NOISE_SUPPRESSION_DTLN       to 43956.0  // DTLN
         )
 
         // Per-test display scoring factors: factor = 100 / refTps
-        // On the SD8Gen3 reference device every test shows exactly 100 pts.
+        // On the reference device every test shows exactly 100 pts.
         val AI_PER_TEST_SCORING_FACTORS = mapOf(
-                BenchmarkName.LLM_INFERENCE                      to (100.0 / 269.0),
-                BenchmarkName.IMAGE_CLASSIFICATION               to (100.0 / 142.0),
-                BenchmarkName.OBJECT_DETECTION                   to (100.0 / 22.36),
-                BenchmarkName.TEXT_EMBEDDING                     to (100.0 / 11.73),
-                BenchmarkName.SPEECH_TO_TEXT                     to (100.0 / 0.184),
-                BenchmarkName.IMAGE_CLASSIFICATION_MOBILENET_V1  to (100.0 / 17.0),
-                BenchmarkName.OBJECT_DETECTION_YOLO_V8           to (100.0 / 2.29),
-                BenchmarkName.TEXT_CLASSIFICATION_MOBILEBERT     to (100.0 / 1.23),
-                BenchmarkName.AUDIO_NOISE_SUPPRESSION_DTLN       to (100.0 / 17518.0)
+                BenchmarkName.LLM_INFERENCE                      to (100.0 / 308.26),
+                BenchmarkName.IMAGE_CLASSIFICATION               to (100.0 / 336.14),
+                BenchmarkName.OBJECT_DETECTION                   to (100.0 / 50.16),
+                BenchmarkName.TEXT_EMBEDDING                     to (100.0 / 13.05),
+                BenchmarkName.SPEECH_TO_TEXT                     to (100.0 / 0.360),
+                BenchmarkName.IMAGE_CLASSIFICATION_MOBILENET_V1  to (100.0 / 46.70),
+                BenchmarkName.OBJECT_DETECTION_YOLO_V8           to (100.0 / 5.82),
+                BenchmarkName.TEXT_CLASSIFICATION_MOBILEBERT     to (100.0 / 2.96),
+                BenchmarkName.AUDIO_NOISE_SUPPRESSION_DTLN       to (100.0 / 43956.0)
         )
 
         }
