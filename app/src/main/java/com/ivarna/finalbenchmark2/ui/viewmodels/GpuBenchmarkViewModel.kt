@@ -113,9 +113,9 @@ private val GPU_SCENES = listOf(
  */
 private val GPU_REFERENCE_FPS = mapOf(
     GpuScene.TRIANGLE_RENDERING to  86.5,
-    GpuScene.COMPUTE_MATRIX     to  41.7,
+    GpuScene.COMPUTE_MATRIX     to  38.0,
     GpuScene.PARTICLE_SYSTEM    to  28.1,
-    GpuScene.TEXTURE_SAMPLING   to  25.3,
+    GpuScene.TEXTURE_SAMPLING   to  23.0,
     GpuScene.WIREFRAME_MESH     to  84.3,
     GpuScene.MANDELBROT_DEEP    to  17.4,
     GpuScene.PHONG_MULTI_LIGHT  to   7.0,
@@ -128,15 +128,15 @@ private val GPU_REFERENCE_FPS = mapOf(
     GpuScene.VRAM_PRESSURE      to  10.0,
     GpuScene.GEOMETRY_ALU_SATURATION to   7.0,
     GpuScene.MULTI_PASS_BLOOM   to   8.0,
-    // Vulkan 1.1 labeled — GL fallback (ref calibrated on Adreno 750 / SD8 Gen3)
-    GpuScene.VULKAN_JULIA_COMPUTE      to  28.0,  // 6× compute shader passes
-    GpuScene.VULKAN_MANDELBROT_COMPUTE to  12.0,  // 6× mandelbrot passes
-    GpuScene.VULKAN_GEMM_COMPUTE       to   3.5,  // 8× Phong ALU passes
+    // Vulkan 1.1 compute — ref calibrated on Adreno 750 / SD8 Gen3
+    GpuScene.VULKAN_JULIA_COMPUTE      to  78.8,  // 4K Julia 512 iter
+    GpuScene.VULKAN_MANDELBROT_COMPUTE to  20.0,  // 4K Mandelbrot 2048 iter
+    GpuScene.VULKAN_GEMM_COMPUTE       to  25.0,  // 1024×1024 GEMM
     GpuScene.VULKAN_N_BODY_COMPUTE     to  22.0,
-    // OpenCL 2.0 labeled — GL fallback
-    GpuScene.OPENCL_MEM_BW             to  38.0,  // 6× texture bandwidth passes
-    GpuScene.OPENCL_JULIA_COMPUTE      to  21.0,  // 8× compute shader passes
-    GpuScene.OPENCL_GEMM_COMPUTE       to  14.0,  // 6× domain warp passes
+    // OpenCL 2.0 compute — ref calibrated on Adreno 750 / SD8 Gen3
+    GpuScene.OPENCL_MEM_BW             to  18.0,  // 64 MB D2D bandwidth GB/s
+    GpuScene.OPENCL_JULIA_COMPUTE      to  68.0,  // 4K Julia 512 iter
+    GpuScene.OPENCL_GEMM_COMPUTE       to  76.0,  // 1024×1024 GEMM GFLOPS
     GpuScene.OPENCL_N_BODY_COMPUTE     to  20.0
 )
 
