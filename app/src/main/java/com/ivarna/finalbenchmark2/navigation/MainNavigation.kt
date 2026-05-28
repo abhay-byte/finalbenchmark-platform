@@ -49,9 +49,10 @@ fun MainNavigation(
     // Set start destination based on onboarding status
     val startDestination = if (isOnboardingCompleted) "home" else "welcome"
 
-    // AI model download dialog state — shown before Full Benchmark starts
+    // AI model download dialog state — shown before Full or AI Benchmark starts
     var showModelDownloadDialog by remember { mutableStateOf(false) }
     var pendingFullBenchmarkPreset by remember { mutableStateOf("") }
+    var pendingBenchmarkType by remember { mutableStateOf("FULL") }
 
     // Show model download dialog if needed
     if (showModelDownloadDialog) {
@@ -59,12 +60,15 @@ fun MainNavigation(
             onDismiss = {
                 showModelDownloadDialog = false
                 pendingFullBenchmarkPreset = ""
+                pendingBenchmarkType = "FULL"
             },
             onProceed = {
                 showModelDownloadDialog = false
                 val preset = pendingFullBenchmarkPreset
+                val benchType = pendingBenchmarkType
                 pendingFullBenchmarkPreset = ""
-                navController.navigate("benchmark/$preset/FULL")
+                pendingBenchmarkType = "FULL"
+                navController.navigate("benchmark/$preset/$benchType")
             }
         )
     }
@@ -219,13 +223,15 @@ fun MainNavigation(
                     }
                     HomeScreen(
                             onStartBenchmark = { preset, type ->
-                                if (type == "FULL") {
+                                if (type == "FULL" || type == "AI") {
+                                    // Both FULL and standalone AI benchmarks require models
                                     val areModelsReady = com.ivarna.finalbenchmark2.aiBenchmark.ModelDownloader.areAllModelsDownloaded(context)
                                     if (areModelsReady) {
-                                        navController.navigate("benchmark/$preset/FULL")
+                                        navController.navigate("benchmark/$preset/$type")
                                     } else {
-                                        // Show AI model download check dialog before starting Full Benchmark
+                                        // Show AI model download dialog before starting
                                         pendingFullBenchmarkPreset = preset
+                                        pendingBenchmarkType = type
                                         showModelDownloadDialog = true
                                     }
                                 } else {
