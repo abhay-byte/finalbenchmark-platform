@@ -1009,7 +1009,9 @@ class ProductivityBenchmarkViewModel(
         } catch (e: Exception) {
             android.util.Log.e("ProdBench", "HW transcode failed: ${e.message}", e)
             benchVideoEncode(durationMs)
-        } finally {
+        }.let { result ->
+            if (result == 0.0) benchVideoEncode(durationMs) else result
+        }.also { _ ->
             renderer?.stop(); renderer?.destroy()
             encSurface?.release()
             try { dec?.stop() } catch (ignored: Exception) {}
