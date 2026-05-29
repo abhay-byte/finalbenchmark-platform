@@ -2879,7 +2879,7 @@ private fun RankingsTab(finalScore: Double, singleCoreScore: Double, multiCoreSc
             "Adreno 750" to 100, "Mali-G615 MC6" to 73,
             "Adreno 735" to 77, "Mali-G57 MC2" to 34)
         "STORAGE" -> mapOf(
-            "UFS 4.0" to 100, "eMMC 5.1" to 34)
+            "UFS 4.0" to 100)
         else -> mapOf(
             "Snapdragon 8 Gen 3" to 100, "MediaTek Dimensity 8300" to 73,
             "Snapdragon 8s Gen 3" to 77, "MediaTek Dimensity 6300" to 34)

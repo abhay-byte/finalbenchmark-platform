@@ -127,10 +127,7 @@ class RankingViewModel(private val repository: HistoryRepository) : ViewModel() 
     )
 
     private val storageReferenceDevices = mapOf(
-            "UFS 4.0" to 100,
-            "UFS 4.0" to 100,
-            "UFS 4.0" to 100,
-            "eMMC 5.1" to 34
+            "UFS 4.0" to 100
     )
 
     private val nonCpuReferenceScores = mapOf(
