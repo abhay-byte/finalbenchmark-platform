@@ -79,29 +79,29 @@ class KotlinBenchmarkManager(
         // Each test scores ~100 pts on this reference device.
         // When delegates (NNAPI/GPU) start working, these refs will need recalibration.
         val AI_REFERENCE_TPS = mapOf(
-                BenchmarkName.LLM_INFERENCE                      to 308.26,  // Gemma 3 fallback
-                BenchmarkName.IMAGE_CLASSIFICATION               to 336.14,  // MobileNet V3
-                BenchmarkName.OBJECT_DETECTION                   to 50.16,   // EfficientDet Lite0
-                BenchmarkName.TEXT_EMBEDDING                     to 13.05,   // MiniLM-L6
-                BenchmarkName.SPEECH_TO_TEXT                     to 0.360,   // Whisper Tiny
-                BenchmarkName.IMAGE_CLASSIFICATION_MOBILENET_V1  to 46.70,   // MobileNet V1
-                BenchmarkName.OBJECT_DETECTION_YOLO_V8           to 5.82,    // YOLOv8n
-                BenchmarkName.TEXT_CLASSIFICATION_MOBILEBERT     to 2.96,    // MobileBERT
-                BenchmarkName.AUDIO_NOISE_SUPPRESSION_DTLN       to 43956.0  // DTLN
+                BenchmarkName.LLM_INFERENCE                      to 427.16,  // Gemma 3 fallback
+                BenchmarkName.IMAGE_CLASSIFICATION               to 553.03,  // MobileNet V3
+                BenchmarkName.OBJECT_DETECTION                   to 50.41,   // EfficientDet Lite0
+                BenchmarkName.TEXT_EMBEDDING                     to 32.28,   // MiniLM-L6
+                BenchmarkName.SPEECH_TO_TEXT                     to 0.401,   // Whisper Tiny
+                BenchmarkName.IMAGE_CLASSIFICATION_MOBILENET_V1  to 420.67,  // MobileNet V1
+                BenchmarkName.OBJECT_DETECTION_YOLO_V8           to 60.09,   // YOLOv8n
+                BenchmarkName.TEXT_CLASSIFICATION_MOBILEBERT     to 3.54,    // MobileBERT
+                BenchmarkName.AUDIO_NOISE_SUPPRESSION_DTLN       to 5049.0   // DTLN
         )
 
         // Per-test display scoring factors: factor = 100 / refTps
         // On the reference device every test shows exactly 100 pts.
         val AI_PER_TEST_SCORING_FACTORS = mapOf(
-                BenchmarkName.LLM_INFERENCE                      to (100.0 / 308.26),
-                BenchmarkName.IMAGE_CLASSIFICATION               to (100.0 / 336.14),
-                BenchmarkName.OBJECT_DETECTION                   to (100.0 / 50.16),
-                BenchmarkName.TEXT_EMBEDDING                     to (100.0 / 13.05),
-                BenchmarkName.SPEECH_TO_TEXT                     to (100.0 / 0.360),
-                BenchmarkName.IMAGE_CLASSIFICATION_MOBILENET_V1  to (100.0 / 46.70),
-                BenchmarkName.OBJECT_DETECTION_YOLO_V8           to (100.0 / 5.82),
-                BenchmarkName.TEXT_CLASSIFICATION_MOBILEBERT     to (100.0 / 2.96),
-                BenchmarkName.AUDIO_NOISE_SUPPRESSION_DTLN       to (100.0 / 43956.0)
+                BenchmarkName.LLM_INFERENCE                      to (100.0 / 427.16),
+                BenchmarkName.IMAGE_CLASSIFICATION               to (100.0 / 553.03),
+                BenchmarkName.OBJECT_DETECTION                   to (100.0 / 50.41),
+                BenchmarkName.TEXT_EMBEDDING                     to (100.0 / 32.28),
+                BenchmarkName.SPEECH_TO_TEXT                     to (100.0 / 0.401),
+                BenchmarkName.IMAGE_CLASSIFICATION_MOBILENET_V1  to (100.0 / 420.67),
+                BenchmarkName.OBJECT_DETECTION_YOLO_V8           to (100.0 / 60.09),
+                BenchmarkName.TEXT_CLASSIFICATION_MOBILEBERT     to (100.0 / 3.54),
+                BenchmarkName.AUDIO_NOISE_SUPPRESSION_DTLN       to (100.0 / 5049.0)
         )
 
         }
@@ -320,31 +320,31 @@ class KotlinBenchmarkManager(
                     delay(100)
              }
              
-             // Calculate AI score using geometric mean (same approach as CPU)
-             // Ratio = deviceTPS / referenceTPS, then geometricMean * 100 = final score
-             val validResults = results.filter { it.isValid && it.opsPerSecond > 0.0 }
-             val totalScore = if (validResults.isNotEmpty()) {
-                 val ratios = validResults.mapNotNull { result ->
-                     val benchmarkName = BenchmarkName.fromString(result.name)
-                     val refTps = benchmarkName?.let { AI_REFERENCE_TPS[it] }
-                     if (refTps != null && refTps > 0.0) {
-                         result.opsPerSecond / refTps
-                     } else {
-                         Log.w(TAG, "No AI reference TPS for ${result.name}, skipping in geometric mean")
-                         null
-                     }
-                 }
-                 if (ratios.isNotEmpty()) {
-                     var product = 1.0
-                     for (r in ratios) product *= r
-                     val geometricMean = Math.pow(product, 1.0 / ratios.size)
-                     geometricMean * 100.0  // Scale: SD8Gen3 = 100
-                 } else {
-                     validResults.sumOf { it.opsPerSecond } // Fallback if no reference values
-                 }
-             } else {
-                 0.0
-             }
+              // Calculate AI score using geometric mean (same approach as CPU)
+              // Ratio = deviceTPS / referenceTPS, then geometricMean * 100 = final score
+              val validResults = results.filter { it.isValid && it.opsPerSecond > 0.0 }
+              val totalScore = if (validResults.isNotEmpty()) {
+                  val ratios = validResults.mapNotNull { result ->
+                      val benchmarkName = BenchmarkName.fromString(result.name)
+                      val refTps = benchmarkName?.let { AI_REFERENCE_TPS[it] }
+                      if (refTps != null && refTps > 0.0) {
+                          result.opsPerSecond / refTps
+                      } else {
+                          Log.w(TAG, "No AI reference TPS for ${result.name}, skipping in geometric mean")
+                          null
+                      }
+                  }
+                  if (ratios.isNotEmpty()) {
+                      var product = 1.0
+                      for (r in ratios) product *= r
+                      val geometricMean = Math.pow(product, 1.0 / ratios.size)
+                      geometricMean * 100.0  // Scale: SD8Gen3 = 100
+                  } else {
+                      validResults.sumOf { it.opsPerSecond } // Fallback if no reference values
+                  }
+              } else {
+                  0.0
+              }
              Log.d(TAG, "AI Score (geometric mean × 1000): $totalScore from ${validResults.size} valid results")
              
              val detailedResultsArray = JSONArray()
