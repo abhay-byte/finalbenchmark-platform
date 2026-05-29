@@ -78,7 +78,7 @@ data class GpuBenchmarkUiState(
 // ─────────────────────────────────────────────────────────────────────────
 
 /** Total number of benchmark scenes — used in UI state before GPU_SCENES is accessible. */
-private const val GPU_SCENE_COUNT = 10
+private const val GPU_SCENE_COUNT = 12
 
 /**
  * 10-scene benchmark split across three GPU compute APIs:
