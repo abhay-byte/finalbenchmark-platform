@@ -72,25 +72,22 @@ class AiBenchmarkManager(private val context: Context) {
 
     /** Call once before running benchmarks to warm up delegates. */
     fun initSharedDelegates() {
-        // NNAPI delegate with Snapdragon-aware accelerator name (#10, NPU guide)
+        // NNAPI delegate — auto-select accelerator (most reliable across Android versions)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P && sharedNnApiDelegate == null) {
             try {
                 sharedNnApiDelegate = NnApiDelegate(NnApiDelegate.Options().apply {
                     setAllowFp16(true)
                     setExecutionPreference(NnApiDelegate.Options.EXECUTION_PREFERENCE_FAST_SINGLE_ANSWER)
-                    // Route to Qualcomm HTP on Snapdragon devices via NN HAL
-                    if (isSnapdragonDevice()) setAcceleratorName("qti-default")
-                    else if (isPixelDevice()) setAcceleratorName("google-edgetpu")
-                    // MediaTek and Samsung fall through to generic NNAPI
+                    // Don't set setAcceleratorName — let Android auto-select NPU
                 })
-                Log.d(TAG, "Shared NNAPI delegate initialized (Snapdragon=${isSnapdragonDevice()})")
+                Log.d(TAG, "Shared NNAPI delegate initialized (auto-select)")
             } catch (e: Exception) {
-                Log.w(TAG, "NNAPI delegate init failed: ${e.message}")
+                Log.w(TAG, "Shared NNAPI delegate init failed: ${e.message}")
                 sharedNnApiDelegate = null
             }
         }
 
-        // GPU delegate with CompatibilityList pre-check (#11)
+        // GPU delegate — try CompatibilityList first, then force-try
         if (sharedGpuDelegate == null) {
             val compatList = CompatibilityList()
             sharedCompatList = compatList
@@ -99,11 +96,11 @@ class AiBenchmarkManager(private val context: Context) {
                     sharedGpuDelegate = GpuDelegate(compatList.bestOptionsForThisDevice)
                     Log.d(TAG, "Shared GPU delegate initialized via CompatibilityList")
                 } catch (e: Exception) {
-                    Log.w(TAG, "GPU delegate init failed: ${e.message}")
+                    Log.w(TAG, "Shared GPU delegate init failed: ${e.message}")
                     sharedGpuDelegate = null
                 }
             } else {
-                Log.d(TAG, "GPU delegate NOT supported on this device (CompatibilityList)")
+                Log.d(TAG, "CompatibilityList says GPU not supported, will force-try per-test")
             }
         }
     }
@@ -742,6 +739,12 @@ class AiBenchmarkManager(private val context: Context) {
     // ---------------------------------------------------------------------------
     // Core delegate + interpreter builder — SINGLE interpreter, delegate fallback (#2)
     // Returns Triple<Interpreter, NnApiDelegate?, GpuDelegate?> + AccelerationMode
+    //
+    // Strategy (updated: NNAPI deprecated on Android 15+ / API 35+):
+    //   1. GPU delegate (OpenCL on Adreno/Mali) — primary hardware path
+    //   2. GPU delegate force-try (CompatibilityList sometimes lies on new Android)
+    //   3. NNAPI (only on API < 35 — still functional on older Android)
+    //   4. CPU XNNPACK fallback
     // ---------------------------------------------------------------------------
     private fun buildInterpreterWithFallback(
         modelBuffer: MappedByteBuffer,
@@ -751,57 +754,67 @@ class AiBenchmarkManager(private val context: Context) {
         var nnApiDelegate: NnApiDelegate? = null
         var gpuDelegate: GpuDelegate? = null
 
-        // Attempt 1: NNAPI with chipset-aware accelerator name (#10, NPU guide)
-        if (useNpu && Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+        // Attempt 1a: GPU via CompatibilityList (primary — OpenCL on Adreno/Mali)
+        try {
+            val compatList = CompatibilityList()
+            if (compatList.isDelegateSupportedOnThisDevice) {
+                Log.d(TAG, "[$benchmarkName] GPU delegate (CompatibilityList)...")
+                gpuDelegate = GpuDelegate(compatList.bestOptionsForThisDevice)
+                val opts = Interpreter.Options().addDelegate(gpuDelegate)
+                val interpreter = Interpreter(modelBuffer, opts)
+                Log.d(TAG, "[$benchmarkName] GPU delegate SUCCESS")
+                compatList.close()
+                return Triple(interpreter, null, gpuDelegate) to AccelerationMode.GPU
+            }
+            Log.d(TAG, "[$benchmarkName] CompatibilityList says GPU unsupported, force-trying...")
+            compatList.close()
+        } catch (e: Exception) {
+            Log.w(TAG, "[$benchmarkName] GPU (compat) failed: ${e.message}")
+            gpuDelegate?.close()
+            gpuDelegate = null
+        }
+
+        // Attempt 1b: GPU force-try — OpenCL often works on Adreno/Mali even when
+        // CompatibilityList reports unsupported (common on API 35+).
+        try {
+            Log.d(TAG, "[$benchmarkName] GPU delegate force-trying...")
+            gpuDelegate = GpuDelegate()
+            val opts = Interpreter.Options().addDelegate(gpuDelegate)
+            modelBuffer.rewind()
+            val interpreter = Interpreter(modelBuffer, opts)
+            Log.d(TAG, "[$benchmarkName] GPU delegate force-try SUCCESS")
+            return Triple(interpreter, null, gpuDelegate) to AccelerationMode.GPU
+        } catch (e: Exception) {
+            Log.w(TAG, "[$benchmarkName] GPU force-try failed: ${e.message}")
+            gpuDelegate?.close()
+            gpuDelegate = null
+        }
+
+        // Attempt 2: NNAPI (only on API < 35 — NNAPI deprecated on Android 15+)
+        if (useNpu && Build.VERSION.SDK_INT in Build.VERSION_CODES.P..34) {
             try {
-                Log.d(TAG, "[$benchmarkName] Attempting NNAPI...")
+                Log.d(TAG, "[$benchmarkName] NNAPI (API ${Build.VERSION.SDK_INT} < 35)...")
                 nnApiDelegate = NnApiDelegate(NnApiDelegate.Options().apply {
                     setAllowFp16(true)
                     setExecutionPreference(NnApiDelegate.Options.EXECUTION_PREFERENCE_FAST_SINGLE_ANSWER)
-                    when {
-                        isSnapdragonDevice() -> setAcceleratorName("qti-default")
-                        isPixelDevice()      -> setAcceleratorName("google-edgetpu")
-                        // MediaTek: "mtk-APU", Samsung: "samsung-exynos" — skip for now;
-                        // generic NNAPI still routes to NPU via NN HAL on those devices
-                    }
                 })
                 val opts = Interpreter.Options().addDelegate(nnApiDelegate)
+                modelBuffer.rewind()
                 val interpreter = Interpreter(modelBuffer, opts)
-                Log.d(TAG, "[$benchmarkName] NNAPI Success")
+                Log.d(TAG, "[$benchmarkName] NNAPI SUCCESS")
                 return Triple(interpreter, nnApiDelegate, null) to AccelerationMode.NPU
             } catch (e: Exception) {
                 Log.w(TAG, "[$benchmarkName] NNAPI failed: ${e.message}")
                 nnApiDelegate?.close()
                 nnApiDelegate = null
             }
+        } else if (Build.VERSION.SDK_INT >= 35) {
+            Log.d(TAG, "[$benchmarkName] Skipping NNAPI (deprecated on API ${Build.VERSION.SDK_INT})")
         }
-
-        // Attempt 2: GPU via CompatibilityList (#11)
-        if (!useNpu || Build.VERSION.SDK_INT < Build.VERSION_CODES.P) {
-            // also try GPU when NPU is disabled
-        }
-        val compatList = CompatibilityList()
-        if (compatList.isDelegateSupportedOnThisDevice) {
-            try {
-                Log.d(TAG, "[$benchmarkName] Attempting GPU (CompatibilityList confirmed)...")
-                gpuDelegate = GpuDelegate(compatList.bestOptionsForThisDevice)
-                val opts = Interpreter.Options().addDelegate(gpuDelegate)
-                val interpreter = Interpreter(modelBuffer, opts)
-                Log.d(TAG, "[$benchmarkName] GPU Success")
-                compatList.close()
-                return Triple(interpreter, null, gpuDelegate) to AccelerationMode.GPU
-            } catch (e: Exception) {
-                Log.w(TAG, "[$benchmarkName] GPU failed: ${e.message}")
-                gpuDelegate?.close()
-                gpuDelegate = null
-            }
-        } else {
-            Log.d(TAG, "[$benchmarkName] GPU not supported (CompatibilityList)")
-        }
-        compatList.close()
 
         // Attempt 3: CPU XNNPACK
         Log.d(TAG, "[$benchmarkName] Falling back to CPU XNNPACK")
+        modelBuffer.rewind()
         val cpuOpts = Interpreter.Options().apply {
             setUseXNNPACK(true)
             setNumThreads(Runtime.getRuntime().availableProcessors())
