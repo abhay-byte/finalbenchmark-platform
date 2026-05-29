@@ -134,17 +134,37 @@ fun HomeScreen(
         // Swipe state for high score card
         var showHighScoreCard by remember { mutableStateOf(true) }
         var highestScoreEntity by remember { mutableStateOf<BenchmarkResultEntity?>(null) }
+        var completedCategories by remember { mutableStateOf<List<Pair<String, Double>>>(emptyList()) }
         
 
-
         // Load highest score from database
+        // Priority: 1) FULL benchmark (combined score), 2) Highest individual category
         LaunchedEffect(historyRepository) {
                 if (historyRepository != null) {
                         historyRepository.getAllResults().collect { results ->
-                                highestScoreEntity = results
-                                        .filter { it.benchmarkResult.type.contains("CPU", ignoreCase = true) }
+                                // First, look for a FULL benchmark result
+                                val fullResult = results
+                                        .filter { it.benchmarkResult.type.equals("FULL", ignoreCase = true) || it.benchmarkResult.type.equals("Full", ignoreCase = true) }
                                         .maxByOrNull { it.benchmarkResult.normalizedScore }
                                         ?.benchmarkResult
+
+                                if (fullResult != null) {
+                                        highestScoreEntity = fullResult
+                                        completedCategories = emptyList()
+                                } else {
+                                        // No FULL benchmark - find highest individual category
+                                        highestScoreEntity = results
+                                                .filter { it.benchmarkResult.type != "FULL" && it.benchmarkResult.type != "Full" }
+                                                .maxByOrNull { it.benchmarkResult.normalizedScore }
+                                                ?.benchmarkResult
+
+                                        // Also collect all completed categories for display
+                                        completedCategories = results
+                                                .filter { it.benchmarkResult.type != "FULL" && it.benchmarkResult.type != "Full" }
+                                                .map { it.benchmarkResult.type to it.benchmarkResult.normalizedScore }
+                                                 .distinctBy { it.first }
+                                                 .sortedByDescending { it.second }
+                                }
                         }
                 }
         }
@@ -239,12 +259,14 @@ fun HomeScreen(
                                                                 modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
                                                                 horizontalAlignment = Alignment.CenterHorizontally
                                                         ) {
-                                                                HighScoreCard(
-                                                                        score = highestScoreEntity!!.normalizedScore,
-                                                                        deviceModel = highestScoreEntity!!.deviceModel,
-                                                                        timestamp = highestScoreEntity!!.timestamp,
-                                                                        historyRepository = historyRepository
-                                                                )
+                                                         HighScoreCard(
+                                                                 score = highestScoreEntity!!.normalizedScore,
+                                                                 deviceModel = highestScoreEntity!!.deviceModel,
+                                                                 timestamp = highestScoreEntity!!.timestamp,
+                                                                 benchmarkType = highestScoreEntity!!.type,
+                                                                 completedCategories = completedCategories,
+                                                                 historyRepository = historyRepository
+                                                         )
                                                         }
                                                 } else {
                                                         // Logo/Title/Description
@@ -1374,11 +1396,14 @@ fun HighScoreCard(
         score: Double,
         deviceModel: String,
         timestamp: Long,
+        benchmarkType: String,
+        completedCategories: List<Pair<String, Double>>,
         historyRepository: HistoryRepository?
 ) {
         var beatsPercentage by remember { mutableStateOf(0) }
         val dateFormat = remember { SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()) }
         val formattedDate = remember(timestamp) { dateFormat.format(Date(timestamp)) }
+        val isFullBenchmark = benchmarkType.equals("FULL", ignoreCase = true) || benchmarkType.equals("Full", ignoreCase = true)
 
         // Calculate percentage beaten using same logic as ResultScreen
         LaunchedEffect(score, historyRepository) {
@@ -1547,18 +1572,56 @@ fun HighScoreCard(
                                                 Text(
                                                         text = "${score.toInt()}",
                                                         fontSize = 48.sp,
-                                                        fontWeight = FontWeight.ExtraBold, // More impactful
+                                                        fontWeight = FontWeight.ExtraBold,
                                                         color = MaterialTheme.colorScheme.onSurface,
                                                         lineHeight = 48.sp,
                                                         letterSpacing = (-1).sp
                                                 )
                                                 Text(
-                                                        text = "POINTS",
+                                                        text = if (isFullBenchmark) "FINALBENCHMARK" else "${benchmarkType.uppercase()} SCORE",
                                                         fontSize = 12.sp,
                                                         fontWeight = FontWeight.Bold,
                                                         color = MaterialTheme.colorScheme.primary,
                                                         letterSpacing = 1.sp
                                                 )
+                                        }
+                                }
+
+                                // Category breakdown for non-FULL benchmarks
+                                if (!isFullBenchmark && completedCategories.isNotEmpty()) {
+                                        Spacer(modifier = Modifier.height(16.dp))
+                                        Divider(color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.1f))
+                                        Spacer(modifier = Modifier.height(12.dp))
+
+                                        Text(
+                                                text = "Completed Benchmarks",
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                                letterSpacing = 0.5.sp
+                                        )
+                                        Spacer(modifier = Modifier.height(8.dp))
+
+                                        // Show up to 4 completed categories
+                                        completedCategories.take(4).forEach { (category, catScore) ->
+                                                Row(
+                                                        modifier = Modifier.fillMaxWidth(),
+                                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                                        verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                        Text(
+                                                                text = category,
+                                                                fontSize = 12.sp,
+                                                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+                                                        )
+                                                        Text(
+                                                                text = catScore.toInt().toString(),
+                                                                fontSize = 12.sp,
+                                                                fontWeight = FontWeight.Bold,
+                                                                color = MaterialTheme.colorScheme.primary
+                                                        )
+                                                }
+                                                Spacer(modifier = Modifier.height(4.dp))
                                         }
                                 }
 
