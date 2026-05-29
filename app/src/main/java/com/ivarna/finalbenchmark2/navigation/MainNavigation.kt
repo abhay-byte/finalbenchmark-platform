@@ -1,6 +1,9 @@
 package com.ivarna.finalbenchmark2.navigation
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.List
@@ -16,6 +19,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.compose.NavHost
@@ -48,6 +55,42 @@ fun MainNavigation(
 
     // Set start destination based on onboarding status
     val startDestination = if (isOnboardingCompleted) "home" else "welcome"
+
+    // Crash report detection — show dialog if last session crashed
+    var showCrashDialog by remember {
+        mutableStateOf(com.ivarna.finalbenchmark2.GlobalCrashHandler.hasCrashReport(context))
+    }
+    if (showCrashDialog) {
+        val crashReport = remember { com.ivarna.finalbenchmark2.GlobalCrashHandler.getCrashReport(context) ?: "No details available" }
+        AlertDialog(
+            onDismissRequest = {},
+            title = { Text("App Crashed") },
+            text = {
+                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                    Text("The previous session crashed. Details:", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Surface(
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Text(
+                            text = crashReport,
+                            fontSize = 11.sp,
+                            modifier = Modifier.padding(12.dp),
+                            fontFamily = FontFamily.Monospace,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    com.ivarna.finalbenchmark2.GlobalCrashHandler.clearCrashReport(context)
+                    showCrashDialog = false
+                }) { Text("OK") }
+            }
+        )
+    }
 
     // AI model download dialog state — shown before Full or AI Benchmark starts
     var showModelDownloadDialog by remember { mutableStateOf(false) }
