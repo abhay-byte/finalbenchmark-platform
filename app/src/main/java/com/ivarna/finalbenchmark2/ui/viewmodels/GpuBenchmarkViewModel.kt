@@ -102,8 +102,8 @@ private val GPU_SCENES = listOf(
     GpuScene.OPENCL_JULIA_COMPUTE,
     GpuScene.OPENCL_GEMM_COMPUTE,
     // ── OpenGL ES 3.2 Extended (11-12) ────────────────────────────────────
-    GpuScene.SUPER_FRACTAL_64X,
-    GpuScene.SPHERE_3D
+    GpuScene.RAY_MARCH_SDF,        // "Ray March SDF + Shadows"
+    GpuScene.SUPER_SAMPLE          // "64× Super-Sampled Fractal"
 )
 
 /**
@@ -139,10 +139,7 @@ private val GPU_REFERENCE_FPS = mapOf(
     GpuScene.OPENCL_MEM_BW             to  18.0,  // 64 MB D2D bandwidth GB/s
     GpuScene.OPENCL_JULIA_COMPUTE      to  68.0,  // 4K Julia 512 iter
     GpuScene.OPENCL_GEMM_COMPUTE       to  76.0,  // 1024×1024 GEMM GFLOPS
-    GpuScene.OPENCL_N_BODY_COMPUTE     to  20.0,
-    // OpenGL ES 3.2 (11-12) — ref calibrated on Adreno 750 / SD8 Gen3
-    GpuScene.SUPER_FRACTAL_64X         to   2.0,  // 4K Julia 64x SSAA 128 iter
-    GpuScene.SPHERE_3D                 to   3.0   // 4K SDF sphere 128 lights
+    GpuScene.OPENCL_N_BODY_COMPUTE     to  20.0
 )
 
 /**
@@ -168,7 +165,7 @@ private fun GpuScene.apiLabel(glApiLabel: String) = when (this) {
     GpuScene.PHONG_MULTI_LIGHT, GpuScene.RAY_MARCH_SDF, GpuScene.DOMAIN_WARP,
     GpuScene.SUPER_SAMPLE, GpuScene.SHADER_COMPILE, GpuScene.MEM_BANDWIDTH,
     GpuScene.MSAA_4X, GpuScene.VRAM_PRESSURE, GpuScene.GEOMETRY_ALU_SATURATION,
-    GpuScene.MULTI_PASS_BLOOM, GpuScene.SUPER_FRACTAL_64X, GpuScene.SPHERE_3D -> "OpenGL ES 3.2"
+    GpuScene.MULTI_PASS_BLOOM -> "OpenGL ES 3.2"
     // Vulkan 1.1 compute scenes
     GpuScene.VULKAN_JULIA_COMPUTE, GpuScene.VULKAN_MANDELBROT_COMPUTE,
     GpuScene.VULKAN_GEMM_COMPUTE, GpuScene.VULKAN_N_BODY_COMPUTE -> "Vulkan 1.1"
@@ -205,9 +202,6 @@ private fun GpuScene.displayName() = when (this) {
     GpuScene.OPENCL_JULIA_COMPUTE      -> "OpenCL Julia Compute"
     GpuScene.OPENCL_GEMM_COMPUTE       -> "OpenCL GEMM Compute"
     GpuScene.OPENCL_N_BODY_COMPUTE     -> "OpenCL N-Body Compute"
-    // OpenGL ES 3.2 Extended (11-12)
-    GpuScene.SUPER_FRACTAL_64X         -> "64\u00d7 Super Fractal (Julia SSAA)"
-    GpuScene.SPHERE_3D                 -> "3D Scene (Sphere SDF + Lights)"
 }
 
 

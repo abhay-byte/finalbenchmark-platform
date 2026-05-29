@@ -32,9 +32,6 @@ enum class GpuScene {
     VRAM_PRESSURE,
     GEOMETRY_ALU_SATURATION,
     MULTI_PASS_BLOOM,
-    // ── OpenGL ES 3.2 Extended ──────────────────────────────────────────
-    SUPER_FRACTAL_64X,
-    SPHERE_3D,
     // ── Vulkan 1.1+ Compute ───────────────────────────────────────────────
     VULKAN_JULIA_COMPUTE,
     VULKAN_MANDELBROT_COMPUTE,
@@ -73,7 +70,6 @@ class GpuBenchmarkRenderer(
     private var progMesh        = 0; private var progMandelbrot  = 0
     private var progMultiLight  = 0; private var progRayMarch    = 0
     private var progDomainWarp  = 0; private var progSuperSample = 0
-    private var progSuperFractal64x = 0; private var progSphere3D = 0
     private var progDisplay     = 0
     private var uTexDisplay     = -1
     private var aPosDisplay     = -1
@@ -175,8 +171,7 @@ class GpuBenchmarkRenderer(
         private val HEAVY_4K_SCENES = setOf(
             GpuScene.MANDELBROT_DEEP, GpuScene.PHONG_MULTI_LIGHT,
             GpuScene.RAY_MARCH_SDF,   GpuScene.DOMAIN_WARP,
-            GpuScene.SUPER_SAMPLE,    GpuScene.SUPER_FRACTAL_64X,
-            GpuScene.SPHERE_3D
+            GpuScene.SUPER_SAMPLE
         )
     }
 
@@ -232,8 +227,6 @@ class GpuBenchmarkRenderer(
         progBloomVert    = prog(GpuBenchmarkShaders.FULLSCREEN_VERT, GpuBenchmarkShaders.BLOOM_VERT_FRAG)
         progTessBase     = prog(GpuBenchmarkShaders.FULLSCREEN_VERT, GpuBenchmarkShaders.TESS_BASE_FRAG)
         progShaderTiming = prog(GpuBenchmarkShaders.FULLSCREEN_VERT, GpuBenchmarkShaders.SHADER_TIMING_FRAG)
-        progSuperFractal64x = prog(GpuBenchmarkShaders.FULLSCREEN_VERT, GpuBenchmarkShaders.SUPER_FRACTAL_64X_FRAG)
-        progSphere3D        = prog(GpuBenchmarkShaders.FULLSCREEN_VERT, GpuBenchmarkShaders.SPHERE_3D_FRAG)
 
         // 3. Cache uniform and attribute locations (BUG-2)
         uTimeTriangle = GLES20.glGetUniformLocation(progTriangle, "u_Time")
@@ -380,8 +373,6 @@ class GpuBenchmarkRenderer(
             GpuScene.VRAM_PRESSURE   -> drawVramPressureScene(t)
             GpuScene.GEOMETRY_ALU_SATURATION -> drawTessellationScene(t)
             GpuScene.MULTI_PASS_BLOOM -> drawBloomScene(t)
-            GpuScene.SUPER_FRACTAL_64X    -> drawSuperFractal64xScene(t)
-            GpuScene.SPHERE_3D            -> drawSphere3DScene(t)
             // ── Vulkan 1.1 compute scenes (actual Vulkan compute runs in background) ──
             GpuScene.VULKAN_JULIA_COMPUTE,
             GpuScene.VULKAN_MANDELBROT_COMPUTE,
@@ -909,40 +900,6 @@ class GpuBenchmarkRenderer(
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
         drawFull(progDomainWarp, t)
         drawFull(progTexture, t)
-    }
-
-    // ─── Scene 11: 64× Super Fractal (ES 3.2, 4K, GPU ALU stress) ─────────
-    // Julia set fractal with 8×8 samples per pixel (64x supersampling)
-    // at 3840×2160. Each sample traces 128 iterations. Pure ALU.
-    private fun drawSuperFractal64xScene(t: Float) {
-        GLES20.glViewport(0, 0, 3840, 2160)
-        GLES20.glUseProgram(progSuperFractal64x)
-        val uLoc = GLES20.glGetUniformLocation(progSuperFractal64x, "u_Time")
-        if (uLoc >= 0) GLES20.glUniform1f(uLoc, t)
-        val aLoc = GLES20.glGetAttribLocation(progSuperFractal64x, "a_Pos")
-        if (aLoc >= 0) {
-            GLES20.glEnableVertexAttribArray(aLoc)
-            GLES20.glVertexAttribPointer(aLoc, 2, GLES20.GL_FLOAT, false, 0, quadBuf)
-        }
-        // 4 passes to saturate GPU
-        repeat(4) { GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4) }
-    }
-
-    // ─── Scene 12: 3D Scene (ES 3.2, 4K, geometry + lighting stress) ──────
-    // Displaced sphere with 128 Phong-lit point lights, shadow ray-march,
-    // at 3840×2160. Fragment ALU + bandwidth bound.
-    private fun drawSphere3DScene(t: Float) {
-        GLES20.glViewport(0, 0, 3840, 2160)
-        GLES20.glUseProgram(progSphere3D)
-        val uLoc = GLES20.glGetUniformLocation(progSphere3D, "u_Time")
-        if (uLoc >= 0) GLES20.glUniform1f(uLoc, t)
-        val aLoc = GLES20.glGetAttribLocation(progSphere3D, "a_Pos")
-        if (aLoc >= 0) {
-            GLES20.glEnableVertexAttribArray(aLoc)
-            GLES20.glVertexAttribPointer(aLoc, 2, GLES20.GL_FLOAT, false, 0, quadBuf)
-        }
-        // 3 passes — geometry-displaced sphere with 128 lights
-        repeat(3) { GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4) }
     }
 
     // ─── GL shader helpers ────────────────────────────────────────────────────
