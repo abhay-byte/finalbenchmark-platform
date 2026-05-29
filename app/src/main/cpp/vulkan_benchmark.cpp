@@ -1312,6 +1312,9 @@ static float dispatchAndTime(int sceneId) {
         vkCmdWriteTimestamp(g_cmdBuf, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, g_queryPool, 1);
     vkEndCommandBuffer(g_cmdBuf);
 
+    // Wall-clock timing around the ACTUAL dispatch (reliable on all GPUs)
+    auto cpu0 = std::chrono::high_resolution_clock::now();
+
     VkSubmitInfo si{};
     si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     si.commandBufferCount = 1;
@@ -1319,6 +1322,10 @@ static float dispatchAndTime(int sceneId) {
     vkQueueSubmit(g_queue, 1, &si, VK_NULL_HANDLE);
     vkQueueWaitIdle(g_queue);
 
+    auto cpu1 = std::chrono::high_resolution_clock::now();
+    float cpuMs = std::chrono::duration<float, std::milli>(cpu1 - cpu0).count();
+
+    // Try GPU timestamp query first (accurate on Adreno/PowerVR)
     if (g_queryPool != VK_NULL_HANDLE) {
         uint64_t timestamps[2] = {0, 0};
         VkResult r = vkGetQueryPoolResults(g_device, g_queryPool, 0, 2,
@@ -1326,15 +1333,14 @@ static float dispatchAndTime(int sceneId) {
             VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_WAIT_BIT);
         if (r == VK_SUCCESS && timestamps[1] > timestamps[0]) {
             float gpuMs = float(timestamps[1] - timestamps[0]) * g_timestampPeriod * 1e-6f;
-            if (gpuMs > 0.001f) return gpuMs;
+            // Sanity: reject values below 0.01ms (would mean 100K+ FPS — impossible)
+            if (gpuMs > 0.01f && gpuMs < 10000.0f) return gpuMs;
         }
     }
-    auto cpu0 = std::chrono::high_resolution_clock::now();
-    vkQueueSubmit(g_queue, 0, nullptr, VK_NULL_HANDLE);
-    vkQueueWaitIdle(g_queue);
-    auto cpu1 = std::chrono::high_resolution_clock::now();
-    float cpuMs = std::chrono::duration<float, std::milli>(cpu1 - cpu0).count();
-    return (cpuMs > 0.001f) ? cpuMs : 0.016f;
+    // Fallback: wall-clock time of the real dispatch (works on Mali, all GPUs)
+    // Sanity: reject values below 0.01ms (would mean 100K+ FPS — impossible)
+    if (cpuMs > 0.01f && cpuMs < 10000.0f) return cpuMs;
+    return -1.0f;  // signal failure to caller
 }
 
 // ─── JNI entry points ──────────────────────────────────────────────────────

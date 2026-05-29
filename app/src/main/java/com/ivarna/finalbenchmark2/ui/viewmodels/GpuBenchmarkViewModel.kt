@@ -343,7 +343,11 @@ class GpuBenchmarkViewModel(
                 }
 
                 // Convert score to common FPS-like metric for scoring
-                val avgFps = scoreValue.coerceAtLeast(0f)
+                // Sanity: reject impossible values (NaN, Inf, negative, or >1000 FPS
+                // which would indicate broken timing on Mali/other GPUs)
+                val rawFps = scoreValue
+                val avgFps = if (rawFps.isNaN() || rawFps.isInfinite() || rawFps < 0f || rawFps > 1000f) 0f
+                             else rawFps.coerceAtLeast(0f)
                 val avgFt  = if (avgFps > 0f) 1000f / avgFps else 0f
                 val refFps = GPU_REFERENCE_FPS[scene] ?: 20.0
                 val score  = ((avgFps.toDouble() / refFps) * 100.0).roundToInt().coerceAtLeast(0)
