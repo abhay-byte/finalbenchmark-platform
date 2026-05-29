@@ -88,20 +88,22 @@ private const val GPU_SCENE_COUNT = 10
  *  - OpenCL 2.0     (3 scenes): memory bandwidth, Julia, GEMM
  */
 private val GPU_SCENES = listOf(
-    // ── OpenGL ES 3.0 ─────────────────────────────────────────────────────
+    // ── OpenGL ES 3.0 (1-4) ──────────────────────────────────────────────
     GpuScene.TRIANGLE_RENDERING,   // Domain Warp + 10K triangles
     GpuScene.COMPUTE_MATRIX,       // Julia / Matrix fragment compute
-    // ── OpenGL ES 3.2 ─────────────────────────────────────────────────────
     GpuScene.PARTICLE_SYSTEM,      // Phong-lit particle system (5K)
     GpuScene.TEXTURE_SAMPLING,     // 12-octave FBM texture bandwidth
-    // ── Vulkan 1.1 ────────────────────────────────────────────────────────
+    // ── Vulkan 1.1 (5-7) ─────────────────────────────────────────────────
     GpuScene.VULKAN_JULIA_COMPUTE,
     GpuScene.VULKAN_MANDELBROT_COMPUTE,
     GpuScene.VULKAN_GEMM_COMPUTE,
-    // ── OpenCL 2.0 ────────────────────────────────────────────────────────
+    // ── OpenCL 2.0 (8-10) ────────────────────────────────────────────────
     GpuScene.OPENCL_MEM_BW,
     GpuScene.OPENCL_JULIA_COMPUTE,
-    GpuScene.OPENCL_GEMM_COMPUTE
+    GpuScene.OPENCL_GEMM_COMPUTE,
+    // ── OpenGL ES 3.2 Extended (11-12) ────────────────────────────────────
+    GpuScene.SUPER_FRACTAL_64X,
+    GpuScene.SPHERE_3D
 )
 
 /**
@@ -137,7 +139,10 @@ private val GPU_REFERENCE_FPS = mapOf(
     GpuScene.OPENCL_MEM_BW             to  18.0,  // 64 MB D2D bandwidth GB/s
     GpuScene.OPENCL_JULIA_COMPUTE      to  68.0,  // 4K Julia 512 iter
     GpuScene.OPENCL_GEMM_COMPUTE       to  76.0,  // 1024×1024 GEMM GFLOPS
-    GpuScene.OPENCL_N_BODY_COMPUTE     to  20.0
+    GpuScene.OPENCL_N_BODY_COMPUTE     to  20.0,
+    // OpenGL ES 3.2 (11-12) — ref calibrated on Adreno 750 / SD8 Gen3
+    GpuScene.SUPER_FRACTAL_64X         to   2.0,  // 4K Julia 64x SSAA 128 iter
+    GpuScene.SPHERE_3D                 to   3.0   // 4K SDF sphere 128 lights
 )
 
 /**
@@ -163,7 +168,7 @@ private fun GpuScene.apiLabel(glApiLabel: String) = when (this) {
     GpuScene.PHONG_MULTI_LIGHT, GpuScene.RAY_MARCH_SDF, GpuScene.DOMAIN_WARP,
     GpuScene.SUPER_SAMPLE, GpuScene.SHADER_COMPILE, GpuScene.MEM_BANDWIDTH,
     GpuScene.MSAA_4X, GpuScene.VRAM_PRESSURE, GpuScene.GEOMETRY_ALU_SATURATION,
-    GpuScene.MULTI_PASS_BLOOM -> "OpenGL ES 3.2"
+    GpuScene.MULTI_PASS_BLOOM, GpuScene.SUPER_FRACTAL_64X, GpuScene.SPHERE_3D -> "OpenGL ES 3.2"
     // Vulkan 1.1 compute scenes
     GpuScene.VULKAN_JULIA_COMPUTE, GpuScene.VULKAN_MANDELBROT_COMPUTE,
     GpuScene.VULKAN_GEMM_COMPUTE, GpuScene.VULKAN_N_BODY_COMPUTE -> "Vulkan 1.1"
@@ -200,6 +205,9 @@ private fun GpuScene.displayName() = when (this) {
     GpuScene.OPENCL_JULIA_COMPUTE      -> "OpenCL Julia Compute"
     GpuScene.OPENCL_GEMM_COMPUTE       -> "OpenCL GEMM Compute"
     GpuScene.OPENCL_N_BODY_COMPUTE     -> "OpenCL N-Body Compute"
+    // OpenGL ES 3.2 Extended (11-12)
+    GpuScene.SUPER_FRACTAL_64X         -> "64\u00d7 Super Fractal (Julia SSAA)"
+    GpuScene.SPHERE_3D                 -> "3D Scene (Sphere SDF + Lights)"
 }
 
 
