@@ -58,10 +58,10 @@ fun MainNavigation(
 
     // Crash report detection — show dialog if last session crashed
     var showCrashDialog by remember {
-        mutableStateOf(com.ivarna.finalbenchmark2.GlobalCrashHandler.hasCrashReport(context))
+        mutableStateOf(com.ivarna.finalbenchmark2.CrashHandler.hasCrashReport(context))
     }
     if (showCrashDialog) {
-        val crashReport = remember { com.ivarna.finalbenchmark2.GlobalCrashHandler.getCrashReport(context) ?: "No details available" }
+        val crashReport = remember { com.ivarna.finalbenchmark2.CrashHandler.getCrashReport(context) ?: "No details available" }
         AlertDialog(
             onDismissRequest = {},
             title = { Text("App Crashed") },
@@ -85,7 +85,7 @@ fun MainNavigation(
             },
             confirmButton = {
                 TextButton(onClick = {
-                    com.ivarna.finalbenchmark2.GlobalCrashHandler.clearCrashReport(context)
+                    com.ivarna.finalbenchmark2.CrashHandler.clearCrashReport(context)
                     showCrashDialog = false
                 }) { Text("OK") }
             }

@@ -1,14 +1,25 @@
 package com.ivarna.finalbenchmark2
 
+import android.content.Intent
 import android.os.Bundle
 import android.os.Process
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
@@ -18,18 +29,37 @@ import androidx.compose.ui.unit.sp
 import com.ivarna.finalbenchmark2.ui.theme.FinalBenchmark2Theme
 
 class CrashActivity : ComponentActivity() {
+
+    private lateinit var stackTrace: String
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        stackTrace = CrashHandler.getStackTrace(intent) ?: "No crash details available."
+
         setContent {
             FinalBenchmark2Theme {
                 CrashScreen(
-                    stacktrace = intent.getStringExtra("stack_trace") ?: "No crash details available.",
+                    stacktrace = stackTrace,
                     onRestart = {
-                        val intent = packageManager.getLaunchIntentForPackage(packageName)
-                        intent?.addFlags(android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP or
-                                         android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-                        if (intent != null) startActivity(intent)
+                        val launchIntent = packageManager.getLaunchIntentForPackage(packageName)
+                        if (launchIntent != null) {
+                            launchIntent.addFlags(
+                                Intent.FLAG_ACTIVITY_NEW_TASK or
+                                Intent.FLAG_ACTIVITY_CLEAR_TASK or
+                                Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED
+                            )
+                            launchIntent.action = Intent.ACTION_MAIN
+                            launchIntent.addCategory(Intent.CATEGORY_LAUNCHER)
+                            finish()
+                            startActivity(launchIntent)
+                        }
                         Process.killProcess(Process.myPid())
+                        System.exit(10)
+                    },
+                    onClose = {
+                        finish()
+                        Process.killProcess(Process.myPid())
+                        System.exit(10)
                     }
                 )
             }
@@ -38,7 +68,7 @@ class CrashActivity : ComponentActivity() {
 }
 
 @Composable
-private fun CrashScreen(stacktrace: String, onRestart: () -> Unit) {
+private fun CrashScreen(stacktrace: String, onRestart: () -> Unit, onClose: () -> Unit) {
     Surface(
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background
@@ -64,7 +94,6 @@ private fun CrashScreen(stacktrace: String, onRestart: () -> Unit) {
             )
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Crash details
             Surface(
                 color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
                 shape = RoundedCornerShape(12.dp),
@@ -79,7 +108,7 @@ private fun CrashScreen(stacktrace: String, onRestart: () -> Unit) {
                 )
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             Button(
                 onClick = onRestart,
@@ -89,6 +118,18 @@ private fun CrashScreen(stacktrace: String, onRestart: () -> Unit) {
                 )
             ) {
                 Text("Restart App", fontSize = 16.sp)
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Button(
+                onClick = onClose,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+            ) {
+                Text("Close App", fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }
