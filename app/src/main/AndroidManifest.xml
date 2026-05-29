@@ -59,6 +59,12 @@
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="Performance benchmarking and CPU testing" />
         </service>
+        <!-- Crash handler activity — runs in separate process for isolation -->
+        <activity
+            android:name=".CrashActivity"
+            android:exported="false"
+            android:process=":crash"
+            android:theme="@style/Theme.FinalBenchmark2" />
     </application>
 
 </manifest>

@@ -7,8 +7,7 @@ class FinalBenchmark2Application : Application() {
         super.onCreate()
         val defaultHandler = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
-            GlobalCrashHandler.saveCrash(this, throwable)
-            defaultHandler?.uncaughtException(thread, throwable)
+            GlobalCrashHandler.handle(applicationContext, throwable, defaultHandler)
         }
     }
 }
