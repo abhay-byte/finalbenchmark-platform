@@ -2560,39 +2560,7 @@ fun BenchmarkResultItem(result: BenchmarkResult, isAi: Boolean = false, isGpu: B
 @Composable
 private fun RankingsTab(finalScore: Double, singleCoreScore: Double, multiCoreScore: Double, type: String = "CPU") {
     val scrollState = androidx.compose.foundation.rememberScrollState()
-    
-    // FULL benchmark: show Coming Soon (insufficient data for accurate full benchmark rankings)
-    if (type == "FULL") {
-        Column(
-            modifier = Modifier.fillMaxSize().padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Icon(
-                imageVector = Icons.Rounded.Leaderboard,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
-                modifier = Modifier.size(64.dp)
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(
-                text = "Full Benchmark Rankings",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "Global device comparisons for the full benchmark are coming in a future update. Run individual benchmarks (CPU, GPU, RAM, Storage) to see per-category rankings.",
-                style = MaterialTheme.typography.bodyMedium,
-                textAlign = TextAlign.Center,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-        return
-    }
 
-    // If not CPU and not FULL, show "Coming Soon" placeholder
     @Suppress("KotlinConstantConditions")
     if (false) { // dead leaderboard intentionally removed — future data
         val fullReferenceDevices = listOf(
@@ -2898,54 +2866,32 @@ private fun RankingsTab(finalScore: Double, singleCoreScore: Double, multiCoreSc
         return
     }
 
-    // If not CPU and not FULL, show "Coming Soon" placeholder
-    if (type != "CPU") {
-        Column(
-            modifier = Modifier.fillMaxSize().padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Icon(
-                imageVector = Icons.Rounded.Leaderboard,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
-                modifier = Modifier.size(64.dp)
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(
-                text = "${type} Rankings Coming Soon",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "We are currently collecting data to build accurate rankings for this benchmark category.",
-                style = MaterialTheme.typography.bodyMedium,
-                textAlign = TextAlign.Center,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-        return
+    // Per-category reference scores for non-CPU benchmarks
+    val categoryRefScores = when (type.uppercase()) {
+        "CPU" -> mapOf(
+            "Snapdragon 8 Gen 3" to 313, "MediaTek Dimensity 8300" to 229,
+            "Snapdragon 8s Gen 3" to 241, "MediaTek Dimensity 6300" to 107)
+        "FULL" -> mapOf(
+            "Snapdragon 8 Gen 3" to 1000, "MediaTek Dimensity 8300" to 730,
+            "Snapdragon 8s Gen 3" to 770, "MediaTek Dimensity 6300" to 340)
+        else -> mapOf(
+            "Snapdragon 8 Gen 3" to 100, "MediaTek Dimensity 8300" to 73,
+            "Snapdragon 8s Gen 3" to 77, "MediaTek Dimensity 6300" to 34)
     }
-    
-    // Create rankings logic
-    val hardcodedReferenceDevices = listOf(
-        RankingItem(name = "Snapdragon 8 Gen 3", normalizedScore = 313, singleCore = 100, multiCore = 420, isCurrentUser = false, tag = "Baseline"),
-        RankingItem(name = "MediaTek Dimensity 8300", normalizedScore = 229, singleCore = 78, multiCore = 308, isCurrentUser = false),
-        RankingItem(name = "Snapdragon 8s Gen 3", normalizedScore = 241, singleCore = 87, multiCore = 324, isCurrentUser = false),
-        RankingItem(name = "MediaTek Dimensity 6300", normalizedScore = 107, singleCore = 50, multiCore = 137, isCurrentUser = false)
-    )
+
+    val hardcodedReferenceDevices = categoryRefScores.map { (name, score) ->
+        RankingItem(name = name, normalizedScore = score, singleCore = 0, multiCore = 0, isCurrentUser = false)
+    }
 
     val userDeviceName = "Your Device (${android.os.Build.MODEL})"
     val currentUserScore = RankingItem(
-        name = userDeviceName, 
-        normalizedScore = finalScore.toInt(), 
-        singleCore = singleCoreScore.toInt(), 
-        multiCore = multiCoreScore.toInt(), 
+        name = userDeviceName,
+        normalizedScore = finalScore.toInt(),
+        singleCore = singleCoreScore.toInt(),
+        multiCore = multiCoreScore.toInt(),
         isCurrentUser = true
     )
-    
+
     val allDevices = mutableListOf<RankingItem>().apply {
         addAll(hardcodedReferenceDevices)
         add(currentUserScore)

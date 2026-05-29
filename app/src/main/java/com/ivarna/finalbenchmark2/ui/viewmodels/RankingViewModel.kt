@@ -60,134 +60,89 @@ class RankingViewModel(private val repository: HistoryRepository) : ViewModel() 
     private val _screenState = MutableStateFlow<RankingScreenState>(RankingScreenState.Loading)
     val screenState: StateFlow<RankingScreenState> = _screenState.asStateFlow()
 
-    private val hardcodedReferenceDevices =
-            listOf(
-                    RankingItem(
-                            name = "Snapdragon 8 Gen 3",
-                            normalizedScore = 313,
-                            singleCore = 100,
-                            multiCore = 420,
-                            isCurrentUser = false,
-                            tag = "Baseline",
-                            benchmarkDetails = BenchmarkDetails(
-                                    // Single-Core Mops/s values
-                                    singleCorePrimeNumberMops = 749.24,
-                                    singleCoreFibonacciMops = 5.08,
-                                    singleCoreMatrixMultiplicationMops = 3866.91,
-                                    singleCoreHashComputingMops = 145.33,
-                                    singleCoreStringSortingMops = 128.87,
-                                    singleCoreRayTracingMops = 9.57,
-                                    singleCoreCompressionMops = 761.08,
-                                    singleCoreMonteCarloMops = 288.75,
-                                    singleCoreJsonParsingMops = 191777.09,
-                                    singleCoreNQueensMops = 162.15,
-                                    // Multi-Core Mops/s values
-                                    multiCorePrimeNumberMops = 3719.17,
-                                    multiCoreFibonacciMops = 12.47,
-                                    multiCoreMatrixMultiplicationMops = 14650.46,
-                                    multiCoreHashComputingMops = 868.06,
-                                    multiCoreStringSortingMops = 417.69,
-                                    multiCoreRayTracingMops = 34.00,
-                                    multiCoreCompressionMops = 3003.44,
-                                    multiCoreMonteCarloMops = 1677.13,
-                                    multiCoreJsonParsingMops = 911354.73,
-                                    multiCoreNQueensMops = 705.80
-                            )
-                    ),
-                    RankingItem(
-                            name = "MediaTek Dimensity 8300",
-                            normalizedScore = 229,
-                            singleCore = 78,
-                            multiCore = 308,
-                            isCurrentUser = false,
-                            benchmarkDetails = BenchmarkDetails(
-                                    // Single-Core Mops/s values
-                                    singleCorePrimeNumberMops = 625.40,
-                                    singleCoreFibonacciMops = 2.88,
-                                    singleCoreMatrixMultiplicationMops = 3298.27,
-                                    singleCoreHashComputingMops = 144.73,
-                                    singleCoreStringSortingMops = 85.99,
-                                    singleCoreRayTracingMops = 6.54,
-                                    singleCoreCompressionMops = 599.36,
-                                    singleCoreMonteCarloMops = 287.48,
-                                    singleCoreJsonParsingMops = 179443.60,
-                                    singleCoreNQueensMops = 135.89,
-                                    // Multi-Core Mops/s values
-                                    multiCorePrimeNumberMops = 2737.43,
-                                    multiCoreFibonacciMops = 10.27,
-                                    multiCoreMatrixMultiplicationMops = 9338.83,
-                                    multiCoreHashComputingMops = 677.19,
-                                    multiCoreStringSortingMops = 326.97,
-                                    multiCoreRayTracingMops = 24.19,
-                                    multiCoreCompressionMops = 2025.99,
-                                    multiCoreMonteCarloMops = 1029.77,
-                                    multiCoreJsonParsingMops = 653679.47,
-                                    multiCoreNQueensMops = 547.86
-                            )
-                    ),
-                    RankingItem(
-                            name = "Snapdragon 8s Gen 3",
-                            normalizedScore = 241,
-                            singleCore = 87,
-                            multiCore = 324,
-                            isCurrentUser = false,
-                            benchmarkDetails = BenchmarkDetails(
-                                    // Single-Core Mops/s values
-                                    singleCorePrimeNumberMops = 658.16,
-                                    singleCoreFibonacciMops = 4.24,
-                                    singleCoreMatrixMultiplicationMops = 4147.30,
-                                    singleCoreHashComputingMops = 127.95,
-                                    singleCoreStringSortingMops = 113.73,
-                                    singleCoreRayTracingMops = 4.42,
-                                    singleCoreCompressionMops = 698.35,
-                                    singleCoreMonteCarloMops = 254.83,
-                                    singleCoreJsonParsingMops = 165987.21,
-                                    singleCoreNQueensMops = 149.82,
-                                    // Multi-Core Mops/s values
-                                    multiCorePrimeNumberMops = 2885.54,
-                                    multiCoreFibonacciMops = 11.51,
-                                    multiCoreMatrixMultiplicationMops = 11969.48,
-                                    multiCoreHashComputingMops = 694.42,
-                                    multiCoreStringSortingMops = 302.24,
-                                    multiCoreRayTracingMops = 14.79,
-                                    multiCoreCompressionMops = 2470.87,
-                                    multiCoreMonteCarloMops = 1299.32,
-                                    multiCoreJsonParsingMops = 757936.81,
-                                    multiCoreNQueensMops = 586.43
-                            )
-                    ),
-                    RankingItem(
-                            name = "MediaTek Dimensity 6300",
-                            normalizedScore = 107,
-                            singleCore = 50,
-                            multiCore = 137,
-                            isCurrentUser = false,
-                            benchmarkDetails = BenchmarkDetails(
-                                    // Single-Core Mops/s values
-                                    singleCorePrimeNumberMops = 464.02,
-                                    singleCoreFibonacciMops = 1.80,
-                                    singleCoreMatrixMultiplicationMops = 1986.88,
-                                    singleCoreHashComputingMops = 114.44,
-                                    singleCoreStringSortingMops = 50.67,
-                                    singleCoreRayTracingMops = 2.36,
-                                    singleCoreCompressionMops = 314.09,
-                                    singleCoreMonteCarloMops = 202.73,
-                                    singleCoreJsonParsingMops = 108521.36,
-                                    singleCoreNQueensMops = 92.03,
-                                    // Multi-Core Mops/s values
-                                    multiCorePrimeNumberMops = 1211.56,
-                                    multiCoreFibonacciMops = 4.42,
-                                    multiCoreMatrixMultiplicationMops = 3742.13,
-                                    multiCoreHashComputingMops = 380.52,
-                                    multiCoreStringSortingMops = 137.24,
-                                    multiCoreRayTracingMops = 5.98,
-                                    multiCoreCompressionMops = 915.59,
-                                    multiCoreMonteCarloMops = 690.68,
-                                    multiCoreJsonParsingMops = 283666.70,
-                                    multiCoreNQueensMops = 292.12
-                            )
-                    )
-            )
+    // --- Per-category reference devices ---
+
+    private val cpuReferenceDevices = listOf(
+            RankingItem(name = "Snapdragon 8 Gen 3", normalizedScore = 313, singleCore = 100, multiCore = 420, tag = "Baseline",
+                    benchmarkDetails = BenchmarkDetails(
+                            singleCorePrimeNumberMops = 749.24, singleCoreFibonacciMops = 5.08,
+                            singleCoreMatrixMultiplicationMops = 3866.91, singleCoreHashComputingMops = 145.33,
+                            singleCoreStringSortingMops = 128.87, singleCoreRayTracingMops = 9.57,
+                            singleCoreCompressionMops = 761.08, singleCoreMonteCarloMops = 288.75,
+                            singleCoreJsonParsingMops = 191777.09, singleCoreNQueensMops = 162.15,
+                            multiCorePrimeNumberMops = 3719.17, multiCoreFibonacciMops = 12.47,
+                            multiCoreMatrixMultiplicationMops = 14650.46, multiCoreHashComputingMops = 868.06,
+                            multiCoreStringSortingMops = 417.69, multiCoreRayTracingMops = 34.00,
+                            multiCoreCompressionMops = 3003.44, multiCoreMonteCarloMops = 1677.13,
+                            multiCoreJsonParsingMops = 911354.73, multiCoreNQueensMops = 705.80)),
+            RankingItem(name = "MediaTek Dimensity 8300", normalizedScore = 229, singleCore = 78, multiCore = 308,
+                    benchmarkDetails = BenchmarkDetails(
+                            singleCorePrimeNumberMops = 625.40, singleCoreFibonacciMops = 2.88,
+                            singleCoreMatrixMultiplicationMops = 3298.27, singleCoreHashComputingMops = 144.73,
+                            singleCoreStringSortingMops = 85.99, singleCoreRayTracingMops = 6.54,
+                            singleCoreCompressionMops = 599.36, singleCoreMonteCarloMops = 287.48,
+                            singleCoreJsonParsingMops = 179443.60, singleCoreNQueensMops = 135.89,
+                            multiCorePrimeNumberMops = 2737.43, multiCoreFibonacciMops = 10.27,
+                            multiCoreMatrixMultiplicationMops = 9338.83, multiCoreHashComputingMops = 677.19,
+                            multiCoreStringSortingMops = 326.97, multiCoreRayTracingMops = 24.19,
+                            multiCoreCompressionMops = 2025.99, multiCoreMonteCarloMops = 1029.77,
+                            multiCoreJsonParsingMops = 653679.47, multiCoreNQueensMops = 547.86)),
+            RankingItem(name = "Snapdragon 8s Gen 3", normalizedScore = 241, singleCore = 87, multiCore = 324,
+                    benchmarkDetails = BenchmarkDetails(
+                            singleCorePrimeNumberMops = 658.16, singleCoreFibonacciMops = 4.24,
+                            singleCoreMatrixMultiplicationMops = 4147.30, singleCoreHashComputingMops = 127.95,
+                            singleCoreStringSortingMops = 113.73, singleCoreRayTracingMops = 4.42,
+                            singleCoreCompressionMops = 698.35, singleCoreMonteCarloMops = 254.83,
+                            singleCoreJsonParsingMops = 165987.21, singleCoreNQueensMops = 149.82,
+                            multiCorePrimeNumberMops = 2885.54, multiCoreFibonacciMops = 11.51,
+                            multiCoreMatrixMultiplicationMops = 11969.48, multiCoreHashComputingMops = 694.42,
+                            multiCoreStringSortingMops = 302.24, multiCoreRayTracingMops = 14.79,
+                            multiCoreCompressionMops = 2470.87, multiCoreMonteCarloMops = 1299.32,
+                            multiCoreJsonParsingMops = 757936.81, multiCoreNQueensMops = 586.43)),
+            RankingItem(name = "MediaTek Dimensity 6300", normalizedScore = 107, singleCore = 50, multiCore = 137,
+                    benchmarkDetails = BenchmarkDetails(
+                            singleCorePrimeNumberMops = 464.02, singleCoreFibonacciMops = 1.80,
+                            singleCoreMatrixMultiplicationMops = 1986.88, singleCoreHashComputingMops = 114.44,
+                            singleCoreStringSortingMops = 50.67, singleCoreRayTracingMops = 2.36,
+                            singleCoreCompressionMops = 314.09, singleCoreMonteCarloMops = 202.73,
+                            singleCoreJsonParsingMops = 108521.36, singleCoreNQueensMops = 92.03,
+                            multiCorePrimeNumberMops = 1211.56, multiCoreFibonacciMops = 4.42,
+                            multiCoreMatrixMultiplicationMops = 3742.13, multiCoreHashComputingMops = 380.52,
+                            multiCoreStringSortingMops = 137.24, multiCoreRayTracingMops = 5.98,
+                            multiCoreCompressionMops = 915.59, multiCoreMonteCarloMops = 690.68,
+                            multiCoreJsonParsingMops = 283666.70, multiCoreNQueensMops = 292.12))
+    )
+
+    /**
+     * Per-category reference scores for non-CPU benchmarks.
+     * SD8Gen3 = baseline (GPU/RAM/Storage/AI/Productivity = 100, FULL = 1000).
+     * Other devices scaled proportionally to their CPU ratio.
+     */
+    private val nonCpuReferenceScores = mapOf(
+            "Snapdragon 8 Gen 3" to 100,
+            "MediaTek Dimensity 8300" to 73,   // 229/313 ≈ 73%
+            "Snapdragon 8s Gen 3" to 77,       // 241/313 ≈ 77%
+            "MediaTek Dimensity 6300" to 34    // 107/313 ≈ 34%
+    )
+
+    private val fullReferenceScores = mapOf(
+            "Snapdragon 8 Gen 3" to 1000,
+            "MediaTek Dimensity 8300" to 730,
+            "Snapdragon 8s Gen 3" to 770,
+            "MediaTek Dimensity 6300" to 340
+    )
+
+    private fun getReferenceDevices(category: String): List<RankingItem> {
+        return when (category.uppercase()) {
+            "CPU" -> cpuReferenceDevices
+            "FULL" -> fullReferenceScores.map { (name, score) ->
+                RankingItem(name = name, normalizedScore = score, singleCore = 0, multiCore = 0)
+            }
+            else -> nonCpuReferenceScores.map { (name, score) ->
+                RankingItem(name = name, normalizedScore = score, singleCore = 0, multiCore = 0)
+            }
+        }
+    }
 
     init {
         loadRankings()
@@ -195,112 +150,92 @@ class RankingViewModel(private val repository: HistoryRepository) : ViewModel() 
 
     fun selectCategory(category: String) {
         _selectedCategory.value = category
+        loadRankings()
     }
 
     private fun loadRankings() {
         viewModelScope.launch {
             try {
                 _screenState.value = RankingScreenState.Loading
-
-                // Fetch the highest CPU score from the user's device
+                val category = _selectedCategory.value.uppercase()
                 val userDeviceName = "Your Device (${Build.MODEL})"
-                var userScore: RankingItem? = null
 
-                // Collect the latest results to find the highest CPU score
                 repository.getAllResults().collect { benchmarkResults ->
-                    val highestCpuScore =
-                            benchmarkResults
-                                    .filter {
-                                        it.benchmarkResult.type.contains("CPU", ignoreCase = true)
-                                    }
-                                    .maxByOrNull { it.benchmarkResult.normalizedScore }
+                    val filtered = benchmarkResults.filter {
+                        if (category == "FULL")
+                            it.benchmarkResult.type.equals("FULL", ignoreCase = true)
+                        else
+                            it.benchmarkResult.type.equals(category, ignoreCase = true)
+                    }
+                    val highestScore = filtered.maxByOrNull { it.benchmarkResult.normalizedScore }
 
-                    if (highestCpuScore != null) {
-                        // Parse detailed results JSON to extract separate single-core and multi-core Mops/s
-                        val details = try {
-                            val gson = com.google.gson.Gson()
-                            val detailedResultsJson = highestCpuScore.benchmarkResult.detailedResultsJson
-                            val benchmarkResults = gson.fromJson(
-                                detailedResultsJson,
-                                Array<com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkResult>::class.java
-                            ).toList()
-                            
-                            // Helper function to find Mops/s for a specific benchmark
-                            // Note: Database stores opsPerSecond, need to convert to Mops/s
-                            fun findMops(prefix: String, testName: String): Double {
-                                val opsPerSecond = benchmarkResults
-                                    .firstOrNull { it.name == "$prefix $testName" }
-                                    ?.opsPerSecond ?: 0.0
-                                return opsPerSecond / 1_000_000.0  // Convert ops/s to Mops/s
-                            }
-                            
-                            BenchmarkDetails(
-                                // Single-Core Mops/s values
-                                singleCorePrimeNumberMops = findMops("Single-Core", "Prime Generation"),
-                                singleCoreFibonacciMops = findMops("Single-Core", "Fibonacci Iterative"),
-                                singleCoreMatrixMultiplicationMops = findMops("Single-Core", "Matrix Multiplication"),
-                                singleCoreHashComputingMops = findMops("Single-Core", "Hash Computing"),
-                                singleCoreStringSortingMops = findMops("Single-Core", "String Sorting"),
-                                singleCoreRayTracingMops = findMops("Single-Core", "Ray Tracing"),
-                                singleCoreCompressionMops = findMops("Single-Core", "Compression"),
-                                singleCoreMonteCarloMops = findMops("Single-Core", "Monte Carlo π"),
-                                singleCoreJsonParsingMops = findMops("Single-Core", "JSON Parsing"),
-                                singleCoreNQueensMops = findMops("Single-Core", "N-Queens"),
-                                // Multi-Core Mops/s values
-                                multiCorePrimeNumberMops = findMops("Multi-Core", "Prime Generation"),
-                                multiCoreFibonacciMops = findMops("Multi-Core", "Fibonacci Iterative"),
-                                multiCoreMatrixMultiplicationMops = findMops("Multi-Core", "Matrix Multiplication"),
-                                multiCoreHashComputingMops = findMops("Multi-Core", "Hash Computing"),
-                                multiCoreStringSortingMops = findMops("Multi-Core", "String Sorting"),
-                                multiCoreRayTracingMops = findMops("Multi-Core", "Ray Tracing"),
-                                multiCoreCompressionMops = findMops("Multi-Core", "Compression"),
-                                multiCoreMonteCarloMops = findMops("Multi-Core", "Monte Carlo π"),
-                                multiCoreJsonParsingMops = findMops("Multi-Core", "JSON Parsing"),
-                                multiCoreNQueensMops = findMops("Multi-Core", "N-Queens")
-                            )
-                        } catch (e: Exception) {
-                            null
-                        }
-                        
-                        userScore =
-                                RankingItem(
-                                        name = userDeviceName,
-                                        normalizedScore =
-                                                highestCpuScore.benchmarkResult.normalizedScore
-                                                        .toInt(),
-                                        singleCore =
-                                                highestCpuScore.benchmarkResult.singleCoreScore
-                                                        .toInt(),
-                                        multiCore =
-                                                highestCpuScore.benchmarkResult.multiCoreScore
-                                                        .toInt(),
-                                        isCurrentUser = true,
-                                        benchmarkDetails = details
-                                )
+                    var userScore: RankingItem? = null
+                    if (highestScore != null) {
+                        val details = if (category == "CPU") parseCpuDetails(highestScore) else null
+                        userScore = RankingItem(
+                                name = userDeviceName,
+                                normalizedScore = highestScore.benchmarkResult.normalizedScore.toInt(),
+                                singleCore = highestScore.benchmarkResult.singleCoreScore.toInt(),
+                                multiCore = highestScore.benchmarkResult.multiCoreScore.toInt(),
+                                isCurrentUser = true,
+                                benchmarkDetails = details
+                        )
                     }
 
-                    // Merge and sort
-                    val allDevices =
-                            mutableListOf<RankingItem>().apply {
-                                addAll(hardcodedReferenceDevices)
-                                if (userScore != null) {
-                                    add(userScore!!)
-                                }
-                            }
+                    val refDevices = getReferenceDevices(category.uppercase())
+                    val allDevices = mutableListOf<RankingItem>().apply {
+                        addAll(refDevices)
+                        if (userScore != null) add(userScore)
+                    }
 
-                    // Sort by normalized score in descending order and assign ranks
-                    val rankedItems =
-                            allDevices.sortedByDescending { it.normalizedScore }.mapIndexed {
-                                    index,
-                                    item ->
-                                item.copy(rank = index + 1)
-                            }
+                    val rankedItems = allDevices.sortedByDescending { it.normalizedScore }
+                            .mapIndexed { index, item -> item.copy(rank = index + 1) }
 
                     _screenState.value = RankingScreenState.Success(rankedItems)
                 }
             } catch (e: Exception) {
                 _screenState.value = RankingScreenState.Error
             }
+        }
+    }
+
+    private fun parseCpuDetails(highestScore: com.ivarna.finalbenchmark2.data.database.entities.BenchmarkWithCpuData): BenchmarkDetails? {
+        return try {
+            val gson = com.google.gson.Gson()
+            val results = gson.fromJson(
+                    highestScore.benchmarkResult.detailedResultsJson,
+                    Array<com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkResult>::class.java
+            ).toList()
+
+            fun findMops(prefix: String, testName: String): Double {
+                val ops = results.firstOrNull { it.name == "$prefix $testName" }?.opsPerSecond ?: 0.0
+                return ops / 1_000_000.0
+            }
+
+            BenchmarkDetails(
+                    singleCorePrimeNumberMops = findMops("Single-Core", "Prime Generation"),
+                    singleCoreFibonacciMops = findMops("Single-Core", "Fibonacci Iterative"),
+                    singleCoreMatrixMultiplicationMops = findMops("Single-Core", "Matrix Multiplication"),
+                    singleCoreHashComputingMops = findMops("Single-Core", "Hash Computing"),
+                    singleCoreStringSortingMops = findMops("Single-Core", "String Sorting"),
+                    singleCoreRayTracingMops = findMops("Single-Core", "Ray Tracing"),
+                    singleCoreCompressionMops = findMops("Single-Core", "Compression"),
+                    singleCoreMonteCarloMops = findMops("Single-Core", "Monte Carlo π"),
+                    singleCoreJsonParsingMops = findMops("Single-Core", "JSON Parsing"),
+                    singleCoreNQueensMops = findMops("Single-Core", "N-Queens"),
+                    multiCorePrimeNumberMops = findMops("Multi-Core", "Prime Generation"),
+                    multiCoreFibonacciMops = findMops("Multi-Core", "Fibonacci Iterative"),
+                    multiCoreMatrixMultiplicationMops = findMops("Multi-Core", "Matrix Multiplication"),
+                    multiCoreHashComputingMops = findMops("Multi-Core", "Hash Computing"),
+                    multiCoreStringSortingMops = findMops("Multi-Core", "String Sorting"),
+                    multiCoreRayTracingMops = findMops("Multi-Core", "Ray Tracing"),
+                    multiCoreCompressionMops = findMops("Multi-Core", "Compression"),
+                    multiCoreMonteCarloMops = findMops("Multi-Core", "Monte Carlo π"),
+                    multiCoreJsonParsingMops = findMops("Multi-Core", "JSON Parsing"),
+                    multiCoreNQueensMops = findMops("Multi-Core", "N-Queens")
+            )
+        } catch (e: Exception) {
+            null
         }
     }
 }

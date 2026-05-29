@@ -118,14 +118,11 @@ fun RankingsScreen(
                         LoadingContent()
                     }
                     is RankingScreenState.Success -> {
-                        if (selectedCategory == "CPU") {
-                            CpuRankingList(
-                                rankings = state.rankings,
-                                onItemClick = onDeviceClick
-                            )
-                        } else {
-                            ComingSoonContent(category = selectedCategory)
-                        }
+                        RankingList(
+                            category = selectedCategory,
+                            rankings = state.rankings,
+                            onItemClick = onDeviceClick
+                        )
                     }
                     is RankingScreenState.Error -> {
                         ErrorContent()
@@ -194,7 +191,8 @@ private fun RankingFilterBar(
 }
 
 @Composable
-private fun CpuRankingList(
+private fun RankingList(
+    category: String,
     rankings: List<RankingItem>,
     onItemClick: (RankingItem) -> Unit
 ) {
@@ -207,8 +205,9 @@ private fun CpuRankingList(
         itemsIndexed(rankings) { index, item ->
             RankingItemCard(
                 item = item,
+                category = category,
                 onClick = { onItemClick(item) },
-                delayMillis = index * 50 // Staggered delay: 50ms per item
+                delayMillis = index * 50
             )
         }
     }
@@ -217,6 +216,7 @@ private fun CpuRankingList(
 @Composable
 private fun RankingItemCard(
     item: RankingItem,
+    category: String = "CPU",
     onClick: () -> Unit,
     delayMillis: Int = 0
 ) {
