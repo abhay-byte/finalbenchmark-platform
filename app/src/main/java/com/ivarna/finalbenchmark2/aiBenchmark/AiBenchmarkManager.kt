@@ -740,10 +740,12 @@ class AiBenchmarkManager(private val context: Context) {
     // Core delegate + interpreter builder — SINGLE interpreter, delegate fallback (#2)
     // Returns Triple<Interpreter, NnApiDelegate?, GpuDelegate?> + AccelerationMode
     //
-    // Strategy (updated: NNAPI deprecated on Android 15+ / API 35+):
-    //   1. GPU delegate (OpenCL on Adreno/Mali) — primary hardware path
-    //   2. GPU delegate force-try (CompatibilityList sometimes lies on new Android)
-    //   3. NNAPI (only on API < 35 — still functional on older Android)
+    // Strategy: NPU first, then GPU, then CPU.
+    // NNAPI deprecated on Android 15+ (API 35+) → skipped on those devices.
+    // LiteRT 1.4.2+ has 16KB page support for GPU delegate on API 35+.
+    //   1. NNAPI (API < 35 only — still works on older Android)
+    //   2. GPU delegate with CompatibilityList (OpenCL on Adreno/Mali)
+    //   3. GPU delegate force-try (CompatibilityList can lie on new Android)
     //   4. CPU XNNPACK fallback
     // ---------------------------------------------------------------------------
     private fun buildInterpreterWithFallback(
@@ -754,13 +756,35 @@ class AiBenchmarkManager(private val context: Context) {
         var nnApiDelegate: NnApiDelegate? = null
         var gpuDelegate: GpuDelegate? = null
 
-        // Attempt 1a: GPU via CompatibilityList (primary — OpenCL on Adreno/Mali)
+        // Attempt 1: NNAPI (NPU) — only on API < 35 (deprecated on Android 15+)
+        if (useNpu && Build.VERSION.SDK_INT in Build.VERSION_CODES.P..34) {
+            try {
+                Log.d(TAG, "[$benchmarkName] NNAPI (API ${Build.VERSION.SDK_INT})...")
+                nnApiDelegate = NnApiDelegate(NnApiDelegate.Options().apply {
+                    setAllowFp16(true)
+                    setExecutionPreference(NnApiDelegate.Options.EXECUTION_PREFERENCE_FAST_SINGLE_ANSWER)
+                })
+                val opts = Interpreter.Options().addDelegate(nnApiDelegate)
+                val interpreter = Interpreter(modelBuffer, opts)
+                Log.d(TAG, "[$benchmarkName] NNAPI SUCCESS")
+                return Triple(interpreter, nnApiDelegate, null) to AccelerationMode.NPU
+            } catch (e: Exception) {
+                Log.w(TAG, "[$benchmarkName] NNAPI failed: ${e.message}")
+                nnApiDelegate?.close()
+                nnApiDelegate = null
+            }
+        } else if (Build.VERSION.SDK_INT >= 35) {
+            Log.d(TAG, "[$benchmarkName] Skipping NNAPI (deprecated API ${Build.VERSION.SDK_INT})")
+        }
+
+        // Attempt 2a: GPU via CompatibilityList (OpenCL on Adreno/Mali)
         try {
             val compatList = CompatibilityList()
             if (compatList.isDelegateSupportedOnThisDevice) {
                 Log.d(TAG, "[$benchmarkName] GPU delegate (CompatibilityList)...")
                 gpuDelegate = GpuDelegate(compatList.bestOptionsForThisDevice)
                 val opts = Interpreter.Options().addDelegate(gpuDelegate)
+                modelBuffer.rewind()
                 val interpreter = Interpreter(modelBuffer, opts)
                 Log.d(TAG, "[$benchmarkName] GPU delegate SUCCESS")
                 compatList.close()
@@ -774,8 +798,7 @@ class AiBenchmarkManager(private val context: Context) {
             gpuDelegate = null
         }
 
-        // Attempt 1b: GPU force-try — OpenCL often works on Adreno/Mali even when
-        // CompatibilityList reports unsupported (common on API 35+).
+        // Attempt 2b: GPU force-try — OpenCL often works on Adreno/Mali
         try {
             Log.d(TAG, "[$benchmarkName] GPU delegate force-trying...")
             gpuDelegate = GpuDelegate()
@@ -788,28 +811,6 @@ class AiBenchmarkManager(private val context: Context) {
             Log.w(TAG, "[$benchmarkName] GPU force-try failed: ${e.message}")
             gpuDelegate?.close()
             gpuDelegate = null
-        }
-
-        // Attempt 2: NNAPI (only on API < 35 — NNAPI deprecated on Android 15+)
-        if (useNpu && Build.VERSION.SDK_INT in Build.VERSION_CODES.P..34) {
-            try {
-                Log.d(TAG, "[$benchmarkName] NNAPI (API ${Build.VERSION.SDK_INT} < 35)...")
-                nnApiDelegate = NnApiDelegate(NnApiDelegate.Options().apply {
-                    setAllowFp16(true)
-                    setExecutionPreference(NnApiDelegate.Options.EXECUTION_PREFERENCE_FAST_SINGLE_ANSWER)
-                })
-                val opts = Interpreter.Options().addDelegate(nnApiDelegate)
-                modelBuffer.rewind()
-                val interpreter = Interpreter(modelBuffer, opts)
-                Log.d(TAG, "[$benchmarkName] NNAPI SUCCESS")
-                return Triple(interpreter, nnApiDelegate, null) to AccelerationMode.NPU
-            } catch (e: Exception) {
-                Log.w(TAG, "[$benchmarkName] NNAPI failed: ${e.message}")
-                nnApiDelegate?.close()
-                nnApiDelegate = null
-            }
-        } else if (Build.VERSION.SDK_INT >= 35) {
-            Log.d(TAG, "[$benchmarkName] Skipping NNAPI (deprecated on API ${Build.VERSION.SDK_INT})")
         }
 
         // Attempt 3: CPU XNNPACK

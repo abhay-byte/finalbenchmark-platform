@@ -156,11 +156,10 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
 
-    // LiteRT (New Google AI Edge) - Replaces TensorFlow Lite
-    // LiteRT (New Google AI Edge) - Replaces TensorFlow Lite
-    implementation("com.google.ai.edge.litert:litert:1.0.1")
-    implementation("com.google.ai.edge.litert:litert-gpu:1.0.1")
-    implementation("com.google.ai.edge.litert:litert-gpu-api:1.0.1")
+    // LiteRT (Google AI Edge) 1.4.2 — 16KB page alignment on Android 15+
+    implementation("com.google.ai.edge.litert:litert:1.4.2")
+    implementation("com.google.ai.edge.litert:litert-gpu:1.4.2")
+    implementation("com.google.ai.edge.litert:litert-gpu-api:1.4.2")
     implementation("com.google.mediapipe:tasks-genai:0.10.14")
 
     
