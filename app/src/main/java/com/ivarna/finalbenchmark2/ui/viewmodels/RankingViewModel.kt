@@ -135,10 +135,6 @@ class RankingViewModel(private val repository: HistoryRepository) : ViewModel() 
             "LPDDR4X" to 60
     )
 
-    private val storageReferenceDevices = mapOf(
-            "UFS 4.0" to 100
-    )
-
     private val nonCpuReferenceScores = mapOf(
             "Snapdragon 8 Gen 3" to 100,
             "MediaTek Dimensity 8300" to 73,
@@ -157,19 +153,19 @@ class RankingViewModel(private val repository: HistoryRepository) : ViewModel() 
         val cat = category.uppercase()
         return when (cat) {
             "CPU" -> cpuReferenceDevices
-            "FULL" -> fullReferenceScores.map { (name, score) ->
+            "FULL" -> fullReferenceScores.asIterable().map { (name, score) ->
                 RankingItem(name = name, normalizedScore = score, singleCore = 0, multiCore = 0, category = "FULL")
             }
-            "GPU" -> gpuReferenceDevices.entries.distinctBy { it.key }.map { (name, score) ->
+            "GPU" -> gpuReferenceDevices.asIterable().map { (name, score) ->
                 RankingItem(name = name, normalizedScore = score, singleCore = 0, multiCore = 0, category = "GPU")
             }
-            "STORAGE" -> storageReferenceDevices.entries.distinctBy { it.key }.map { (name, score) ->
+            "STORAGE" -> storageReferenceDevices.asIterable().map { (name, score) ->
                 RankingItem(name = name, normalizedScore = score, singleCore = 0, multiCore = 0, category = "STORAGE")
             }
-            "RAM" -> ramReferenceDevices.map { (name, score) ->
+            "RAM" -> ramReferenceDevices.asIterable().map { (name, score) ->
                 RankingItem(name = name, normalizedScore = score, singleCore = 0, multiCore = 0, category = "RAM")
             }
-            else -> nonCpuReferenceScores.map { (name, score) ->
+            else -> nonCpuReferenceScores.asIterable().map { (name, score) ->
                 RankingItem(name = name, normalizedScore = score, singleCore = 0, multiCore = 0, category = cat)
             }
         }
