@@ -740,12 +740,10 @@ class AiBenchmarkManager(private val context: Context) {
     // Core delegate + interpreter builder — SINGLE interpreter, delegate fallback (#2)
     // Returns Triple<Interpreter, NnApiDelegate?, GpuDelegate?> + AccelerationMode
     //
-    // Strategy: NPU first, then GPU, then CPU.
-    // NNAPI deprecated on Android 15+ (API 35+) → skipped on those devices.
-    // LiteRT 1.4.2+ has 16KB page support for GPU delegate on API 35+.
-    //   1. NNAPI (API < 35 only — still works on older Android)
+    // Strategy: NPU first → GPU → CPU.
+    //   1. NNAPI (NPU) — always tried first on API 27+
     //   2. GPU delegate with CompatibilityList (OpenCL on Adreno/Mali)
-    //   3. GPU delegate force-try (CompatibilityList can lie on new Android)
+    //   3. GPU delegate force-try (CompatibilityList can lie)
     //   4. CPU XNNPACK fallback
     // ---------------------------------------------------------------------------
     private fun buildInterpreterWithFallback(
@@ -756,8 +754,8 @@ class AiBenchmarkManager(private val context: Context) {
         var nnApiDelegate: NnApiDelegate? = null
         var gpuDelegate: GpuDelegate? = null
 
-        // Attempt 1: NNAPI (NPU) — only on API < 35 (deprecated on Android 15+)
-        if (useNpu && Build.VERSION.SDK_INT in Build.VERSION_CODES.P..34) {
+        // Attempt 1: NNAPI (NPU) — always try first
+        if (useNpu && Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             try {
                 Log.d(TAG, "[$benchmarkName] NNAPI (API ${Build.VERSION.SDK_INT})...")
                 nnApiDelegate = NnApiDelegate(NnApiDelegate.Options().apply {
@@ -773,8 +771,6 @@ class AiBenchmarkManager(private val context: Context) {
                 nnApiDelegate?.close()
                 nnApiDelegate = null
             }
-        } else if (Build.VERSION.SDK_INT >= 35) {
-            Log.d(TAG, "[$benchmarkName] Skipping NNAPI (deprecated API ${Build.VERSION.SDK_INT})")
         }
 
         // Attempt 2a: GPU via CompatibilityList (OpenCL on Adreno/Mali)
