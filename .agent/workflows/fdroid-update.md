@@ -1,152 +1,125 @@
 ---
-description: How to update F-Droid with a new app version
+description: How to prepare and publish a new FinalBenchmark release
 ---
 
-# F-Droid Version Update Workflow
-
-This workflow guides you through updating the F-Droid listing when releasing a new version of Final Benchmark 2.
+# Release Workflow
 
 ## Prerequisites
 
-- New version built and tested locally
 - Version code and version name updated in `app/build.gradle.kts`
-- All changes committed to main branch
+- Version text updated in `SettingsScreen.kt`
 
 ## Steps
 
-### 1. Update Version Information
+### 1. Clean Working Tree
 
-Update version in `app/build.gradle.kts`:
-```kotlin
-versionCode = <NEW_VERSION_CODE>
-versionName = "<NEW_VERSION_NAME>"
-```
+Ensure no uncommitted or untracked files. If any exist, stage, commit, and push.
 
-### 2. Commit and Tag Release
-
-// turbo
 ```bash
-git add app/build.gradle.kts
-git commit -m "chore: Bump version to <VERSION_NAME>"
+git status
+# If dirty:
+git add -A
+git commit -m "chore: cleanup before release v<VERSION_NAME>"
 git push origin main
 ```
 
-// turbo
+### 2. Build Release APK
+
 ```bash
-git tag -a v<VERSION_NAME> -m "Release v<VERSION_NAME>"
-git push origin v<VERSION_NAME>
+./gradlew assembleRelease
 ```
 
-### 3. Get Latest Commit Hash
+APK output: `app/build/outputs/apk/release/app-release.apk`
 
-// turbo
+### 3. Verify APK Commit Match
+
+Confirm the APK was built from the latest commit. Check `output-metadata.json` or compare timestamps.
+
 ```bash
 git log -1 --format="%H"
+ls -l app/build/outputs/apk/release/app-release.apk
 ```
 
-Copy the full commit hash (40 characters).
+### 4. Create Release MD File
 
-### 4. Update F-Droid Metadata
+If `app/release/release-<VERSION>.md` does not exist, create it. Base it on the previous release format and list all new features/fixes since the last tag.
 
-Navigate to fdroiddata repository:
 ```bash
-cd /home/abhay/repos/fdroiddata
-git pull origin master
-git checkout abhay-byte-7cc53eec-patch-16fe
+ls app/release/release-*.md
+git log <PREV_TAG>..HEAD --oneline  # gather changelog content
 ```
 
-Edit `metadata/com.ivarna.finalbenchmark2.yml`:
-- Update `commit:` with the new commit hash
-- Update `versionName:` with the new version
-- Update `versionCode:` with the new version code
-- Update `CurrentVersion:` and `CurrentVersionCode:` at the bottom
+Format: headings for each new benchmark category, bullet points for features/fixes.
 
-### 5. Verify Line Endings
+### 5. Create Changelog TXT (F-Droid)
 
-// turbo
+Create `fastlane/metadata/android/en-US/changelogs/<VERSION_CODE>.txt`. Point-wise, each line under 100 characters. List only new benchmark categories introduced (not CPU).
+
 ```bash
-file metadata/com.ivarna.finalbenchmark2.yml
+ls fastlane/metadata/android/en-US/changelogs/
 ```
 
-Should show "ASCII text" (not "with CRLF line terminators").
+### 6. Commit and Push Release Artifacts
 
-If needed, fix line endings:
 ```bash
-dos2unix metadata/com.ivarna.finalbenchmark2.yml
+git add app/release/ fastlane/metadata/android/en-US/changelogs/
+git commit -m "release: v<VERSION_NAME> — changelog and release notes"
+git push origin main
 ```
 
-### 6. Commit and Push to F-Droid
+### 7. Tag and Create GitHub Release
 
-// turbo
 ```bash
-git add metadata/com.ivarna.finalbenchmark2.yml
-git commit -m "Update Final Benchmark 2 to v<VERSION_NAME>"
-git push
+git log -1 --format="%H"  # copy commit hash
+
+# Tag
+git tag -a v<VERSION_NAME> -m "Release v<VERSION_NAME>"
+git push origin v<VERSION_NAME>
+
+# GitHub Release with APK attached
+gh release create v<VERSION_NAME> \
+  --title "v<VERSION_NAME>" \
+  --notes-file app/release/release-<VERSION>.md \
+  app/build/outputs/apk/release/app-release.apk
 ```
 
-### 7. Wait for CI Pipelines
+### 8. Verify Release Commit Match
 
-Monitor the F-Droid CI pipelines at:
-https://gitlab.com/abhay-byte/fdroiddata/-/pipelines
+Confirm the GitHub release tag points to the same commit that built the APK.
 
-Ensure all jobs pass:
-- ✅ fdroid build
-- ✅ check apk
-- ✅ checkupdates
-- ✅ fdroid lint
-- ✅ fdroid rewritemeta
-- ✅ git redirect
-- ✅ schema validation
-- ✅ tools check scripts
-
-### 8. Update Merge Request (if needed)
-
-If this is a new MR, comment on the existing merge request with:
+```bash
+git rev-list -1 v<VERSION_NAME>
+gh release view v<VERSION_NAME> --json tagName,targetCommitish
 ```
-Updated to v<VERSION_NAME> (commit: <SHORT_HASH>)
-```
+
+### 9. F-Droid (Auto)
+
+F-Droid metadata uses `UpdateCheckMode: Tags` — new tags are auto-picked up. No manual metadata update needed unless metadata fields change.
+
+---
 
 ## Quick Reference
 
-**Current F-Droid Branch**: `abhay-byte-7cc53eec-patch-16fe`
-
-**Metadata File**: `/home/abhay/repos/fdroiddata/metadata/com.ivarna.finalbenchmark2.yml`
-
-**Required Fields to Update**:
-- `commit:` - Full 40-character commit hash
-- `versionName:` - New version name (e.g., "0.2.26")
-- `versionCode:` - New version code (e.g., 4)
-- `CurrentVersion:` - Same as versionName
-- `CurrentVersionCode:` - Same as versionCode
+| Artifact | Path |
+|----------|------|
+| APK | `app/build/outputs/apk/release/app-release.apk` |
+| Release notes | `app/release/release-<VERSION>.md` |
+| Changelog | `fastlane/metadata/android/en-US/changelogs/<CODE>.txt` |
+| Metadata | `com.ivarna.finalbenchmark2.yml` |
 
 ## Troubleshooting
 
-### Line Ending Issues
-If `rewritemeta` job fails:
+### Dirty working tree before build
 ```bash
-dos2unix metadata/com.ivarna.finalbenchmark2.yml
-git add metadata/com.ivarna.finalbenchmark2.yml
-git commit --amend --no-edit
-git push --force
+git stash  # or commit changes
 ```
 
-### Build Failures
-Check the build log in F-Droid CI. Common issues:
-- NDK version mismatch (should be r27c)
-- Gradle version issues
-- Missing dependencies
+### APK not matching commit
+Rebuild: `./gradlew clean assembleRelease`
 
-### Tag Issues
-If tag needs to be updated:
+### Tag needs update
 ```bash
 git tag -d v<VERSION_NAME>
 git tag -a v<VERSION_NAME> -m "Release v<VERSION_NAME>"
 git push origin v<VERSION_NAME> --force
 ```
-
-## Notes
-
-- F-Droid builds from the tagged commit, so ensure the tag points to the correct commit
-- Reproducible builds are enabled, so F-Droid will verify the build matches
-- The gradle-wrapper.jar is excluded from F-Droid builds (they use their own)
-- Always verify line endings are LF (Unix) not CRLF (Windows)
