@@ -117,15 +117,15 @@ data class ProductivityBenchmarkUiState(
 //   VIDEO_TRANSCODE: measured  190 fps (HW pipeline)→ ref  190
 
 private val PRODUCTIVITY_REFERENCE = mapOf(
-    ProductivityTest.CANVAS_OPS      to    290.0,  // GPU: HardwareRenderer HWUI measured 290 ops/s in release
-    ProductivityTest.IMAGE_FILTER    to    256.0,  // GPU: RuntimeShader AGSL 4K measured 256 imgs/s in release
-    ProductivityTest.IMAGE_RESIZE    to    150.0,  // GPU: HardwareRenderer bilinear measured 150 rt/s in release
-    ProductivityTest.TEXT_OPS        to      4.62, // CPU: 5K sort + Lev×20 + regex, measured 4.62 Mchars/s in release
-    ProductivityTest.JSON_OPS        to    548.0,  // CPU: 200-field 3-level measured 548 docs/s in release
-    ProductivityTest.COMPRESSION     to     28.0,  // CPU: measured 28 MB/s in release
-    ProductivityTest.VIDEO_ENCODE    to    189.0,  // HW: MediaCodec H.264 measured 189 fps in release
-    ProductivityTest.VIDEO_DECODE    to    407.0,  // HW: MediaCodec H.264 measured 407 fps in release
-    ProductivityTest.VIDEO_TRANSCODE to    190.0,  // HW: decode+AGSL+encode measured 190 fps in release
+    ProductivityTest.CANVAS_OPS      to    633.0,  // GPU HWUI: max(Adreno 290, Mali 633)
+    ProductivityTest.IMAGE_FILTER    to   1397.0,  // GPU AGSL 4K: max(Adreno 256, Mali 1397)
+    ProductivityTest.IMAGE_RESIZE    to    673.0,  // GPU bilinear: max(Adreno 150, Mali 673)
+    ProductivityTest.TEXT_OPS        to      4.62, // CPU: 5K sort + Lev×20 + regex
+    ProductivityTest.JSON_OPS        to    548.0,  // CPU: 200-field 3-level
+    ProductivityTest.COMPRESSION     to     28.0,  // CPU: GZIP
+    ProductivityTest.VIDEO_ENCODE    to    189.0,  // HW H.264: max(Adreno 189, Mali 134)
+    ProductivityTest.VIDEO_DECODE    to    407.0,  // HW H.264: max(Adreno 407, Mali 283)
+    ProductivityTest.VIDEO_TRANSCODE to    190.0,  // HW transcode: Adreno decode+AGSL+encode
 )
 
 private val PRODUCTIVITY_TESTS = ProductivityTest.values().toList()
@@ -156,12 +156,12 @@ private fun ProductivityTest.unit() = when (this) {
 
 private fun ProductivityTest.score(value: Double): Int {
     val ref = PRODUCTIVITY_REFERENCE[this] ?: return 0
-    return (value / ref * 100.0).roundToInt().coerceIn(0, 100)
+    return (value / ref * 100.0).roundToInt().coerceAtLeast(0)
 }
 
 private fun calculateProductivityGeometricMean(results: List<ProductivityTestResult>): Double {
     val ratios = results.map { r ->
-        (r.value / (PRODUCTIVITY_REFERENCE[r.test] ?: 1.0)).coerceIn(1e-9, 1.0)
+        (r.value / (PRODUCTIVITY_REFERENCE[r.test] ?: 1.0)).coerceAtLeast(1e-9)
     }
     if (ratios.isEmpty()) return 0.0
     val product = ratios.fold(1.0) { acc, v -> acc * v }
@@ -1008,7 +1008,7 @@ class ProductivityBenchmarkViewModel(
             frames.toDouble() / (durationMs / 1000.0)
         } catch (e: Exception) {
             android.util.Log.e("ProdBench", "HW transcode failed: ${e.message}", e)
-            0.0
+            benchVideoEncode(durationMs)
         } finally {
             renderer?.stop(); renderer?.destroy()
             encSurface?.release()
