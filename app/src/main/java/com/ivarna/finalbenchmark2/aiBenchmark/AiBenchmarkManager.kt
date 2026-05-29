@@ -740,10 +740,10 @@ class AiBenchmarkManager(private val context: Context) {
     // Core delegate + interpreter builder — SINGLE interpreter, delegate fallback (#2)
     // Returns Triple<Interpreter, NnApiDelegate?, GpuDelegate?> + AccelerationMode
     //
-    // Strategy: NPU first → GPU → CPU.
-    //   1. NNAPI (NPU) — always tried first on API 27+
-    //   2. GPU delegate with CompatibilityList (OpenCL on Adreno/Mali)
-    //   3. GPU delegate force-try (CompatibilityList can lie)
+    // Strategy: GPU first → NPU → CPU.
+    //   1. GPU delegate with CompatibilityList (OpenCL on Adreno/Mali)
+    //   2. GPU delegate force-try (CompatibilityList can lie)
+    //   3. NNAPI (NPU) — fallback for older Android
     //   4. CPU XNNPACK fallback
     // ---------------------------------------------------------------------------
     private fun buildInterpreterWithFallback(
@@ -754,33 +754,13 @@ class AiBenchmarkManager(private val context: Context) {
         var nnApiDelegate: NnApiDelegate? = null
         var gpuDelegate: GpuDelegate? = null
 
-        // Attempt 1: NNAPI (NPU) — always try first
-        if (useNpu && Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            try {
-                Log.d(TAG, "[$benchmarkName] NNAPI (API ${Build.VERSION.SDK_INT})...")
-                nnApiDelegate = NnApiDelegate(NnApiDelegate.Options().apply {
-                    setAllowFp16(true)
-                    setExecutionPreference(NnApiDelegate.Options.EXECUTION_PREFERENCE_FAST_SINGLE_ANSWER)
-                })
-                val opts = Interpreter.Options().addDelegate(nnApiDelegate)
-                val interpreter = Interpreter(modelBuffer, opts)
-                Log.d(TAG, "[$benchmarkName] NNAPI SUCCESS")
-                return Triple(interpreter, nnApiDelegate, null) to AccelerationMode.NPU
-            } catch (e: Exception) {
-                Log.w(TAG, "[$benchmarkName] NNAPI failed: ${e.message}")
-                nnApiDelegate?.close()
-                nnApiDelegate = null
-            }
-        }
-
-        // Attempt 2a: GPU via CompatibilityList (OpenCL on Adreno/Mali)
+        // Attempt 1a: GPU via CompatibilityList (OpenCL on Adreno/Mali)
         try {
             val compatList = CompatibilityList()
             if (compatList.isDelegateSupportedOnThisDevice) {
                 Log.d(TAG, "[$benchmarkName] GPU delegate (CompatibilityList)...")
                 gpuDelegate = GpuDelegate(compatList.bestOptionsForThisDevice)
                 val opts = Interpreter.Options().addDelegate(gpuDelegate)
-                modelBuffer.rewind()
                 val interpreter = Interpreter(modelBuffer, opts)
                 Log.d(TAG, "[$benchmarkName] GPU delegate SUCCESS")
                 compatList.close()
@@ -794,7 +774,7 @@ class AiBenchmarkManager(private val context: Context) {
             gpuDelegate = null
         }
 
-        // Attempt 2b: GPU force-try — OpenCL often works on Adreno/Mali
+        // Attempt 1b: GPU force-try — OpenCL often works on Adreno/Mali
         try {
             Log.d(TAG, "[$benchmarkName] GPU delegate force-trying...")
             gpuDelegate = GpuDelegate()
@@ -807,6 +787,26 @@ class AiBenchmarkManager(private val context: Context) {
             Log.w(TAG, "[$benchmarkName] GPU force-try failed: ${e.message}")
             gpuDelegate?.close()
             gpuDelegate = null
+        }
+
+        // Attempt 2: NNAPI (NPU) — fallback
+        if (useNpu && Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            try {
+                Log.d(TAG, "[$benchmarkName] NNAPI (API ${Build.VERSION.SDK_INT})...")
+                nnApiDelegate = NnApiDelegate(NnApiDelegate.Options().apply {
+                    setAllowFp16(true)
+                    setExecutionPreference(NnApiDelegate.Options.EXECUTION_PREFERENCE_FAST_SINGLE_ANSWER)
+                })
+                val opts = Interpreter.Options().addDelegate(nnApiDelegate)
+                modelBuffer.rewind()
+                val interpreter = Interpreter(modelBuffer, opts)
+                Log.d(TAG, "[$benchmarkName] NNAPI SUCCESS")
+                return Triple(interpreter, nnApiDelegate, null) to AccelerationMode.NPU
+            } catch (e: Exception) {
+                Log.w(TAG, "[$benchmarkName] NNAPI failed: ${e.message}")
+                nnApiDelegate?.close()
+                nnApiDelegate = null
+            }
         }
 
         // Attempt 3: CPU XNNPACK
