@@ -320,26 +320,21 @@ class ProductivityBenchmarkViewModel(
         0.0
     }
 
-    // ── 1. Canvas Drawing (GPU – HardwareRenderer) ────────────────────────
+    // ── 1. Canvas Drawing (GPU – HardwareBufferRenderer API 34+) ──────────
     /**
-     * Uses Android's HardwareRenderer (API 29+) which submits draw commands to
-     * HWUI → Skia-GL / Skia-Vulkan backend, executing on the Adreno GPU.
-     * Per op (frame):
-     *   1. Full-canvas LinearGradient fill via gradient shader
-     *   2. 12 RadialGradient circles (shader-heavy, GPU-bound)
-     *   3. 8-segment cubic Bezier path (GPU rasterizer)
-     *   4. Rotated rounded rectangle (GPU with matrix transform)
-     *   5. Text overlay (GPU glyph rasterization)
-     * Rendering target: ImageReader surface (off-screen, no display needed).
+     * Android 14+ HardwareBufferRenderer: renders Canvas commands directly
+     * into a HardwareBuffer (GPU memory) with async draw() + SyncFence.
+     * No ImageReader polling — GPU submission is truly async.
      */
     private fun benchCanvasOps(durationMs: Long): Double {
         val W = 1024; val H = 1024
-        val imgReader = ImageReader.newInstance(W, H, PixelFormat.RGBA_8888, 4)
-        val renderer = HardwareRenderer()
-        renderer.setSurface(imgReader.surface)
-        renderer.setLightSourceGeometry(W / 2f, 0f, 800f, 800f)
-        renderer.setLightSourceAlpha(0.039f, 0.19f)
-        renderer.start()
+
+        // Create HardwareBuffer for GPU offscreen rendering
+        val hwBuffer = android.hardware.HardwareBuffer.create(
+            W, H, android.hardware.HardwareBuffer.RGBA_8888, 1,
+            android.hardware.HardwareBuffer.USAGE_GPU_COLOR_OUTPUT or
+            android.hardware.HardwareBuffer.USAGE_GPU_SAMPLED_IMAGE)
+        val renderer = android.graphics.HardwareBufferRenderer(hwBuffer)
 
         val rootNode = RenderNode("canvas_gpu")
         rootNode.setPosition(0, 0, W, H)
@@ -364,6 +359,9 @@ class ProductivityBenchmarkViewModel(
         val strokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = 4f; color = Color.argb(200, 255, 255, 255) }
         val rectPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = 6f; color = Color.argb(200, 255, 200, 0) }
 
+        val fenceLock = Object()
+        var fence: android.hardware.SyncFence? = null
+        val executor = java.util.concurrent.Executors.newSingleThreadExecutor()
         var ops = 0L
         val endMs = System.currentTimeMillis() + durationMs
 
@@ -399,9 +397,25 @@ class ProductivityBenchmarkViewModel(
             canvas.drawText("GPU Frame #$ops", 32f, H * 0.92f, textPaint)
             rootNode.endRecording()
 
-            // GPU render + drain
-            renderer.createRenderRequest().syncAndDraw()
-            imgReader.acquireLatestImage()?.close()
+            // Async GPU submission with SyncFence — HardwareBufferRenderer (API 34+)
+            val request = renderer.obtainRenderRequest()
+            request.draw(executor) { result ->
+                synchronized(fenceLock) {
+                    fence?.close()
+                    fence = result.fence
+                    fenceLock.notifyAll()
+                }
+            }
+
+            // Wait for GPU fence before next frame (pipelined: draw N, wait for N-1)
+            synchronized(fenceLock) {
+                val prevFence = fence
+                if (prevFence != null) {
+                    prevFence.awaitForever()
+                    prevFence.close()
+                    fence = null
+                }
+            }
 
             ops++
             if (ops % 30L == 0L) {
@@ -409,8 +423,14 @@ class ProductivityBenchmarkViewModel(
             }
         }
 
-        renderer.stop(); renderer.destroy()
-        imgReader.surface.release(); imgReader.close()
+        // Drain final fence
+        synchronized(fenceLock) {
+            fence?.awaitForever()
+            fence?.close()
+        }
+        executor.shutdownNow()
+        renderer.close()
+        hwBuffer.close()
         return ops.toDouble() / (durationMs / 1000.0)
     }
 
@@ -472,7 +492,10 @@ class ProductivityBenchmarkViewModel(
         }
 
         // Off-screen GPU render target (depth 4 for pipelining)
-        val imgReader = ImageReader.newInstance(W, H, PixelFormat.RGBA_8888, 4)
+        // Off-screen GPU render target with HardwareBuffer GPU flags (API 34+)
+        val imgReader = ImageReader.newInstance(W, H, PixelFormat.RGBA_8888, 4,
+            android.hardware.HardwareBuffer.USAGE_GPU_SAMPLED_IMAGE or
+            android.hardware.HardwareBuffer.USAGE_GPU_COLOR_OUTPUT)
         val renderer = HardwareRenderer()
         renderer.setSurface(imgReader.surface)
         renderer.setLightSourceGeometry(W / 2f, 0f, 800f, 800f)
