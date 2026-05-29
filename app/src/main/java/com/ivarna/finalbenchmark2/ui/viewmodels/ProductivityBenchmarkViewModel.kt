@@ -329,18 +329,7 @@ class ProductivityBenchmarkViewModel(
     private fun benchCanvasOps(durationMs: Long): Double {
         val W = 1024; val H = 1024
 
-        // Create HardwareBuffer for GPU offscreen rendering
-        val hwBuffer = android.hardware.HardwareBuffer.create(
-            W, H, android.hardware.HardwareBuffer.RGBA_8888, 1,
-            android.hardware.HardwareBuffer.USAGE_GPU_COLOR_OUTPUT or
-            android.hardware.HardwareBuffer.USAGE_GPU_SAMPLED_IMAGE)
-        val renderer = android.graphics.HardwareBufferRenderer(hwBuffer)
-
-        val rootNode = RenderNode("canvas_gpu")
-        rootNode.setPosition(0, 0, W, H)
-        renderer.setContentRoot(rootNode)
-
-        // Pre-compute all paths outside hot loop (removes Random/Path alloc from GPU path)
+        // Pre-compute all paths outside hot loop
         val rng = Random(42L)
         val prePaths = Array(200) { _ ->
             val p = Path()
@@ -359,78 +348,168 @@ class ProductivityBenchmarkViewModel(
         val strokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = 4f; color = Color.argb(200, 255, 255, 255) }
         val rectPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = 6f; color = Color.argb(200, 255, 200, 0) }
 
+        // Try HardwareBufferRenderer (API 34+, optimal GPU path)
+        if (android.os.Build.VERSION.SDK_INT >= 34) {
+            try {
+                return benchCanvasHwBuffer(durationMs, W, H, prePaths, preCircles, paint, textPaint, strokePaint, rectPaint)
+            } catch (e: Exception) {
+                android.util.Log.w("ProdBench", "HardwareBufferRenderer failed: ${e.message}, falling back to HardwareRenderer")
+            }
+        }
+        // Fallback: HardwareRenderer + ImageReader (API 29+)
+        return benchCanvasLegacy(durationMs, W, H, prePaths, preCircles, paint, textPaint, strokePaint, rectPaint)
+    }
+
+    @Suppress("NewApi")
+    private fun benchCanvasHwBuffer(durationMs: Long, W: Int, H: Int,
+        prePaths: Array<Path>, preCircles: Array<Triple<Float,Float,Float>>,
+        paint: Paint, textPaint: Paint, strokePaint: Paint, rectPaint: Paint): Double {
+
+        val hwBuffer = android.hardware.HardwareBuffer.create(
+            W, H, android.hardware.HardwareBuffer.RGBA_8888, 1,
+            android.hardware.HardwareBuffer.USAGE_GPU_COLOR_OUTPUT or
+            android.hardware.HardwareBuffer.USAGE_GPU_SAMPLED_IMAGE)
+        val renderer = android.graphics.HardwareBufferRenderer(hwBuffer)
+
+        val rootNode = RenderNode("canvas_gpu")
+        rootNode.setPosition(0, 0, W, H)
+        renderer.setContentRoot(rootNode)
+
         val fenceLock = Object()
         var fence: android.hardware.SyncFence? = null
         val executor = java.util.concurrent.Executors.newSingleThreadExecutor()
         var ops = 0L
         val endMs = System.currentTimeMillis() + durationMs
 
-        while (System.currentTimeMillis() < endMs) {
-            val hue = (ops * 2.7f) % 360f
-            val canvas = rootNode.beginRecording()
+        try {
+            while (System.currentTimeMillis() < endMs) {
+                val hue = (ops * 2.7f) % 360f
+                val canvas = rootNode.beginRecording()
 
-            paint.shader = LinearGradient(0f, 0f, W.toFloat(), H.toFloat(),
-                Color.HSVToColor(floatArrayOf(hue, 0.9f, 0.85f)),
-                Color.HSVToColor(floatArrayOf((hue + 120f) % 360f, 0.8f, 0.6f)),
-                Shader.TileMode.CLAMP)
-            paint.style = Paint.Style.FILL
-            canvas.drawRect(0f, 0f, W.toFloat(), H.toFloat(), paint)
-            paint.shader = null
+                paint.shader = LinearGradient(0f, 0f, W.toFloat(), H.toFloat(),
+                    Color.HSVToColor(floatArrayOf(hue, 0.9f, 0.85f)),
+                    Color.HSVToColor(floatArrayOf((hue + 120f) % 360f, 0.8f, 0.6f)),
+                    Shader.TileMode.CLAMP)
+                paint.style = Paint.Style.FILL
+                canvas.drawRect(0f, 0f, W.toFloat(), H.toFloat(), paint)
+                paint.shader = null
 
-            val ci = (ops % 200).toInt()
-            for (j in 0 until 12) {
-                val (cx, cy, r) = preCircles[(ci + j) % 200]
-                paint.shader = RadialGradient(cx, cy, r,
-                    Color.HSVToColor(floatArrayOf((hue + j * 30f) % 360f, 0.9f, 1.0f)),
-                    Color.TRANSPARENT, Shader.TileMode.CLAMP)
-                canvas.drawCircle(cx, cy, r, paint)
-            }
-            paint.shader = null
+                val ci = (ops % 200).toInt()
+                for (j in 0 until 12) {
+                    val (cx, cy, r) = preCircles[(ci + j) % 200]
+                    paint.shader = RadialGradient(cx, cy, r,
+                        Color.HSVToColor(floatArrayOf((hue + j * 30f) % 360f, 0.9f, 1.0f)),
+                        Color.TRANSPARENT, Shader.TileMode.CLAMP)
+                    canvas.drawCircle(cx, cy, r, paint)
+                }
+                paint.shader = null
 
-            canvas.drawPath(prePaths[ci], strokePaint)
+                canvas.drawPath(prePaths[ci], strokePaint)
 
-            canvas.save()
-            canvas.rotate((ops % 360L).toFloat(), W / 2f, H / 2f)
-            canvas.drawRoundRect(W * 0.2f, H * 0.2f, W * 0.8f, H * 0.8f, 32f, 32f, rectPaint)
-            canvas.restore()
+                canvas.save()
+                canvas.rotate((ops % 360L).toFloat(), W / 2f, H / 2f)
+                canvas.drawRoundRect(W * 0.2f, H * 0.2f, W * 0.8f, H * 0.8f, 32f, 32f, rectPaint)
+                canvas.restore()
 
-            canvas.drawText("GPU Frame #$ops", 32f, H * 0.92f, textPaint)
-            rootNode.endRecording()
+                canvas.drawText("GPU Frame #$ops", 32f, H * 0.92f, textPaint)
+                rootNode.endRecording()
 
-            // Async GPU submission with SyncFence — HardwareBufferRenderer (API 34+)
-            val request = renderer.obtainRenderRequest()
-            request.draw(executor) { result ->
+                val request = renderer.obtainRenderRequest()
+                request.draw(executor) { result ->
+                    synchronized(fenceLock) {
+                        fence?.close()
+                        fence = result.fence
+                        fenceLock.notifyAll()
+                    }
+                }
+
                 synchronized(fenceLock) {
-                    fence?.close()
-                    fence = result.fence
-                    fenceLock.notifyAll()
+                    val prevFence = fence
+                    if (prevFence != null) {
+                        prevFence.awaitForever()
+                        prevFence.close()
+                        fence = null
+                    }
+                }
+
+                ops++
+                if (ops % 30L == 0L) {
+                    liveDetail = "GPU Canvas #$ops  •  ${W}×${H}"
                 }
             }
 
-            // Wait for GPU fence before next frame (pipelined: draw N, wait for N-1)
-            synchronized(fenceLock) {
-                val prevFence = fence
-                if (prevFence != null) {
-                    prevFence.awaitForever()
-                    prevFence.close()
-                    fence = null
+            synchronized(fenceLock) { fence?.awaitForever(); fence?.close() }
+        } finally {
+            executor.shutdownNow()
+            renderer.close()
+            hwBuffer.close()
+        }
+        return ops.toDouble() / (durationMs / 1000.0)
+    }
+
+    private fun benchCanvasLegacy(durationMs: Long, W: Int, H: Int,
+        prePaths: Array<Path>, preCircles: Array<Triple<Float,Float,Float>>,
+        paint: Paint, textPaint: Paint, strokePaint: Paint, rectPaint: Paint): Double {
+
+        val imgReader = ImageReader.newInstance(W, H, PixelFormat.RGBA_8888, 4)
+        val renderer = HardwareRenderer()
+        renderer.setSurface(imgReader.surface)
+        renderer.setLightSourceGeometry(W / 2f, 0f, 800f, 800f)
+        renderer.setLightSourceAlpha(0.039f, 0.19f)
+        renderer.start()
+
+        val rootNode = RenderNode("canvas_gpu")
+        rootNode.setPosition(0, 0, W, H)
+        renderer.setContentRoot(rootNode)
+
+        var ops = 0L
+        val endMs = System.currentTimeMillis() + durationMs
+
+        try {
+            while (System.currentTimeMillis() < endMs) {
+                val hue = (ops * 2.7f) % 360f
+                val canvas = rootNode.beginRecording()
+
+                paint.shader = LinearGradient(0f, 0f, W.toFloat(), H.toFloat(),
+                    Color.HSVToColor(floatArrayOf(hue, 0.9f, 0.85f)),
+                    Color.HSVToColor(floatArrayOf((hue + 120f) % 360f, 0.8f, 0.6f)),
+                    Shader.TileMode.CLAMP)
+                paint.style = Paint.Style.FILL
+                canvas.drawRect(0f, 0f, W.toFloat(), H.toFloat(), paint)
+                paint.shader = null
+
+                val ci = (ops % 200).toInt()
+                for (j in 0 until 12) {
+                    val (cx, cy, r) = preCircles[(ci + j) % 200]
+                    paint.shader = RadialGradient(cx, cy, r,
+                        Color.HSVToColor(floatArrayOf((hue + j * 30f) % 360f, 0.9f, 1.0f)),
+                        Color.TRANSPARENT, Shader.TileMode.CLAMP)
+                    canvas.drawCircle(cx, cy, r, paint)
+                }
+                paint.shader = null
+
+                canvas.drawPath(prePaths[ci], strokePaint)
+
+                canvas.save()
+                canvas.rotate((ops % 360L).toFloat(), W / 2f, H / 2f)
+                canvas.drawRoundRect(W * 0.2f, H * 0.2f, W * 0.8f, H * 0.8f, 32f, 32f, rectPaint)
+                canvas.restore()
+
+                canvas.drawText("GPU Frame #$ops", 32f, H * 0.92f, textPaint)
+                rootNode.endRecording()
+
+                renderer.createRenderRequest().syncAndDraw()
+                imgReader.acquireLatestImage()?.close()
+
+                ops++
+                if (ops % 30L == 0L) {
+                    liveDetail = "GPU Canvas #$ops  •  ${W}×${H}"
                 }
             }
-
-            ops++
-            if (ops % 30L == 0L) {
-                liveDetail = "GPU Canvas #$ops  •  ${W}×${H}  •  LinearG+12RadialG+Bezier+Text"
-            }
+        } finally {
+            renderer.stop(); renderer.destroy()
+            imgReader.surface.release(); imgReader.close()
         }
-
-        // Drain final fence
-        synchronized(fenceLock) {
-            fence?.awaitForever()
-            fence?.close()
-        }
-        executor.shutdownNow()
-        renderer.close()
-        hwBuffer.close()
         return ops.toDouble() / (durationMs / 1000.0)
     }
 
@@ -491,11 +570,14 @@ class ProductivityBenchmarkViewModel(
             c.drawCircle(rng.nextFloat() * W, rng.nextFloat() * H, 80f + rng.nextFloat() * 400f, sp)
         }
 
-        // Off-screen GPU render target (depth 4 for pipelining)
-        // Off-screen GPU render target with HardwareBuffer GPU flags (API 34+)
-        val imgReader = ImageReader.newInstance(W, H, PixelFormat.RGBA_8888, 4,
-            android.hardware.HardwareBuffer.USAGE_GPU_SAMPLED_IMAGE or
-            android.hardware.HardwareBuffer.USAGE_GPU_COLOR_OUTPUT)
+        // Off-screen GPU render target — try GPU flags first, fallback to legacy
+        val imgReader: ImageReader = try {
+            ImageReader.newInstance(W, H, PixelFormat.RGBA_8888, 4,
+                android.hardware.HardwareBuffer.USAGE_GPU_SAMPLED_IMAGE or
+                android.hardware.HardwareBuffer.USAGE_GPU_COLOR_OUTPUT)
+        } catch (e: Exception) {
+            ImageReader.newInstance(W, H, PixelFormat.RGBA_8888, 4)
+        }
         val renderer = HardwareRenderer()
         renderer.setSurface(imgReader.surface)
         renderer.setLightSourceGeometry(W / 2f, 0f, 800f, 800f)
