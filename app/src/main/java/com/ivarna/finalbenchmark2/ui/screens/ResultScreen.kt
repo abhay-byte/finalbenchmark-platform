@@ -3095,18 +3095,6 @@ private fun RankingsTab(finalScore: Double, singleCoreScore: Double, multiCoreSc
                         }
 
                         Spacer(modifier = Modifier.height(16.dp))
-
-                        Text(
-                            text = when {
-                                beatsPercentage >= 90 -> "ELITE: Outperforming almost all reference systems."
-                                beatsPercentage >= 70 -> "POWERHOUSE: Strong enough for heavy professional work."
-                                beatsPercentage >= 50 -> "COMPETITIVE: Above average performance profile."
-                                else -> "STANDARD: Capable hardware for daily operations."
-                            },
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                            fontWeight = FontWeight.Bold
-                        )
                     }
                 }
             }
