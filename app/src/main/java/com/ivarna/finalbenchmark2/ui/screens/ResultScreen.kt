@@ -2866,8 +2866,9 @@ private fun RankingsTab(finalScore: Double, singleCoreScore: Double, multiCoreSc
     }
 
     // Per-category reference scores for non-CPU benchmarks
-    // GPU: GPU names. Storage: UFS/eMMC names, only UFS 4.0 = 100 pts.
-    // RAM/AI/Productivity: SoC names.
+    // GPU: GPU names. Storage: UFS names, only UFS 4.0 = 100 pts.
+    // RAM: RAM type names (LPDDR5X = 100, LPDDR4X = 60).
+    // AI/Productivity: SoC names.
     val categoryRefScores = when (type.uppercase()) {
         "CPU" -> mapOf(
             "Snapdragon 8 Gen 3" to 313, "MediaTek Dimensity 8300" to 229,
@@ -2880,6 +2881,8 @@ private fun RankingsTab(finalScore: Double, singleCoreScore: Double, multiCoreSc
             "Adreno 735" to 77, "Mali-G57 MC2" to 34)
         "STORAGE" -> mapOf(
             "UFS 4.0" to 100)
+        "RAM" -> mapOf(
+            "LPDDR5X" to 100, "LPDDR4X" to 60)
         else -> mapOf(
             "Snapdragon 8 Gen 3" to 100, "MediaTek Dimensity 8300" to 73,
             "Snapdragon 8s Gen 3" to 77, "MediaTek Dimensity 6300" to 34)

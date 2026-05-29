@@ -116,14 +116,23 @@ class RankingViewModel(private val repository: HistoryRepository) : ViewModel() 
 
     /**
      * Per-category reference scores and names for non-CPU benchmarks.
-     * GPU: GPU names. Storage: UFS/eMMC names, only UFS 4.0 = 100 pts.
-     * RAM/AI/Productivity: SoC names. FULL: SoC names.
-     */
+     * GPU: GPU names. Storage: UFS names, only UFS 4.0 = 100 pts.
+     * RAM: RAM type names (LPDDR5X = 100, LPDDR4X = 60).
+     * AI/Productivity: SoC names. FULL: SoC names. */
     private val gpuReferenceDevices = mapOf(
             "Adreno 750" to 100,
             "Mali-G615 MC6" to 73,
             "Adreno 735" to 77,
             "Mali-G57 MC2" to 34
+    )
+
+    private val storageReferenceDevices = mapOf(
+            "UFS 4.0" to 100
+    )
+
+    private val ramReferenceDevices = mapOf(
+            "LPDDR5X" to 100,
+            "LPDDR4X" to 60
     )
 
     private val storageReferenceDevices = mapOf(
@@ -156,6 +165,9 @@ class RankingViewModel(private val repository: HistoryRepository) : ViewModel() 
             }
             "STORAGE" -> storageReferenceDevices.entries.distinctBy { it.key }.map { (name, score) ->
                 RankingItem(name = name, normalizedScore = score, singleCore = 0, multiCore = 0, category = "STORAGE")
+            }
+            "RAM" -> ramReferenceDevices.map { (name, score) ->
+                RankingItem(name = name, normalizedScore = score, singleCore = 0, multiCore = 0, category = "RAM")
             }
             else -> nonCpuReferenceScores.map { (name, score) ->
                 RankingItem(name = name, normalizedScore = score, singleCore = 0, multiCore = 0, category = cat)
