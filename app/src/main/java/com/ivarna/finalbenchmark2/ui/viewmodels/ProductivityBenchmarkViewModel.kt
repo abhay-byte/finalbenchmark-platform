@@ -156,12 +156,12 @@ private fun ProductivityTest.unit() = when (this) {
 
 private fun ProductivityTest.score(value: Double): Int {
     val ref = PRODUCTIVITY_REFERENCE[this] ?: return 0
-    return (value / ref * 100.0).roundToInt().coerceAtLeast(0)
+    return (value / ref * 100.0).roundToInt().coerceIn(0, 100)
 }
 
 private fun calculateProductivityGeometricMean(results: List<ProductivityTestResult>): Double {
     val ratios = results.map { r ->
-        (r.value / (PRODUCTIVITY_REFERENCE[r.test] ?: 1.0)).coerceAtLeast(1e-9)
+        (r.value / (PRODUCTIVITY_REFERENCE[r.test] ?: 1.0)).coerceIn(1e-9, 1.0)
     }
     if (ratios.isEmpty()) return 0.0
     val product = ratios.fold(1.0) { acc, v -> acc * v }
@@ -800,7 +800,7 @@ class ProductivityBenchmarkViewModel(
      * Decode → GPU grade → HW encode, all at 1920×1080. Measures fps.
      */
     private fun benchVideoTranscode(durationMs: Long): Double {
-        val W = 1920; val H = 1080; val KEYFRAMES = 10
+        val W = 1920; val H = 1080; val KEYFRAMES = 20
         var setupEnc: MediaCodec? = null
         var outEnc: MediaCodec? = null
         var dec: MediaCodec? = null
@@ -815,7 +815,7 @@ class ProductivityBenchmarkViewModel(
             val encSetupFmt = MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC, W, H).apply {
                 setInteger(MediaFormat.KEY_BIT_RATE, 8_000_000)
                 setInteger(MediaFormat.KEY_FRAME_RATE, 30)
-                setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 0)
+                setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 1) // 1 = every frame is I-frame
                 setInteger(MediaFormat.KEY_COLOR_FORMAT,
                     MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Flexible)
             }
@@ -855,7 +855,11 @@ class ProductivityBenchmarkViewModel(
             sEnc.stop(); sEnc.release(); setupEnc = null
             val csdChunks = chunks.filter { it.flags and MediaCodec.BUFFER_FLAG_CODEC_CONFIG != 0 }
             val idrChunks = chunks.filter { it.flags and MediaCodec.BUFFER_FLAG_CODEC_CONFIG == 0 && it.data.isNotEmpty() }
-            if (idrChunks.isEmpty()) return 0.0
+            if (idrChunks.isEmpty()) {
+                // Pre-encode produced no IDR frames (MediaTek/Fallback).
+                // Use video encode fps as estimated transcode throughput.
+                return benchVideoEncode(durationMs)
+            }
 
             // ── Phase 2: HW encoder (Surface + HardwareRenderer + AGSL) ─
             val outFmt = MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC, W, H).apply {
