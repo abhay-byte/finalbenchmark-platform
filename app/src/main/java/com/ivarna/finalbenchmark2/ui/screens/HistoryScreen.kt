@@ -1,8 +1,5 @@
 package com.ivarna.finalbenchmark2.ui.screens
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -245,7 +242,6 @@ fun HistoryScreen(viewModel: HistoryViewModel, navController: NavController) {
                                     BenchmarkHistoryItem(
                                             result = result,
                                             timestampFormatter = formatter,
-                                            delayMillis = index * 50, // Staggered delay
                                             onItemClick = {
                                                 // Convert detailed results to JSON using Gson
                                                 val gson = Gson()
@@ -321,18 +317,15 @@ fun HistoryScreen(viewModel: HistoryViewModel, navController: NavController) {
 fun BenchmarkHistoryItem(
         result: HistoryUiModel,
         timestampFormatter: SimpleDateFormat,
-        delayMillis: Int = 0,
         onItemClick: () -> Unit = {}
 ) {
-    // Glass Card for History Item
-    com.ivarna.finalbenchmark2.ui.components.AnimatedGlassCard(
+    Surface(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp),
             shape = RoundedCornerShape(24.dp),
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f), // Maintain original translucent look
-            borderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f),
-            delayMillis = delayMillis,
+            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)),
             onClick = onItemClick
     ) {
         Box(

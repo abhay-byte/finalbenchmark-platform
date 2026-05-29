@@ -1616,8 +1616,7 @@ fun DetailedDataTab(summary: BenchmarkSummary) {
                                     }
                                 }
 
-                                // Expandable sub-test list
-                                AnimatedVisibility(visible = expanded.value) {
+                                if (expanded.value) {
                                     Column(modifier = Modifier.fillMaxWidth()) {
                                         HorizontalDivider(
                                             color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.05f)
@@ -3332,32 +3331,7 @@ fun AnimatedEntranceContainer(
     index: Int,
     content: @Composable () -> Unit
 ) {
-    val visibleState = remember {
-        MutableTransitionState(false).apply {
-            // If the index is 0, we can start visible immediately to avoid perceived lag
-            // Otherwise start false and animate in
-            targetState = index == 0
-        }
-    }
-
-    LaunchedEffect(Unit) {
-        // Ensure even index 0 gets a trigger if it wasn't already set
-        if (!visibleState.targetState) {
-            delay(index * 50L) // Reduced delay for snappier feel
-            visibleState.targetState = true
-        }
-    }
-    
-    AnimatedVisibility(
-        visibleState = visibleState,
-        enter = fadeIn(animationSpec = tween(400)) + 
-                slideInVertically(
-                    initialOffsetY = { it / 4 }, // Reduced slide distance
-                    animationSpec = tween(400, easing = FastOutSlowInEasing)
-                )
-    ) {
-        content()
-    }
+    content()
 }
 
 private fun formatBenchmarkShareData(context: Context, summary: BenchmarkSummary): String {

@@ -103,7 +103,7 @@ private val GPU_SCENES = listOf(
     GpuScene.OPENCL_GEMM_COMPUTE,
     // ── OpenGL ES 3.2 Extended (11-12) ────────────────────────────────────
     GpuScene.RAY_MARCH_SDF,        // "Ray March SDF + Shadows"
-    GpuScene.SUPER_SAMPLE          // "64× Super-Sampled Fractal"
+    GpuScene.SUPER_SAMPLE          // "32× Super-Sampled Fractal"
 )
 
 /**
@@ -123,7 +123,7 @@ private val GPU_REFERENCE_FPS = mapOf(
     GpuScene.PHONG_MULTI_LIGHT  to   7.0,
     GpuScene.RAY_MARCH_SDF      to  21.9,
     GpuScene.DOMAIN_WARP        to  20.9,
-    GpuScene.SUPER_SAMPLE       to   3.7,
+    GpuScene.SUPER_SAMPLE       to   7.4,
     GpuScene.SHADER_COMPILE     to  14.0,
     GpuScene.MEM_BANDWIDTH      to   9.0,
     GpuScene.MSAA_4X            to  11.0,
@@ -185,7 +185,7 @@ private fun GpuScene.displayName() = when (this) {
     GpuScene.PHONG_MULTI_LIGHT   -> "Phong 128-Light Array"
     GpuScene.RAY_MARCH_SDF       -> "Ray March SDF + Shadows"
     GpuScene.DOMAIN_WARP         -> "Triple Domain Warp FBM"
-    GpuScene.SUPER_SAMPLE        -> "64\u00d7 Super-Sampled Fractal"
+    GpuScene.SUPER_SAMPLE        -> "32\u00d7 Super-Sampled Fractal"
     GpuScene.SHADER_COMPILE      -> "ALU Dual-Warp Stress"
     GpuScene.MEM_BANDWIDTH       -> "Texture Bandwidth Stress"
     GpuScene.MSAA_4X             -> "MSAA 4\u00d7 Resolve Stress"

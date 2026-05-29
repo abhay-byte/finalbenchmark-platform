@@ -307,17 +307,19 @@ fun MainNavigation(
                                 com.google.gson.Gson().toJson(selectedItem),
                                 "UTF-8"
                             )
-                            navController.navigate("cpu-comparison/$encodedData")
+                            val category = selectedItem.category
+                            navController.navigate("comparison/$category/$encodedData")
                         }
                     )
                 }
                 composable(
-                    route = "cpu-comparison/{deviceData}",
+                    route = "comparison/{category}/{deviceData}",
                     enterTransition = enterTransition,
                     exitTransition = exitTransition,
                     popEnterTransition = popEnterTransition,
                     popExitTransition = popExitTransition
                 ) { backStackEntry ->
+                    val category = backStackEntry.arguments?.getString("category") ?: "CPU"
                     val encodedData = backStackEntry.arguments?.getString("deviceData") ?: "{}"
                     val decodedData = try {
                         java.net.URLDecoder.decode(encodedData, "UTF-8")
@@ -330,11 +332,43 @@ fun MainNavigation(
                                             .getDatabase(context)
                                             .benchmarkDao()
                             )
-                    CpuComparisonScreen(
-                        selectedDeviceJson = decodedData,
-                        historyRepository = historyRepository,
-                        onBackClick = { navController.popBackStack() }
-                    )
+                    when (category.uppercase()) {
+                        "CPU" -> CpuComparisonScreen(
+                            selectedDeviceJson = decodedData,
+                            historyRepository = historyRepository,
+                            onBackClick = { navController.popBackStack() }
+                        )
+                        "GPU" -> GpuComparisonScreen(
+                            selectedDeviceJson = decodedData,
+                            historyRepository = historyRepository,
+                            onBackClick = { navController.popBackStack() }
+                        )
+                        "RAM" -> RamComparisonScreen(
+                            selectedDeviceJson = decodedData,
+                            historyRepository = historyRepository,
+                            onBackClick = { navController.popBackStack() }
+                        )
+                        "STORAGE" -> StorageComparisonScreen(
+                            selectedDeviceJson = decodedData,
+                            historyRepository = historyRepository,
+                            onBackClick = { navController.popBackStack() }
+                        )
+                        "PRODUCTIVITY" -> ProductivityComparisonScreen(
+                            selectedDeviceJson = decodedData,
+                            historyRepository = historyRepository,
+                            onBackClick = { navController.popBackStack() }
+                        )
+                        "AI" -> AiComparisonScreen(
+                            selectedDeviceJson = decodedData,
+                            historyRepository = historyRepository,
+                            onBackClick = { navController.popBackStack() }
+                        )
+                        else -> FullComparisonScreen(
+                            selectedDeviceJson = decodedData,
+                            historyRepository = historyRepository,
+                            onBackClick = { navController.popBackStack() }
+                        )
+                    }
                 }
                 composable(
                     route = "history",

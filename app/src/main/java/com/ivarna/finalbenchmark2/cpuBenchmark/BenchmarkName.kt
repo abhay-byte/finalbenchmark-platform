@@ -114,7 +114,7 @@ enum class BenchmarkName(val category: BenchmarkCategory) {
             GPU_PHONG_MULTI_LIGHT -> "Phong Multi-Light Array (128 lights)"
             GPU_RAY_MARCH_SDF -> "Ray Marching SDF Scene"
             GPU_DOMAIN_WARP -> "Domain Warped Noise Field"
-            GPU_SUPER_SAMPLE -> "Super-Sampled Fractal AA"
+            GPU_SUPER_SAMPLE -> "Super-Sampled Fractal (32x)"
 
             // External GPU
             UNITY_SCENE_1 -> "Unity Benchmark Scene 1"

@@ -106,26 +106,26 @@ data class ProductivityBenchmarkUiState(
 // 100-point baseline. A device that beats these numbers will score above 100.
 // Refs calibrated from SD8 Gen3 (Adreno 750) measured release build results:
 //
-//   CANVAS_OPS:      measured  290 ops/s            → ref  290
-//   IMAGE_FILTER:    measured  256 imgs/s (AGSL 4K) → ref  256
-//   IMAGE_RESIZE:    measured  150 imgs/s (GPU RT)  → ref  150
-//   TEXT_OPS:        measured  4.62 Mchars/s (5K)   → ref  4.62
-//   JSON_OPS:        measured  548 docs/s           → ref  548
-//   COMPRESSION:     measured   28 MB/s             → ref   28
-//   VIDEO_ENCODE:    measured  189 fps (H.264 HW)   → ref  189
-//   VIDEO_DECODE:    measured  407 fps (H.264 HW)   → ref  407
-//   VIDEO_TRANSCODE: measured  190 fps (HW pipeline)→ ref  190
+//   CANVAS_OPS:      measured 1365 ops/s               → ref 1365
+//   IMAGE_FILTER:    measured  151 imgs/s (AGSL float)  → ref  151
+//   IMAGE_RESIZE:    measured  289 imgs/s (4K→1080p)    → ref  289
+//   TEXT_OPS:        measured 4.31 Mchars/s (5K)        → ref 4.31
+//   JSON_OPS:        measured  530 docs/s               → ref  530
+//   COMPRESSION:     measured   27 MB/s                 → ref   27
+//   VIDEO_ENCODE:    measured  169 fps (H.264 HW)       → ref  169
+//   VIDEO_DECODE:    measured  426 fps (H.264 HW)       → ref  426
+//   VIDEO_TRANSCODE: measured  124 fps (HW pipeline)    → ref  124
 
 private val PRODUCTIVITY_REFERENCE = mapOf(
-    ProductivityTest.CANVAS_OPS      to    633.0,  // GPU HWUI: max(Adreno 290, Mali 633)
-    ProductivityTest.IMAGE_FILTER    to   1397.0,  // GPU AGSL 4K: max(Adreno 256, Mali 1397)
-    ProductivityTest.IMAGE_RESIZE    to    673.0,  // GPU bilinear: max(Adreno 150, Mali 673)
-    ProductivityTest.TEXT_OPS        to      4.62, // CPU: 5K sort + Lev×20 + regex
-    ProductivityTest.JSON_OPS        to    548.0,  // CPU: 200-field 3-level
-    ProductivityTest.COMPRESSION     to     28.0,  // CPU: GZIP
-    ProductivityTest.VIDEO_ENCODE    to    189.0,  // HW H.264: max(Adreno 189, Mali 134)
-    ProductivityTest.VIDEO_DECODE    to    407.0,  // HW H.264: max(Adreno 407, Mali 283)
-    ProductivityTest.VIDEO_TRANSCODE to    190.0,  // HW transcode: Adreno decode+AGSL+encode
+    ProductivityTest.CANVAS_OPS      to   1365.0,  // GPU HWUI — SD8Gen3 measured 1365 ops/s
+    ProductivityTest.IMAGE_FILTER    to    151.0,  // GPU AGSL — SD8Gen3 measured  151 imgs/s
+    ProductivityTest.IMAGE_RESIZE    to    289.0,  // GPU bilinear — SD8Gen3 measured 289 imgs/s
+    ProductivityTest.TEXT_OPS        to      4.31, // CPU text — SD8Gen3 measured 4.31 Mchars/s
+    ProductivityTest.JSON_OPS        to    530.0,  // CPU JSON — SD8Gen3 measured 530 docs/s
+    ProductivityTest.COMPRESSION     to     27.0,  // CPU GZIP — SD8Gen3 measured 27 MB/s
+    ProductivityTest.VIDEO_ENCODE    to    169.0,  // HW H.264 enc — SD8Gen3 measured 169 fps
+    ProductivityTest.VIDEO_DECODE    to    426.0,  // HW H.264 dec — SD8Gen3 measured 426 fps
+    ProductivityTest.VIDEO_TRANSCODE to    124.0,  // HW transcode — SD8Gen3 measured 124 fps
 )
 
 private val PRODUCTIVITY_TESTS = ProductivityTest.values().toList()
@@ -441,9 +441,11 @@ class ProductivityBenchmarkViewModel(
 
             synchronized(fenceLock) { fence?.awaitForever(); fence?.close() }
         } finally {
-            executor.shutdownNow()
             renderer.close()
             hwBuffer.close()
+            executor.shutdown()
+            try { executor.awaitTermination(1, java.util.concurrent.TimeUnit.SECONDS) } catch (_: InterruptedException) {}
+            executor.shutdownNow()
         }
         return ops.toDouble() / (durationMs / 1000.0)
     }
@@ -525,35 +527,35 @@ class ProductivityBenchmarkViewModel(
     private fun benchImageFilter(durationMs: Long): Double {
         val W = 3840; val H = 2160
 
-        // AGSL (Android Graphics Shading Language) shader – runs on Adreno GPU shader cores
+        // AGSL (Android Graphics Shading Language) shader – GPU-neutral float precision
         val agsl = """
             uniform shader inputTexture;
             uniform float brightness;
             uniform float saturation;
             uniform float hueAngle;
 
-            half3 toYIQ(half3 rgb) {
-                return half3(
-                    dot(rgb, half3(0.299, 0.587, 0.114)),
-                    dot(rgb, half3(0.596, -0.274, -0.322)),
-                    dot(rgb, half3(0.211, -0.523, 0.312))
+            float3 toYIQ(float3 rgb) {
+                return float3(
+                    dot(rgb, float3(0.299, 0.587, 0.114)),
+                    dot(rgb, float3(0.596, -0.274, -0.322)),
+                    dot(rgb, float3(0.211, -0.523, 0.312))
                 );
             }
-            half3 fromYIQ(half3 yiq) {
-                return half3(
-                    dot(yiq, half3(1.0, 0.956, 0.621)),
-                    dot(yiq, half3(1.0, -0.272, -0.647)),
-                    dot(yiq, half3(1.0, -1.106, 1.703))
+            float3 fromYIQ(float3 yiq) {
+                return float3(
+                    dot(yiq, float3(1.0, 0.956, 0.621)),
+                    dot(yiq, float3(1.0, -0.272, -0.647)),
+                    dot(yiq, float3(1.0, -1.106, 1.703))
                 );
             }
-            half4 main(float2 coord) {
-                half4 c = inputTexture.eval(coord);
+            float4 main(float2 coord) {
+                float4 c = inputTexture.eval(coord);
                 c.rgb *= brightness;
-                half lum = dot(c.rgb, half3(0.299, 0.587, 0.114));
-                c.rgb = mix(half3(lum, lum, lum), c.rgb, saturation);
-                half3 yiq = toYIQ(c.rgb);
-                half cs = cos(hueAngle); half ss = sin(hueAngle);
-                yiq = half3(yiq.x, yiq.y * cs - yiq.z * ss, yiq.y * ss + yiq.z * cs);
+                float lum = dot(c.rgb, float3(0.299, 0.587, 0.114));
+                c.rgb = mix(float3(lum, lum, lum), c.rgb, saturation);
+                float3 yiq = toYIQ(c.rgb);
+                float cs = cos(hueAngle); float ss = sin(hueAngle);
+                yiq = float3(yiq.x, yiq.y * cs - yiq.z * ss, yiq.y * ss + yiq.z * cs);
                 c.rgb = clamp(fromYIQ(yiq), 0.0, 1.0);
                 return c;
             }
@@ -599,6 +601,10 @@ class ProductivityBenchmarkViewModel(
         var images = 0L
         val endMs = System.currentTimeMillis() + durationMs
 
+        // Drain stale images before benchmark
+        var stale: Image? = imgReader.acquireLatestImage()
+        while (stale != null) { stale.close(); stale = imgReader.acquireLatestImage() }
+
         try {
             while (System.currentTimeMillis() < endMs) {
                 val t = images.toFloat()
@@ -608,13 +614,15 @@ class ProductivityBenchmarkViewModel(
 
                 val canvas = rootNode.beginRecording()
                 drawPaint.shader = rtShader
-                canvas.drawRect(0f, 0f, W.toFloat(), H.toFloat(), drawPaint)
+                val d = (images % 4).toFloat() * 0.5f
+                canvas.drawRect(d, d, W.toFloat() + d, H.toFloat() + d, drawPaint)
                 rootNode.endRecording()
 
-                renderer.createRenderRequest().syncAndDraw()
-                imgReader.acquireLatestImage()?.close()
-
-                images++
+                renderer.createRenderRequest().setWaitForPresent(true).syncAndDraw()
+                try {
+                    val img = imgReader.acquireNextImage()
+                    img.close(); images++
+                } catch (_: Exception) { }
                 if (images % 5L == 0L)
                     liveDetail = "GPU AGSL #$images  •  ${W}×${H}  •  brightness+sat+hue shader"
             }
@@ -628,18 +636,14 @@ class ProductivityBenchmarkViewModel(
 
     // ── 3. Image Resize (GPU – HardwareRenderer bilinear) ────────────────
     /**
-     * GPU-accelerated bilinear scaling via HardwareRenderer + RenderNode matrix transforms.
-     * The Adreno texture sampler performs hardware bilinear filtering at full GPU bandwidth.
-     * Round-trip per iteration:
-     *   Step A: 3840×2160 → 1920×1080  downscale (BitmapShader + scale matrix, GPU textures)
-     *   Step B: 1920×1080 → 3840×2160  upscale   (same, forces every output pixel to sample)
-     * Both steps execute entirely on the GPU without any CPU pixel access.
+     * GPU-accelerated bilinear downscale via HardwareRenderer + RenderNode.
+     * Measures pure GPU texture-sampler throughput: 3840×2160 → 1920×1080.
+     * Uses blocking acquireNextImage() to ensure GPU actually completed each frame.
      */
     private fun benchImageResize(durationMs: Long): Double {
         val fullW = 3840; val fullH = 2160
         val halfW = 1920; val halfH = 1080
 
-        // Build source bitmap on CPU (once), then GPU reads it as a texture
         val src = Bitmap.createBitmap(fullW, fullH, Bitmap.Config.ARGB_8888)
         val c = Canvas(src); val p = Paint()
         for (band in 0 until 16) {
@@ -649,51 +653,35 @@ class ProductivityBenchmarkViewModel(
 
         val scalePaint = Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG)
 
-        // Step A renderer: full → half
         val halfReader = ImageReader.newInstance(halfW, halfH, PixelFormat.RGBA_8888, 4)
         val halfRenderer = HardwareRenderer()
         halfRenderer.setSurface(halfReader.surface); halfRenderer.start()
         val halfNode = RenderNode("down"); halfNode.setPosition(0, 0, halfW, halfH)
         halfRenderer.setContentRoot(halfNode)
 
-        // Step B renderer: half → full
-        val fullReader = ImageReader.newInstance(fullW, fullH, PixelFormat.RGBA_8888, 4)
-        val fullRenderer = HardwareRenderer()
-        fullRenderer.setSurface(fullReader.surface); fullRenderer.start()
-        val fullNode = RenderNode("up"); fullNode.setPosition(0, 0, fullW, fullH)
-        fullRenderer.setContentRoot(fullNode)
-
         var images = 0L
         val endMs = System.currentTimeMillis() + durationMs
         val srcBmpShader = android.graphics.BitmapShader(src, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP)
 
-        // Pre-compute matrices (invariant per frame)
-        val mDown = Matrix().apply { setScale(halfW.toFloat() / fullW, halfH.toFloat() / fullH) }
-        val mUp = Matrix().apply { setScale(2f, 2f) }
+        // Drain any stale images before benchmark
+        var stale: Image? = halfReader.acquireLatestImage()
+        while (stale != null) { stale.close(); stale = halfReader.acquireLatestImage() }
 
         try {
             while (System.currentTimeMillis() < endMs) {
                 val downCanvas = halfNode.beginRecording()
                 scalePaint.shader = srcBmpShader
-                downCanvas.drawRect(0f, 0f, halfW.toFloat(), halfH.toFloat(), scalePaint)
+                val drift = (images % 4).toFloat() * 0.5f
+                downCanvas.drawRect(drift, drift, halfW.toFloat() + drift, halfH.toFloat() + drift, scalePaint)
                 halfNode.endRecording()
-                halfRenderer.createRenderRequest().syncAndDraw()
-                halfReader.acquireLatestImage()?.close()
-
-                val upCanvas = fullNode.beginRecording()
-                scalePaint.shader = srcBmpShader
-                upCanvas.drawRect(0f, 0f, fullW.toFloat(), fullH.toFloat(), scalePaint)
-                fullNode.endRecording()
-                fullRenderer.createRenderRequest().syncAndDraw()
-                fullReader.acquireLatestImage()?.close()
-
-                images++
-                if (images % 5L == 0L)
-                    liveDetail = "GPU Resize #$images  •  4K→1080p→4K  •  HW bilinear GPU"
+                halfRenderer.createRenderRequest().setWaitForPresent(true).syncAndDraw()
+                try {
+                    val img = halfReader.acquireNextImage()
+                    img.close(); images++
+                } catch (_: Exception) { }
             }
         } finally {
             halfRenderer.stop(); halfRenderer.destroy(); halfReader.surface.release(); halfReader.close()
-            fullRenderer.stop(); fullRenderer.destroy(); fullReader.surface.release(); fullReader.close()
             src.recycle()
         }
         return images.toDouble() / (durationMs / 1000.0)

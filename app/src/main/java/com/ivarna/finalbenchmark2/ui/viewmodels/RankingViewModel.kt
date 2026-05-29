@@ -18,7 +18,8 @@ data class RankingItem(
         val multiCore: Int,
         val isCurrentUser: Boolean = false,
         val benchmarkDetails: BenchmarkDetails? = null,
-        val tag: String? = null
+        val tag: String? = null,
+        val category: String = "CPU"
 )
 
 data class BenchmarkDetails(
@@ -133,13 +134,14 @@ class RankingViewModel(private val repository: HistoryRepository) : ViewModel() 
     )
 
     private fun getReferenceDevices(category: String): List<RankingItem> {
-        return when (category.uppercase()) {
+        val cat = category.uppercase()
+        return when (cat) {
             "CPU" -> cpuReferenceDevices
             "FULL" -> fullReferenceScores.map { (name, score) ->
-                RankingItem(name = name, normalizedScore = score, singleCore = 0, multiCore = 0)
+                RankingItem(name = name, normalizedScore = score, singleCore = 0, multiCore = 0, category = "FULL")
             }
             else -> nonCpuReferenceScores.map { (name, score) ->
-                RankingItem(name = name, normalizedScore = score, singleCore = 0, multiCore = 0)
+                RankingItem(name = name, normalizedScore = score, singleCore = 0, multiCore = 0, category = cat)
             }
         }
     }
@@ -178,7 +180,8 @@ class RankingViewModel(private val repository: HistoryRepository) : ViewModel() 
                                 singleCore = highestScore.benchmarkResult.singleCoreScore.toInt(),
                                 multiCore = highestScore.benchmarkResult.multiCoreScore.toInt(),
                                 isCurrentUser = true,
-                                benchmarkDetails = details
+                                benchmarkDetails = details,
+                                category = category
                         )
                     }
 

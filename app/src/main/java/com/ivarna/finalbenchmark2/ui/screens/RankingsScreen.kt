@@ -365,7 +365,11 @@ private fun RankingItemCard(
                         
                         // Subtitle
                         Text(
-                            text = "Single: ${item.singleCore} | Multi: ${item.multiCore}",
+                            text = when (category) {
+                                "CPU" -> "Single: ${item.singleCore} | Multi: ${item.multiCore}"
+                                "Full" -> "All Categories Combined"
+                                else -> "$category Benchmark Score"
+                            },
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
                             modifier = Modifier.padding(top = 4.dp)

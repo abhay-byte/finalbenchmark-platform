@@ -453,7 +453,7 @@ void main() {
 }"""
 
     // ─────────────────────────────────────────────────────────────────────
-    // SCENE 10 ── 64× Super-Sampled Newton Fractal
+    // SCENE 10 ── 32× Super-Sampled Newton Fractal
     // ─────────────────────────────────────────────────────────────────────
     const val SUPER_SAMPLE_FRAG = """
 precision highp float;
@@ -504,9 +504,9 @@ vec2 halton(int i) {
 void main() {
     float scale = 1.6 + 0.4 * sin(u_Time * 0.05);
     vec3 acc = vec3(0.0);
-    const float N = 64.0;
+    const float N = 32.0;
     const float PIX = 0.002;
-    for (int i = 0; i < 64; i++) {
+    for (int i = 0; i < 32; i++) {
         vec2 jitter = halton(i) * PIX;
         vec2 uv = (v_UV - 0.5) * scale * 2.5 + jitter;
         uv.x *= u_Aspect;
