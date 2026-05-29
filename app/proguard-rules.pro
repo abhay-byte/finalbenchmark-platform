@@ -1,21 +1,101 @@
-# Add project specific ProGuard rules here.
-# You can control the set of applied configuration files using the
-# proguardFiles setting in build.gradle.
-#
-# For more details, see
-#   http://developer.android.com/guide/developing/tools/proguard.html
+# FinalBenchmark ProGuard / R8 Rules
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
+# Keep JNI native methods
+-keepclasseswithmembernames class * {
+    native <methods>;
+}
 
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
+# Keep Kotlin serialization
+-keepattributes *Annotation*, InnerClasses
+-dontnote kotlinx.serialization.AnnotationsKt
+-keepclassmembers class kotlinx.serialization.json.** {
+    *** Companion;
+}
+-keepclasseswithmembers class kotlinx.serialization.json.** {
+    kotlinx.serialization.KSerializer serializer(...);
+}
+-keep,includedescriptorclasses class com.ivarna.finalbenchmark2.**$$serializer { *; }
+-keepclassmembers class com.ivarna.finalbenchmark2.** {
+    *** Companion;
+}
+-keepclasseswithmembers class com.ivarna.finalbenchmark2.** {
+    kotlinx.serialization.KSerializer serializer(...);
+}
 
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+# Keep Room
+-keep class * extends androidx.room.RoomDatabase
+-keep @androidx.room.Entity class *
+-dontwarn androidx.room.paging.**
+-keep class androidx.room.** { *; }
+
+# Keep Gson
+-keepattributes Signature
+-keepattributes *Annotation*
+-dontwarn sun.misc.**
+-keep class com.google.gson.** { *; }
+-keep class * implements com.google.gson.TypeAdapterFactory
+-keep class * implements com.google.gson.JsonSerializer
+-keep class * implements com.google.gson.JsonDeserializer
+-keepclassmembers,allowobfuscation class * {
+    @com.google.gson.annotations.SerializedName <fields>;
+}
+
+# Keep Compose
+-dontwarn androidx.compose.**
+-keep class androidx.compose.** { *; }
+
+# Keep TFLite / LiteRT / MediaPipe
+-keep class org.tensorflow.lite.** { *; }
+-keep class com.google.ai.edge.litert.** { *; }
+-keep class com.google.mediapipe.** { *; }
+-dontwarn org.tensorflow.lite.**
+-dontwarn com.google.ai.edge.litert.**
+-dontwarn com.google.mediapipe.**
+
+# Keep OkHttp
+-keep class okhttp3.** { *; }
+-keep class okio.** { *; }
+-dontwarn okhttp3.**
+-dontwarn okio.**
+
+# Keep Haze (glassmorphism)
+-keep class dev.chrisbanes.haze.** { *; }
+
+# Keep libsu (root)
+-keep class com.github.topjohnwu.libsu.** { *; }
+
+# Keep benchmark data models
+-keep class com.ivarna.finalbenchmark2.data.** { *; }
+-keep class com.ivarna.finalbenchmark2.models.** { *; }
+
+# Keep ViewModels
+-keep class com.ivarna.finalbenchmark2.ui.viewmodels.** { *; }
+
+# Keep AndroidX Navigation
+-keep class androidx.navigation.** { *; }
+
+# Keep enums
+-keepclassmembers enum * {
+    public static **[] values();
+    public static ** valueOf(java.lang.String);
+}
+
+# Keep Parcelable
+-keep class * implements android.os.Parcelable {
+    public static final android.os.Parcelable$Creator *;
+}
+
+# AutoValue/Annotation processor classes (not available on Android)
+-dontwarn javax.lang.model.**
+-dontwarn autovalue.shaded.**
+
+# Remove logging in release
+-assumenosideeffects class android.util.Log {
+    public static *** d(...);
+    public static *** v(...);
+    public static *** i(...);
+}
+
+# Keep line numbers for crash reports
+-keepattributes SourceFile,LineNumberTable
+-renamesourcefileattribute SourceFile

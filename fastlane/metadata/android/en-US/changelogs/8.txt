@@ -1,0 +1,8 @@
+v1.0.0 - New Benchmark Categories
+
+• AI/ML: LLM inference, LiteRT 1.4.2, NNAPI delegate
+• Storage: 6 tests, UFS 4.0 native measurement
+• RAM: JNI NEON + pthreads benchmark
+• Productivity: 9 GPU-accelerated tests
+• Full: Sequential all-in-one benchmark
+• Rankings: Per-category comparison

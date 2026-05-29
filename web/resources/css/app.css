@@ -1,0 +1,89 @@
+@import 'tailwindcss';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+
+@theme {
+    --font-sans: 'Outfit', 'Instrument Sans', ui-sans-serif, system-ui, sans-serif;
+    --color-glass-bg: rgba(15, 23, 42, 0.45);
+    --color-glass-border: rgba(255, 255, 255, 0.08);
+}
+
+/* Custom Glassmorphism Panels */
+.glass-panel {
+    background: rgba(15, 23, 42, 0.45);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+}
+
+.glass-panel-hover {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.glass-panel-hover:hover {
+    background: rgba(30, 41, 59, 0.60);
+    border-color: rgba(99, 102, 241, 0.4); /* Indigo glow border */
+    transform: translateY(-4px);
+    box-shadow: 0 12px 40px 0 rgba(99, 102, 241, 0.15);
+}
+
+.text-gradient-purple {
+    background: linear-gradient(135deg, #a78bfa 0%, #818cf8 50%, #6366f1 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.text-gradient-cyan {
+    background: linear-gradient(135deg, #22d3ee 0%, #06b6d4 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.glow-card-violet {
+    position: relative;
+}
+.glow-card-violet::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(to bottom right, rgba(167, 139, 250, 0.4), rgba(99, 102, 241, 0.1), transparent);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+}
+
+.glow-card-cyan {
+    position: relative;
+}
+.glow-card-cyan::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(to bottom right, rgba(34, 211, 238, 0.4), rgba(6, 182, 212, 0.1), transparent);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+::-webkit-scrollbar-track {
+    background: #0b0f19;
+}
+::-webkit-scrollbar-thumb {
+    background: #1e293b;
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #334155;
+}

@@ -668,7 +668,7 @@ fun AboutSection() {
                                         verticalAlignment = Alignment.CenterVertically
                                 ) {
                                         Text(
-                                                text = "v0.5.2", // Updated Version
+                                                text = "v1.0.0", // Updated Version
                                                 fontSize = 16.sp,
                                                 fontWeight = FontWeight.Bold,
                                                 color = MaterialTheme.colorScheme.primary,
