@@ -317,6 +317,7 @@ class ProductivityBenchmarkViewModel(
         }
     } catch (e: Exception) {
         android.util.Log.e("ProductivityBenchVM", "Test $test failed: ${e.message}", e)
+        e.printStackTrace()
         0.0
     }
 
@@ -598,30 +599,30 @@ class ProductivityBenchmarkViewModel(
         var images = 0L
         val endMs = System.currentTimeMillis() + durationMs
 
-        while (System.currentTimeMillis() < endMs) {
-            val t = images.toFloat()
+        try {
+            while (System.currentTimeMillis() < endMs) {
+                val t = images.toFloat()
+                rtShader.setFloatUniform("brightness", 0.8f + (t % 50f) * 0.006f)
+                rtShader.setFloatUniform("saturation", 0.5f + (t % 80f) * 0.007f)
+                rtShader.setFloatUniform("hueAngle", (t % 360f) * (Math.PI.toFloat() / 180f))
 
-            // Update only animated uniforms (CPU upload only, no allocation)
-            rtShader.setFloatUniform("brightness", 0.8f + (t % 50f) * 0.006f)
-            rtShader.setFloatUniform("saturation", 0.5f + (t % 80f) * 0.007f)
-            rtShader.setFloatUniform("hueAngle", (t % 360f) * (Math.PI.toFloat() / 180f))
+                val canvas = rootNode.beginRecording()
+                drawPaint.shader = rtShader
+                canvas.drawRect(0f, 0f, W.toFloat(), H.toFloat(), drawPaint)
+                rootNode.endRecording()
 
-            val canvas = rootNode.beginRecording()
-            drawPaint.shader = rtShader
-            canvas.drawRect(0f, 0f, W.toFloat(), H.toFloat(), drawPaint)
-            rootNode.endRecording()
+                renderer.createRenderRequest().syncAndDraw()
+                imgReader.acquireLatestImage()?.close()
 
-            // GPU render + drain
-            renderer.createRenderRequest().syncAndDraw()
-            imgReader.acquireLatestImage()?.close()
-
-            images++
-            if (images % 5L == 0L)
-                liveDetail = "GPU AGSL #$images  •  ${W}×${H}  •  brightness+sat+hue shader"
+                images++
+                if (images % 5L == 0L)
+                    liveDetail = "GPU AGSL #$images  •  ${W}×${H}  •  brightness+sat+hue shader"
+            }
+        } finally {
+            renderer.stop(); renderer.destroy()
+            imgReader.surface.release(); imgReader.close()
+            src.recycle()
         }
-
-        renderer.stop(); renderer.destroy()
-        imgReader.surface.release(); imgReader.close(); src.recycle()
         return images.toDouble() / (durationMs / 1000.0)
     }
 
@@ -670,31 +671,31 @@ class ProductivityBenchmarkViewModel(
         val mDown = Matrix().apply { setScale(halfW.toFloat() / fullW, halfH.toFloat() / fullH) }
         val mUp = Matrix().apply { setScale(2f, 2f) }
 
-        while (System.currentTimeMillis() < endMs) {
-            // Step A: 4K → 1080p GPU downscale
-            val downCanvas = halfNode.beginRecording()
-            scalePaint.shader = srcBmpShader
-            downCanvas.drawRect(0f, 0f, halfW.toFloat(), halfH.toFloat(), scalePaint)
-            halfNode.endRecording()
-            halfRenderer.createRenderRequest().syncAndDraw()
-            halfReader.acquireLatestImage()?.close()
+        try {
+            while (System.currentTimeMillis() < endMs) {
+                val downCanvas = halfNode.beginRecording()
+                scalePaint.shader = srcBmpShader
+                downCanvas.drawRect(0f, 0f, halfW.toFloat(), halfH.toFloat(), scalePaint)
+                halfNode.endRecording()
+                halfRenderer.createRenderRequest().syncAndDraw()
+                halfReader.acquireLatestImage()?.close()
 
-            // Step B: 1080p → 4K GPU upscale
-            val upCanvas = fullNode.beginRecording()
-            scalePaint.shader = srcBmpShader
-            upCanvas.drawRect(0f, 0f, fullW.toFloat(), fullH.toFloat(), scalePaint)
-            fullNode.endRecording()
-            fullRenderer.createRenderRequest().syncAndDraw()
-            fullReader.acquireLatestImage()?.close()
+                val upCanvas = fullNode.beginRecording()
+                scalePaint.shader = srcBmpShader
+                upCanvas.drawRect(0f, 0f, fullW.toFloat(), fullH.toFloat(), scalePaint)
+                fullNode.endRecording()
+                fullRenderer.createRenderRequest().syncAndDraw()
+                fullReader.acquireLatestImage()?.close()
 
-            images++
-            if (images % 5L == 0L)
-                liveDetail = "GPU Resize #$images  •  4K→1080p→4K  •  HW bilinear GPU"
+                images++
+                if (images % 5L == 0L)
+                    liveDetail = "GPU Resize #$images  •  4K→1080p→4K  •  HW bilinear GPU"
+            }
+        } finally {
+            halfRenderer.stop(); halfRenderer.destroy(); halfReader.surface.release(); halfReader.close()
+            fullRenderer.stop(); fullRenderer.destroy(); fullReader.surface.release(); fullReader.close()
+            src.recycle()
         }
-
-        halfRenderer.stop(); halfRenderer.destroy(); halfReader.surface.release(); halfReader.close()
-        fullRenderer.stop(); fullRenderer.destroy(); fullReader.surface.release(); fullReader.close()
-        src.recycle()
         return images.toDouble() / (durationMs / 1000.0)
     }
 
