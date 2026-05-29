@@ -334,8 +334,7 @@ class ProductivityBenchmarkViewModel(
      */
     private fun benchCanvasOps(durationMs: Long): Double {
         val W = 1024; val H = 1024
-        // Create off-screen surface backed by ImageReader
-        val imgReader = ImageReader.newInstance(W, H, PixelFormat.RGBA_8888, 3)
+        val imgReader = ImageReader.newInstance(W, H, PixelFormat.RGBA_8888, 4)
         val renderer = HardwareRenderer()
         renderer.setSurface(imgReader.surface)
         renderer.setLightSourceGeometry(W / 2f, 0f, 800f, 800f)
@@ -346,17 +345,32 @@ class ProductivityBenchmarkViewModel(
         rootNode.setPosition(0, 0, W, H)
         renderer.setContentRoot(rootNode)
 
-        val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+        // Pre-compute all paths outside hot loop (removes Random/Path alloc from GPU path)
         val rng = Random(42L)
+        val prePaths = Array(200) { _ ->
+            val p = Path()
+            p.moveTo(rng.nextFloat() * W, rng.nextFloat() * H)
+            for (s in 0 until 8) p.cubicTo(
+                rng.nextFloat() * W, rng.nextFloat() * H,
+                rng.nextFloat() * W, rng.nextFloat() * H,
+                rng.nextFloat() * W, rng.nextFloat() * H)
+            p
+        }
+        val preCircles = Array(200) { i -> Triple(
+            ((i * 83L) % W).toFloat(), ((i * 137L) % H).toFloat(), 50f + (i % 12) * 20f) }
+
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+        val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { textSize = 52f; color = Color.WHITE }
+        val strokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = 4f; color = Color.argb(200, 255, 255, 255) }
+        val rectPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = 6f; color = Color.argb(200, 255, 200, 0) }
+
         var ops = 0L
         val endMs = System.currentTimeMillis() + durationMs
 
         while (System.currentTimeMillis() < endMs) {
             val hue = (ops * 2.7f) % 360f
-
             val canvas = rootNode.beginRecording()
 
-            // 1. LinearGradient fill (GPU gradient shader)
             paint.shader = LinearGradient(0f, 0f, W.toFloat(), H.toFloat(),
                 Color.HSVToColor(floatArrayOf(hue, 0.9f, 0.85f)),
                 Color.HSVToColor(floatArrayOf((hue + 120f) % 360f, 0.8f, 0.6f)),
@@ -365,47 +379,28 @@ class ProductivityBenchmarkViewModel(
             canvas.drawRect(0f, 0f, W.toFloat(), H.toFloat(), paint)
             paint.shader = null
 
-            // 2. 12 RadialGradient circles (GPU shader-heavy)
-            for (i in 0 until 12) {
-                val cx = ((ops * 7 + i * 83L) % W).toFloat()
-                val cy = ((ops * 11 + i * 137L) % H).toFloat()
-                val r = 50f + i * 20f
+            val ci = (ops % 200).toInt()
+            for (j in 0 until 12) {
+                val (cx, cy, r) = preCircles[(ci + j) % 200]
                 paint.shader = RadialGradient(cx, cy, r,
-                    Color.HSVToColor(floatArrayOf((hue + i * 30f) % 360f, 0.9f, 1.0f)),
+                    Color.HSVToColor(floatArrayOf((hue + j * 30f) % 360f, 0.9f, 1.0f)),
                     Color.TRANSPARENT, Shader.TileMode.CLAMP)
                 canvas.drawCircle(cx, cy, r, paint)
             }
             paint.shader = null
 
-            // 3. Cubic Bezier path (8 segments)
-            val path = Path()
-            path.moveTo(rng.nextFloat() * W, rng.nextFloat() * H)
-            for (s in 0 until 8) path.cubicTo(
-                rng.nextFloat() * W, rng.nextFloat() * H,
-                rng.nextFloat() * W, rng.nextFloat() * H,
-                rng.nextFloat() * W, rng.nextFloat() * H)
-            paint.style = Paint.Style.STROKE
-            paint.strokeWidth = 4f
-            paint.color = Color.argb(200, 255, 255, 255)
-            canvas.drawPath(path, paint)
+            canvas.drawPath(prePaths[ci], strokePaint)
 
-            // 4. Rotated rounded rectangle
             canvas.save()
             canvas.rotate((ops % 360L).toFloat(), W / 2f, H / 2f)
-            paint.style = Paint.Style.STROKE; paint.strokeWidth = 6f
-            paint.color = Color.argb(200, 255, 200, 0)
-            canvas.drawRoundRect(W * 0.2f, H * 0.2f, W * 0.8f, H * 0.8f, 32f, 32f, paint)
+            canvas.drawRoundRect(W * 0.2f, H * 0.2f, W * 0.8f, H * 0.8f, 32f, 32f, rectPaint)
             canvas.restore()
 
-            // 5. Text overlay (GPU glyph rasterization)
-            paint.style = Paint.Style.FILL; paint.textSize = 52f; paint.color = Color.WHITE
-            canvas.drawText("GPU Frame #$ops", 32f, H * 0.92f, paint)
-
+            canvas.drawText("GPU Frame #$ops", 32f, H * 0.92f, textPaint)
             rootNode.endRecording()
 
-            // Submit to GPU (synchronous – blocks until GPU finishes this frame)
+            // GPU render + drain
             renderer.createRenderRequest().syncAndDraw()
-            // Drain ImageReader to prevent surface from stalling
             imgReader.acquireLatestImage()?.close()
 
             ops++
@@ -476,8 +471,8 @@ class ProductivityBenchmarkViewModel(
             c.drawCircle(rng.nextFloat() * W, rng.nextFloat() * H, 80f + rng.nextFloat() * 400f, sp)
         }
 
-        // Off-screen GPU render target
-        val imgReader = ImageReader.newInstance(W, H, PixelFormat.RGBA_8888, 3)
+        // Off-screen GPU render target (depth 4 for pipelining)
+        val imgReader = ImageReader.newInstance(W, H, PixelFormat.RGBA_8888, 4)
         val renderer = HardwareRenderer()
         renderer.setSurface(imgReader.surface)
         renderer.setLightSourceGeometry(W / 2f, 0f, 800f, 800f)
@@ -490,7 +485,10 @@ class ProductivityBenchmarkViewModel(
 
         val rtShader = RuntimeShader(agsl)
         val drawPaint = Paint(Paint.ANTI_ALIAS_FLAG)
-        val srcShader = BitmapShader(src, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP)
+
+        // Hoist shader binding outside loop — source bitmap is invariant
+        rtShader.setInputShader("inputTexture",
+            BitmapShader(src, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP))
 
         var images = 0L
         val endMs = System.currentTimeMillis() + durationMs
@@ -498,19 +496,17 @@ class ProductivityBenchmarkViewModel(
         while (System.currentTimeMillis() < endMs) {
             val t = images.toFloat()
 
-            // Update GPU shader uniforms (CPU-side uniform upload only)
-            rtShader.setInputShader("inputTexture", srcShader)
+            // Update only animated uniforms (CPU upload only, no allocation)
             rtShader.setFloatUniform("brightness", 0.8f + (t % 50f) * 0.006f)
             rtShader.setFloatUniform("saturation", 0.5f + (t % 80f) * 0.007f)
             rtShader.setFloatUniform("hueAngle", (t % 360f) * (Math.PI.toFloat() / 180f))
 
-            // Record draw command (just records metadata, no CPU pixel work)
             val canvas = rootNode.beginRecording()
             drawPaint.shader = rtShader
             canvas.drawRect(0f, 0f, W.toFloat(), H.toFloat(), drawPaint)
             rootNode.endRecording()
 
-            // Execute on GPU (blocking until GPU commit) – all pixel processing on Adreno
+            // GPU render + drain
             renderer.createRenderRequest().syncAndDraw()
             imgReader.acquireLatestImage()?.close()
 
@@ -548,14 +544,14 @@ class ProductivityBenchmarkViewModel(
         val scalePaint = Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG)
 
         // Step A renderer: full → half
-        val halfReader = ImageReader.newInstance(halfW, halfH, PixelFormat.RGBA_8888, 3)
+        val halfReader = ImageReader.newInstance(halfW, halfH, PixelFormat.RGBA_8888, 4)
         val halfRenderer = HardwareRenderer()
         halfRenderer.setSurface(halfReader.surface); halfRenderer.start()
         val halfNode = RenderNode("down"); halfNode.setPosition(0, 0, halfW, halfH)
         halfRenderer.setContentRoot(halfNode)
 
         // Step B renderer: half → full
-        val fullReader = ImageReader.newInstance(fullW, fullH, PixelFormat.RGBA_8888, 3)
+        val fullReader = ImageReader.newInstance(fullW, fullH, PixelFormat.RGBA_8888, 4)
         val fullRenderer = HardwareRenderer()
         fullRenderer.setSurface(fullReader.surface); fullRenderer.start()
         val fullNode = RenderNode("up"); fullNode.setPosition(0, 0, fullW, fullH)
@@ -565,20 +561,22 @@ class ProductivityBenchmarkViewModel(
         val endMs = System.currentTimeMillis() + durationMs
         val srcBmpShader = android.graphics.BitmapShader(src, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP)
 
+        // Pre-compute matrices (invariant per frame)
+        val mDown = Matrix().apply { setScale(halfW.toFloat() / fullW, halfH.toFloat() / fullH) }
+        val mUp = Matrix().apply { setScale(2f, 2f) }
+
         while (System.currentTimeMillis() < endMs) {
-            // Step A: 4K → 1080p (GPU downscale, hardware bilinear filter)
+            // Step A: 4K → 1080p GPU downscale
             val downCanvas = halfNode.beginRecording()
-            val m1 = Matrix(); m1.setScale(halfW.toFloat() / fullW, halfH.toFloat() / fullH)
             scalePaint.shader = srcBmpShader
             downCanvas.drawRect(0f, 0f, halfW.toFloat(), halfH.toFloat(), scalePaint)
             halfNode.endRecording()
             halfRenderer.createRenderRequest().syncAndDraw()
             halfReader.acquireLatestImage()?.close()
 
-            // Step B: 1080p → 4K (GPU upscale – reads from the half-size surface just rendered)
+            // Step B: 1080p → 4K GPU upscale
             val upCanvas = fullNode.beginRecording()
-            val m2 = Matrix(); m2.setScale(2f, 2f)
-            scalePaint.shader = srcBmpShader  // re-use source as proxy (tests GPU texture sampling)
+            scalePaint.shader = srcBmpShader
             upCanvas.drawRect(0f, 0f, fullW.toFloat(), fullH.toFloat(), scalePaint)
             fullNode.endRecording()
             fullRenderer.createRenderRequest().syncAndDraw()
