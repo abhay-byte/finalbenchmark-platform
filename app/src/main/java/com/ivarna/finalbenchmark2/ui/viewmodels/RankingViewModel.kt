@@ -115,15 +115,29 @@ class RankingViewModel(private val repository: HistoryRepository) : ViewModel() 
     )
 
     /**
-     * Per-category reference scores for non-CPU benchmarks.
-     * SD8Gen3 = baseline (GPU/RAM/Storage/AI/Productivity = 100, FULL = 1000).
-     * Other devices scaled proportionally to their CPU ratio.
+     * Per-category reference scores and names for non-CPU benchmarks.
+     * GPU: GPU names. Storage: UFS/eMMC names, only UFS 4.0 = 100 pts.
+     * RAM/AI/Productivity: SoC names. FULL: SoC names.
      */
+    private val gpuReferenceDevices = mapOf(
+            "Adreno 750" to 100,
+            "Mali-G615 MC6" to 73,
+            "Adreno 735" to 77,
+            "Mali-G57 MC2" to 34
+    )
+
+    private val storageReferenceDevices = mapOf(
+            "UFS 4.0" to 100,
+            "UFS 4.0" to 100,
+            "UFS 4.0" to 100,
+            "eMMC 5.1" to 34
+    )
+
     private val nonCpuReferenceScores = mapOf(
             "Snapdragon 8 Gen 3" to 100,
-            "MediaTek Dimensity 8300" to 73,   // 229/313 ≈ 73%
-            "Snapdragon 8s Gen 3" to 77,       // 241/313 ≈ 77%
-            "MediaTek Dimensity 6300" to 34    // 107/313 ≈ 34%
+            "MediaTek Dimensity 8300" to 73,
+            "Snapdragon 8s Gen 3" to 77,
+            "MediaTek Dimensity 6300" to 34
     )
 
     private val fullReferenceScores = mapOf(
@@ -139,6 +153,12 @@ class RankingViewModel(private val repository: HistoryRepository) : ViewModel() 
             "CPU" -> cpuReferenceDevices
             "FULL" -> fullReferenceScores.map { (name, score) ->
                 RankingItem(name = name, normalizedScore = score, singleCore = 0, multiCore = 0, category = "FULL")
+            }
+            "GPU" -> gpuReferenceDevices.entries.distinctBy { it.key }.map { (name, score) ->
+                RankingItem(name = name, normalizedScore = score, singleCore = 0, multiCore = 0, category = "GPU")
+            }
+            "STORAGE" -> storageReferenceDevices.entries.distinctBy { it.key }.map { (name, score) ->
+                RankingItem(name = name, normalizedScore = score, singleCore = 0, multiCore = 0, category = "STORAGE")
             }
             else -> nonCpuReferenceScores.map { (name, score) ->
                 RankingItem(name = name, normalizedScore = score, singleCore = 0, multiCore = 0, category = cat)
