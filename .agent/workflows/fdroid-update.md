@@ -4,10 +4,19 @@ description: How to prepare and publish a new FinalBenchmark release
 
 # Release Workflow
 
+## HARD RULE — Commit Identity
+
+```
+APK commit == tag commit == release commit == HEAD
+```
+
+All four MUST resolve to the same hash. No drift, no gap. If any is different, delete the tag/release and redo from the correct commit.
+
 ## Prerequisites
 
 - Version code and version name updated in `app/build.gradle.kts`
 - Version text updated in `SettingsScreen.kt`
+- Tree must be clean — all changes committed and pushed BEFORE building
 
 ## Steps
 
@@ -33,11 +42,12 @@ APK output: `app/build/outputs/apk/release/app-release.apk`
 
 ### 3. Verify APK Commit Match
 
-Confirm the APK was built from the latest commit. Check `output-metadata.json` or compare timestamps.
+Confirm the APK was built from the current HEAD. Both must resolve to the same hash.
 
 ```bash
-git log -1 --format="%H"
-ls -l app/build/outputs/apk/release/app-release.apk
+HEAD=$(git log -1 --format="%H")
+echo "HEAD: $HEAD"
+cat app/build/outputs/apk/release/output-metadata.json | grep version
 ```
 
 ### 4. Create Release MD File
@@ -83,13 +93,29 @@ gh release create v<VERSION_NAME> \
   app/build/outputs/apk/release/app-release.apk
 ```
 
-### 8. Verify Release Commit Match
+### 8. Verify Release Commit Match — INVARIANT CHECK
 
-Confirm the GitHub release tag points to the same commit that built the APK.
+All four MUST match. Run this exact check:
 
 ```bash
-git rev-list -1 v<VERSION_NAME>
-gh release view v<VERSION_NAME> --json tagName,targetCommitish
+TAG_COMMIT=$(git rev-list -1 v<VERSION_NAME>)
+HEAD_COMMIT=$(git log -1 --format="%H")
+RELEASE_COMMIT=$(gh release view v<VERSION_NAME> --repo abhay-byte/finalbenchmark-platform --json targetCommitish -q '.targetCommitish')
+
+echo "TAG:     $TAG_COMMIT"
+echo "HEAD:    $HEAD_COMMIT"
+echo "RELEASE: $RELEASE_COMMIT"
+
+[ "$TAG_COMMIT" = "$HEAD_COMMIT" ] && [ "$TAG_COMMIT" = "$RELEASE_COMMIT" ] \
+  && echo "OK: all match" \
+  || echo "FAIL: mismatch — delete tag and release, redo from correct commit"
+```
+
+Also verify APK from release matches local:
+
+```bash
+curl -sL -o /tmp/verify.apk "https://github.com/abhay-byte/finalbenchmark-platform/releases/download/v<VERSION_NAME>/app-release.apk"
+sha256sum /tmp/verify.apk app/build/outputs/apk/release/app-release.apk
 ```
 
 ### 9. F-Droid (Auto)
@@ -114,8 +140,24 @@ F-Droid metadata uses `UpdateCheckMode: Tags` — new tags are auto-picked up. N
 git stash  # or commit changes
 ```
 
-### APK not matching commit
-Rebuild: `./gradlew clean assembleRelease`
+### APK not matching commit (invariant broken)
+```bash
+# Delete broken release
+gh release delete v<VERSION_NAME> --yes
+# Rebuild from HEAD
+./gradlew clean assembleRelease
+# Verify HEAD == APK build commit
+git log -1 --format="%H"
+# Re-tag HEAD
+git tag -d v<VERSION_NAME>
+git tag -a v<VERSION_NAME> -m "Release v<VERSION_NAME>"
+git push origin v<VERSION_NAME> --force
+# Re-create release
+gh release create v<VERSION_NAME> --title "v<VERSION_NAME>" \
+  --notes-file app/release/release-<VERSION>.md \
+  app/build/outputs/apk/release/app-release.apk
+# Re-run invariant check (step 8)
+```
 
 ### Tag needs update
 ```bash
