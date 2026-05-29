@@ -59,13 +59,12 @@
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="Performance benchmarking and CPU testing" />
         </service>
-        <!-- Crash handler activity — same process, launched via FLAG_ACTIVITY_NEW_TASK -->
+        <!-- Crash handler activity — MUST be separate process for reliable crash recovery -->
         <activity
             android:name=".CrashActivity"
             android:exported="false"
-            android:theme="@style/Theme.FinalBenchmark2"
-            android:taskAffinity="${applicationId}.crash"
-            android:launchMode="singleInstance" />
+            android:process=":crash"
+            android:theme="@style/Theme.FinalBenchmark2" />
     </application>
 
 </manifest>
