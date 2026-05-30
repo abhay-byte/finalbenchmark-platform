@@ -1,0 +1,6 @@
+v1.0.1 - History fix + Rankings polish
+
+* Fix history detailed data showing blank results
+* Per-category rankings with GPU/storage/RAM labels
+* Remove performance tier tags from result screen
+* Snappier UI without entry animations
