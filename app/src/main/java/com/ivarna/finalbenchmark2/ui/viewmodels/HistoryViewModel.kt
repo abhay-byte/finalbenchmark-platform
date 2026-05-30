@@ -60,9 +60,8 @@ class HistoryViewModel(private val repository: HistoryRepository) : ViewModel() 
                                     // Parse detailed results from JSON string if available
                                     val detailedResults =
                                             try {
-                                                if (benchmark.benchmarkResult.detailedResultsJson
-                                                                .isNotEmpty()
-                                                ) {
+                                                val rawJson = benchmark.benchmarkResult.detailedResultsJson
+                                                if (rawJson.isNotEmpty() && rawJson.trimStart().startsWith("[")) {
                                                     val gson = Gson()
                                                     val listType =
                                                             object :
@@ -70,20 +69,29 @@ class HistoryViewModel(private val repository: HistoryRepository) : ViewModel() 
                                                                                     List<
                                                                                             com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkResult>>() {}
                                                                     .type
-                                                    gson.fromJson(
-                                                            benchmark
-                                                                    .benchmarkResult
-                                                                    .detailedResultsJson,
+                                                    val parsed = gson.fromJson(
+                                                            rawJson,
                                                             listType
                                                     ) as
                                                             List<
                                                                     com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkResult>
+                                                    if (parsed.isNotEmpty() && parsed.firstOrNull()?.name?.isNotBlank() == true) parsed
+                                                    else throw IllegalStateException("Parsed data has default values")
                                                 } else {
-                                                    emptyList()
+                                                    throw IllegalStateException("Not a JSON array")
                                                 }
                                             } catch (e: Exception) {
-
-                                                emptyList()
+                                                // Fallback: build from genericTestDetails table
+                                                benchmark.genericTestDetails.map { detail ->
+                                                    val metricsObj = try { org.json.JSONObject(detail.metricsJson) } catch (e2: Exception) { org.json.JSONObject() }
+                                                    com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkResult(
+                                                        name = detail.testName,
+                                                        opsPerSecond = metricsObj.optDouble("value", detail.score),
+                                                        executionTimeMs = metricsObj.optDouble("durationMs", 0.0),
+                                                        isValid = true,
+                                                        metricsJson = detail.metricsJson
+                                                    )
+                                                }
                                             }
 
                                     HistoryUiModel(

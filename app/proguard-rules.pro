@@ -64,6 +64,9 @@
 # Keep libsu (root)
 -keep class com.github.topjohnwu.libsu.** { *; }
 
+
+# Keep BenchmarkResult (cpuBenchmark package) — used by Gson for history
+-keep class com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkResult { *; }
 # Keep benchmark data models
 -keep class com.ivarna.finalbenchmark2.data.** { *; }
 -keep class com.ivarna.finalbenchmark2.models.** { *; }
