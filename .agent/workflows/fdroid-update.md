@@ -12,6 +12,22 @@ APK commit == tag commit == release commit == HEAD
 
 All four MUST resolve to the same hash. No drift, no gap. If any is different, delete the tag/release and redo from the correct commit.
 
+## Commit Hash Location
+
+The APK embeds the git commit hash at:
+
+```
+META-INF/version-control-info.textproto
+```
+
+Extract it with:
+
+```bash
+unzip -p <APK> META-INF/version-control-info.textproto | grep revision
+```
+
+This hash MUST match HEAD. If it doesn't, the APK is stale — run `./gradlew clean assembleRelease` to rebuild.
+
 ## Prerequisites
 
 - Version code and version name updated in `app/build.gradle.kts`
@@ -32,22 +48,26 @@ git commit -m "chore: cleanup before release v<VERSION_NAME>"
 git push origin main
 ```
 
-### 2. Build Release APK
+### 2. Clean Build Release APK
+
+Always clean build to ensure version-control-info.textproto is fresh.
 
 ```bash
-./gradlew assembleRelease
+./gradlew clean assembleRelease
 ```
 
 APK output: `app/build/outputs/apk/release/app-release.apk`
 
-### 3. Verify APK Commit Match
+### 3. Verify APK Commit — EXTRACT FROM APK (MANDATORY)
 
-Confirm the APK was built from the current HEAD. Both must resolve to the same hash.
+Extract the commit hash embedded in the APK and compare with HEAD. If they don't match, rebuild.
 
 ```bash
 HEAD=$(git log -1 --format="%H")
-echo "HEAD: $HEAD"
-cat app/build/outputs/apk/release/output-metadata.json | grep version
+APK_COMMIT=$(unzip -p app/build/outputs/apk/release/app-release.apk META-INF/version-control-info.textproto | grep revision | sed 's/.*"\(.*\)".*/\1/')
+echo "HEAD:  $HEAD"
+echo "APK:   $APK_COMMIT"
+[ "$HEAD" = "$APK_COMMIT" ] && echo "OK: APK commit matches HEAD" || echo "FAIL: APK stale — run ./gradlew clean assembleRelease"
 ```
 
 ### 4. Create Release MD File
@@ -77,48 +97,59 @@ git commit -m "release: v<VERSION_NAME> — changelog and release notes"
 git push origin main
 ```
 
-### 7. Tag and Create GitHub Release
+### 7. Tag HEAD (after artifacts committed)
 
 ```bash
-git log -1 --format="%H"  # copy commit hash
-
-# Tag
 git tag -a v<VERSION_NAME> -m "Release v<VERSION_NAME>"
 git push origin v<VERSION_NAME>
+```
 
-# GitHub Release with APK attached
+### 8. Verify Local APK Commit Again (after tag)
+
+Confirm APK still matches HEAD (should be same since only artifacts changed).
+
+```bash
+HEAD=$(git log -1 --format="%H")
+TAG=$(git rev-list -1 v<VERSION_NAME>)
+APK_COMMIT=$(unzip -p app/build/outputs/apk/release/app-release.apk META-INF/version-control-info.textproto | grep revision | sed 's/.*"\(.*\)".*/\1/')
+echo "HEAD: $HEAD"
+echo "TAG:  $TAG"
+echo "APK:  $APK_COMMIT"
+[ "$HEAD" = "$APK_COMMIT" ] && [ "$TAG" = "$APK_COMMIT" ] && echo "OK: all match before upload" || echo "FAIL: mismatch"
+```
+
+### 9. Create GitHub Release with APK
+
+```bash
 gh release create v<VERSION_NAME> \
+  --repo abhay-byte/finalbenchmark-platform \
   --title "v<VERSION_NAME>" \
   --notes-file app/release/release-<VERSION>.md \
   app/build/outputs/apk/release/app-release.apk
 ```
 
-### 8. Verify Release Commit Match — INVARIANT CHECK
+### 10. Final Verification — DOWNLOAD RELEASE APK AND EXTRACT COMMIT (MANDATORY)
 
-All four MUST match. Run this exact check:
-
-```bash
-TAG_COMMIT=$(git rev-list -1 v<VERSION_NAME>)
-HEAD_COMMIT=$(git log -1 --format="%H")
-RELEASE_COMMIT=$(gh release view v<VERSION_NAME> --repo abhay-byte/finalbenchmark-platform --json targetCommitish -q '.targetCommitish')
-
-echo "TAG:     $TAG_COMMIT"
-echo "HEAD:    $HEAD_COMMIT"
-echo "RELEASE: $RELEASE_COMMIT"
-
-[ "$TAG_COMMIT" = "$HEAD_COMMIT" ] && [ "$TAG_COMMIT" = "$RELEASE_COMMIT" ] \
-  && echo "OK: all match" \
-  || echo "FAIL: mismatch — delete tag and release, redo from correct commit"
-```
-
-Also verify APK from release matches local:
+Download the released APK from GitHub and extract its commit hash. Must match TAG and HEAD.
 
 ```bash
-curl -sL -o /tmp/verify.apk "https://github.com/abhay-byte/finalbenchmark-platform/releases/download/v<VERSION_NAME>/app-release.apk"
-sha256sum /tmp/verify.apk app/build/outputs/apk/release/app-release.apk
+TAG=$(git rev-list -1 v<VERSION_NAME>)
+HEAD=$(git log -1 --format="%H")
+curl -sL -o /tmp/release-verify.apk "https://github.com/abhay-byte/finalbenchmark-platform/releases/download/v<VERSION_NAME>/app-release.apk"
+RELEASE_APK_COMMIT=$(unzip -p /tmp/release-verify.apk META-INF/version-control-info.textproto | grep revision | sed 's/.*"\(.*\)".*/\1/')
+LOCAL_APK_COMMIT=$(unzip -p app/build/outputs/apk/release/app-release.apk META-INF/version-control-info.textproto | grep revision | sed 's/.*"\(.*\)".*/\1/')
+
+echo "HEAD:              $HEAD"
+echo "TAG:               $TAG"
+echo "LOCAL APK:         $LOCAL_APK_COMMIT"
+echo "RELEASE APK (dl):  $RELEASE_APK_COMMIT"
+
+[ "$HEAD" = "$RELEASE_APK_COMMIT" ] && [ "$TAG" = "$RELEASE_APK_COMMIT" ] \
+  && echo "OK: release APK commit matches TAG and HEAD" \
+  || echo "FAIL: mismatch — delete release and redo"
 ```
 
-### 9. F-Droid (Auto)
+### 11. F-Droid (Auto)
 
 F-Droid metadata uses `UpdateCheckMode: Tags` — new tags are auto-picked up. No manual metadata update needed unless metadata fields change.
 
@@ -131,37 +162,25 @@ F-Droid metadata uses `UpdateCheckMode: Tags` — new tags are auto-picked up. N
 | APK | `app/build/outputs/apk/release/app-release.apk` |
 | Release notes | `app/release/release-<VERSION>.md` |
 | Changelog | `fastlane/metadata/android/en-US/changelogs/<CODE>.txt` |
-| Metadata | `com.ivarna.finalbenchmark2.yml` |
+| Commit in APK | `META-INF/version-control-info.textproto` → `revision` |
 
 ## Troubleshooting
 
-### Dirty working tree before build
-```bash
-git stash  # or commit changes
-```
-
-### APK not matching commit (invariant broken)
+### APK commit stale (invariant broken)
 ```bash
 # Delete broken release
-gh release delete v<VERSION_NAME> --yes
-# Rebuild from HEAD
-./gradlew clean assembleRelease
-# Verify HEAD == APK build commit
-git log -1 --format="%H"
-# Re-tag HEAD
+gh release delete v<VERSION_NAME> --repo abhay-byte/finalbenchmark-platform --yes
 git tag -d v<VERSION_NAME>
-git tag -a v<VERSION_NAME> -m "Release v<VERSION_NAME>"
-git push origin v<VERSION_NAME> --force
-# Re-create release
-gh release create v<VERSION_NAME> --title "v<VERSION_NAME>" \
-  --notes-file app/release/release-<VERSION>.md \
-  app/build/outputs/apk/release/app-release.apk
-# Re-run invariant check (step 8)
+git push origin :refs/tags/v<VERSION_NAME>
+# Clean rebuild from HEAD
+./gradlew clean assembleRelease
+# Re-run from step 3
 ```
 
-### Tag needs update
+### Release needs new APK
 ```bash
-git tag -d v<VERSION_NAME>
-git tag -a v<VERSION_NAME> -m "Release v<VERSION_NAME>"
-git push origin v<VERSION_NAME> --force
+# Delete release, redo steps 2-10
+gh release delete v<VERSION_NAME> --repo abhay-byte/finalbenchmark-platform --yes
+./gradlew clean assembleRelease
+# ... redo steps 3-10
 ```
