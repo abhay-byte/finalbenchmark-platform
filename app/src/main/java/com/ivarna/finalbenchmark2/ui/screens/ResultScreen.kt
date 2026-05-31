@@ -2439,8 +2439,8 @@ fun BenchmarkResultItem(result: BenchmarkResult, isAi: Boolean = false, isGpu: B
         val individualScore: Double
 
         if (isAi) {
-             // For AI, opsPerSecond is tokens/sec or inferences/sec
-             displayThroughput = String.format("%.2f ops/s", result.opsPerSecond)
+             // For AI, opsPerSecond is raw ops, converted to MOPS/s
+             displayThroughput = String.format("%.2f MOPS/s", result.opsPerSecond / 1_000_000.0)
              // Use AI_PER_TEST_SCORING_FACTORS (= 100 / refTps) so baseline SD8Gen3 shows ~100 pts
              val scalingFactors = KotlinBenchmarkManager.AI_PER_TEST_SCORING_FACTORS
              val benchmarkName = BenchmarkName.fromString(result.name)
@@ -2492,15 +2492,17 @@ fun BenchmarkResultItem(result: BenchmarkResult, isAi: Boolean = false, isGpu: B
                                         modifier = Modifier.weight(1f, fill = false).padding(end = 8.dp)
                                 )
                                 
-                                // Acceleration Mode Badge
+                                // Acceleration Mode Badge — shown for AI benchmarks
+                                // Colors: Vulkan = purple, OpenCL = teal/secondary, OpenGL ES = amber/surface, CPU = gray
                                 if (isAi && result.accelerationMode != null && result.accelerationMode.isNotEmpty()) {
                                     Box(
                                         modifier = Modifier
                                             .background(
                                                 color = when(result.accelerationMode) {
-                                                    "NPU" -> MaterialTheme.colorScheme.tertiaryContainer
-                                                    "GPU" -> MaterialTheme.colorScheme.secondaryContainer
-                                                    else -> MaterialTheme.colorScheme.surfaceVariant
+                                                    "Vulkan"    -> MaterialTheme.colorScheme.tertiaryContainer
+                                                    "OpenCL"    -> MaterialTheme.colorScheme.secondaryContainer
+                                                    "OpenGL ES" -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f)
+                                                    else        -> MaterialTheme.colorScheme.surfaceVariant
                                                 },
                                                 shape = RoundedCornerShape(4.dp)
                                             )
@@ -3448,14 +3450,17 @@ private fun formatBenchmarkShareData(context: Context, summary: BenchmarkSummary
             summary.detailedResults.forEach { result ->
                 val tps = result.opsPerSecond
                 val timeMs = result.executionTimeMs
-                val accel = result.accelerationMode?.takeIf { it.isNotBlank() } ?: "CPU"
+                val accel = result.accelerationMode?.takeIf { it.isNotBlank() } ?: "CPU"  // nativeGetMode always returns Vulkan/OpenCL/OpenGL ES/CPU
                 val tpsStr = when {
-                    tps >= 1000.0 -> String.format("%.0f infer/s", tps)
-                    tps >= 1.0    -> String.format("%.2f infer/s", tps)
-                    else          -> String.format("%.3f infer/s", tps)
+                    tps >= 1_000_000_000.0 -> String.format("%.0f MOPS/s", tps / 1_000_000.0)
+                    tps >= 1_000_000.0    -> String.format("%.2f MOPS/s", tps / 1_000_000.0)
+                    else                  -> String.format("%.3f MOPS/s", tps / 1_000_000.0)
                 }
-                val timeStr = if (timeMs >= 1000.0) String.format("%.2f s", timeMs / 1000.0)
-                              else String.format("%.0f ms", timeMs)
+                val timeStr = when {
+                    timeMs >= 1000.0 -> String.format("%.2f s", timeMs / 1000.0)
+                    timeMs >= 1.0    -> String.format("%.1f ms", timeMs)
+                    else             -> String.format("%.2f ms", timeMs)  // P2 FIX: show sub-ms precision to avoid "0 ms" bug
+                }
                 builder.append("${result.name}: $tpsStr  |  $timeStr  |  [$accel]\n")
             }
         } else {

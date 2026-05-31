@@ -93,6 +93,8 @@ add_library(
     cpu_affinity.cpp            # CPU affinity control for single-core benchmarks
     ram_benchmark.c             # RAM bandwidth/latency benchmarks (NEON + pthreads)
     storage_benchmark.c         # Storage UFS benchmarks (posix_fadvise + fdatasync)
+    ai_benchmark_native.cpp     # AI compute benchmarks (OpenCL→Vulkan→GLES→CPU fallback)
+    ai_vulkan_matmul.cpp        # Vulkan compute GEMM for AI benchmark (universal GPU support)
 )
 
 # Find required libraries
@@ -110,6 +112,16 @@ find_library(
 find_library(
     vulkan-lib
     vulkan
+)
+
+# EGL + GLESv3 for AI benchmark OpenGL ES compute backend
+find_library(
+    egl-lib
+    EGL
+)
+find_library(
+    glesv3-lib
+    GLESv3
 )
 
 # Find dl library for dlopen (OpenCL runtime loading — Phase 3)
@@ -133,6 +145,8 @@ target_link_libraries(
     ${log-lib}
     ${android-lib}
     ${dl-lib}
+    ${egl-lib}
+    ${glesv3-lib}
 )
 
 # Only link Vulkan if found — linking missing lib causes runtime SIGSEGV

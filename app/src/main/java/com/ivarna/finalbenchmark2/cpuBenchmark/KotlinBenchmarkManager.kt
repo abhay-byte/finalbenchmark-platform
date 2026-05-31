@@ -14,17 +14,14 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 import android.content.Context
-import com.ivarna.finalbenchmark2.aiBenchmark.AiBenchmarkManager
-import com.ivarna.finalbenchmark2.aiBenchmark.ModelRepository
+import com.ivarna.finalbenchmark2.aiBenchmark.AiBenchmarkNative
 import com.ivarna.finalbenchmark2.aiBenchmark.AiBenchmarkResult
+import com.ivarna.finalbenchmark2.utils.sanitizeDouble
 import java.io.File
-import java.nio.ByteBuffer
-import java.nio.ByteOrder
 import android.graphics.Bitmap
 
 class KotlinBenchmarkManager(
-    private val context: Context? = null,
-    private val aiManager: AiBenchmarkManager? = null
+    private val context: Context? = null
 ) {
         private val _benchmarkEvents = MutableSharedFlow<BenchmarkEvent>(replay = 1)
         val benchmarkEvents: SharedFlow<BenchmarkEvent> = _benchmarkEvents.asSharedFlow()
@@ -75,33 +72,35 @@ class KotlinBenchmarkManager(
                 BenchmarkName.SPEECH_TO_TEXT to 2.0
         )
 
-        // AI Baseline TPS: Calibrated on OnePlus CPH2691 (SD8 Gen 3, Android 16).
-        // Each test scores ~100 pts on this reference device.
-        // When delegates (NNAPI/GPU) start working, these refs will need recalibration.
+        // AI Baseline TPS (GFLOPS × 1e9 = ops/s): Calibrated native GEMM on SD8 Gen 3 (CPH2691).
+        // Each test scores ~100 pts on the reference device.
+        // Metric = 2*N³ / ms (ops/s). Backend: OpenCL > Vulkan > GLES > NEON.
         val AI_REFERENCE_TPS = mapOf(
-                BenchmarkName.LLM_INFERENCE                      to 427.16,  // Gemma 3 fallback
-                BenchmarkName.IMAGE_CLASSIFICATION               to 553.03,  // MobileNet V3
-                BenchmarkName.OBJECT_DETECTION                   to 50.41,   // EfficientDet Lite0
-                BenchmarkName.TEXT_EMBEDDING                     to 32.28,   // MiniLM-L6
-                BenchmarkName.SPEECH_TO_TEXT                     to 0.401,   // Whisper Tiny
-                BenchmarkName.IMAGE_CLASSIFICATION_MOBILENET_V1  to 420.67,  // MobileNet V1
-                BenchmarkName.OBJECT_DETECTION_YOLO_V8           to 60.09,   // YOLOv8n
-                BenchmarkName.TEXT_CLASSIFICATION_MOBILEBERT     to 3.54,    // MobileBERT
-                BenchmarkName.AUDIO_NOISE_SUPPRESSION_DTLN       to 5049.0   // DTLN
+                BenchmarkName.LLM_INFERENCE                     to 7.9265e10, // 79265 MOPS/s
+                BenchmarkName.IMAGE_CLASSIFICATION              to 6.2771e10, // 62771 MOPS/s
+                BenchmarkName.OBJECT_DETECTION                  to 7.9981e10, // 79981 MOPS/s
+                BenchmarkName.TEXT_EMBEDDING                    to 8.0412e10, // 80412 MOPS/s
+                BenchmarkName.SPEECH_TO_TEXT                    to 7.9290e10, // 79290 MOPS/s
+                BenchmarkName.IMAGE_CLASSIFICATION_MOBILENET_V1 to 7.9701e10, // 79701 MOPS/s
+                BenchmarkName.OBJECT_DETECTION_YOLO_V8          to 7.7937e10, // 77937 MOPS/s
+                BenchmarkName.TEXT_CLASSIFICATION_MOBILEBERT    to 8.0367e10, // 80367 MOPS/s
+                BenchmarkName.AUDIO_NOISE_SUPPRESSION_DTLN      to 7.9234e10  // 79234 MOPS/s
         )
 
-        // Per-test display scoring factors: factor = 100 / refTps
-        // On the reference device every test shows exactly 100 pts.
+        // Per-test scoring factors: factor = 100 / refTps → score = tps * factor
+        // Baseline = SD 8 Gen 3 (Adreno 750) observed NEON CPU measurements.
+        // Each test scores exactly 100 on the reference device.
+        // Calibrated: 2026-05-31 with N=512 LLM, N=1024 ASR (actual sizes used in nativeRunBenchmark).
         val AI_PER_TEST_SCORING_FACTORS = mapOf(
-                BenchmarkName.LLM_INFERENCE                      to (100.0 / 427.16),
-                BenchmarkName.IMAGE_CLASSIFICATION               to (100.0 / 553.03),
-                BenchmarkName.OBJECT_DETECTION                   to (100.0 / 50.41),
-                BenchmarkName.TEXT_EMBEDDING                     to (100.0 / 32.28),
-                BenchmarkName.SPEECH_TO_TEXT                     to (100.0 / 0.401),
-                BenchmarkName.IMAGE_CLASSIFICATION_MOBILENET_V1  to (100.0 / 420.67),
-                BenchmarkName.OBJECT_DETECTION_YOLO_V8           to (100.0 / 60.09),
-                BenchmarkName.TEXT_CLASSIFICATION_MOBILEBERT     to (100.0 / 3.54),
-                BenchmarkName.AUDIO_NOISE_SUPPRESSION_DTLN       to (100.0 / 5049.0)
+                BenchmarkName.IMAGE_CLASSIFICATION              to (100.0 / 1.4567e10),  // Conv 224:   14567 MOPS/s
+                BenchmarkName.OBJECT_DETECTION                  to (100.0 / 3.1734e10),  // Det  320:   31734 MOPS/s
+                BenchmarkName.TEXT_EMBEDDING                    to (100.0 / 5.6300e10),  // Text 384:   56300 MOPS/s
+                BenchmarkName.SPEECH_TO_TEXT                    to (100.0 / 5.4147e10),  // ASR  1024:  54147 MOPS/s
+                BenchmarkName.LLM_INFERENCE                     to (100.0 / 6.1562e10),  // LLM  512:   61562 MOPS/s (N=512)
+                BenchmarkName.IMAGE_CLASSIFICATION_MOBILENET_V1 to (100.0 / 2.9203e10),  // Conv 224v2: 29203 MOPS/s
+                BenchmarkName.OBJECT_DETECTION_YOLO_V8          to (100.0 / 6.4350e10),  // YOLO 640:   64350 MOPS/s
+                BenchmarkName.TEXT_CLASSIFICATION_MOBILEBERT    to (100.0 / 6.2641e10),  // BERT 768:   62641 MOPS/s
+                BenchmarkName.AUDIO_NOISE_SUPPRESSION_DTLN      to (100.0 / 6.2280e10)   // DTLN 512:   62280 MOPS/s
         )
 
         }
@@ -188,141 +187,73 @@ class KotlinBenchmarkManager(
         }
 
         private suspend fun runAiBenchmarks(deviceTier: String) {
-             // Placeholder for AI benchmarks
-             // Simulate work for now to prevent crashes until actual implementation
-             val categoryName = BenchmarkCategory.AI.name
+            val categoryName = BenchmarkCategory.AI.name
+            runTestWorkload() // Warmup
+            val results = mutableListOf<BenchmarkResult>()
 
-             runTestWorkload() // Warmup
+            // Init native AI benchmark engine (Vulkan→OpenCL→GLES→CPU)
+            AiBenchmarkNative.init()
 
-             val results = mutableListOf<BenchmarkResult>()
-             
-            if (context == null || aiManager == null) {
-                Log.e(TAG, "AI Benchmark failed: Context or AiManager is null")
-                return
-            }
+            // P3 FIX: Silent warmup run to trigger CPU/GPU boost state before timed tests.
+            // Prevents first result (Conv 224×224) being skewed cold vs. warmed tests.
+            // Result is discarded — no emit, no score impact.
+            Log.d(TAG, "AI: running silent GPU warmup...")
+            AiBenchmarkNative.runBenchmark(AiBenchmarkNative.IMAGE_CLASSIFICATION, 1, 1, "_warmup_")
+            Log.d(TAG, "AI: warmup done, starting timed benchmarks")
 
-            val modelsDir = File(context.filesDir, "models")
-            Log.d(TAG, "AI Benchmark: Looking for models in ${modelsDir.absolutePath}")
-            val filesCallback = modelsDir.listFiles()
-            if (filesCallback != null) {
-                Log.d(TAG, "Files found in models dir: ${filesCallback.joinToString { it.name }}")
-            } else {
-                Log.e(TAG, "Models directory is empty or does not exist!")
-            }
+            // Native C++ self-calibrates iterations to fill TARGET_MS per test.
+            // iters/warmup params passed to JNI are ignored — kept for API compatibility.
+            val iters = 1; val warmup = 1; val llmIters = 1; val asrIters = 1
 
-            val aiBenchmarks = BenchmarkName.getByCategory(BenchmarkCategory.AI)
-            
-            // Get Workload Params
-            val aiParams = aiManager.getAiWorkloadParams(deviceTier)
-             
-             aiBenchmarks.forEachIndexed { index, benchmark ->
+            // Benchmark map
+            data class AiConfig(val id: Int, val iters: Int, val warmup: Int)
+            val benchmarks = listOf<Pair<BenchmarkName, AiConfig>>(
+                BenchmarkName.IMAGE_CLASSIFICATION              to AiConfig(AiBenchmarkNative.IMAGE_CLASSIFICATION, iters, warmup),
+                BenchmarkName.OBJECT_DETECTION                  to AiConfig(AiBenchmarkNative.OBJECT_DETECTION,     iters, warmup),
+                BenchmarkName.TEXT_EMBEDDING                    to AiConfig(AiBenchmarkNative.TEXT_EMBEDDING,       iters, warmup),
+                BenchmarkName.SPEECH_TO_TEXT                    to AiConfig(AiBenchmarkNative.SPEECH_TO_TEXT,       asrIters, warmup),
+                BenchmarkName.LLM_INFERENCE                     to AiConfig(AiBenchmarkNative.LLM_INFERENCE,        llmIters, warmup),
+                BenchmarkName.IMAGE_CLASSIFICATION_MOBILENET_V1 to AiConfig(AiBenchmarkNative.IMAGE_CLASSIFICATION, iters, warmup),
+                BenchmarkName.OBJECT_DETECTION_YOLO_V8          to AiConfig(AiBenchmarkNative.YOLO_DETECTION,       iters, warmup),
+                BenchmarkName.TEXT_CLASSIFICATION_MOBILEBERT    to AiConfig(AiBenchmarkNative.MOBILE_BERT,          iters, warmup),
+                BenchmarkName.AUDIO_NOISE_SUPPRESSION_DTLN      to AiConfig(AiBenchmarkNative.DTLN,                 iters, warmup),
+            )
+
+            for ((benchmark, cfg) in benchmarks) {
                 val testName = benchmark.displayName()
+                emitBenchmarkStart(testName, categoryName)
 
-                // Determine filename based on benchmark type
-                val fileName = when(benchmark) {
-                    BenchmarkName.IMAGE_CLASSIFICATION -> ModelRepository.MOBILENET_FILENAME
-                    BenchmarkName.OBJECT_DETECTION -> ModelRepository.EFFICIENTDET_FILENAME
-                    BenchmarkName.LLM_INFERENCE -> ModelRepository.GEMMA_FILENAME 
-                    BenchmarkName.TEXT_EMBEDDING -> ModelRepository.MINILM_FILENAME
-                    BenchmarkName.SPEECH_TO_TEXT -> ModelRepository.WHISPER_FILENAME
-                    
-                    // New V2 Mappings
-                    BenchmarkName.IMAGE_CLASSIFICATION_MOBILENET_V1 -> ModelRepository.MOBILENET_V1_FILENAME
-                    BenchmarkName.OBJECT_DETECTION_YOLO_V8 -> ModelRepository.YOLO_V8_FILENAME
+                val result = AiBenchmarkNative.runBenchmark(cfg.id, cfg.iters, cfg.warmup, testName)
 
-                    BenchmarkName.TEXT_CLASSIFICATION_MOBILEBERT -> ModelRepository.MOBILEBERT_FILENAME
-                    BenchmarkName.AUDIO_NOISE_SUPPRESSION_DTLN -> ModelRepository.DTLN_FILENAME
-                    
-                    else -> ""
+                // Sanitize before ANY use — native may return 0 on CPU fallback edge cases
+                val safeMs  = if (result.inferenceTimeMs.isFinite() && result.inferenceTimeMs >= 0) result.inferenceTimeMs else 0.0
+                val safeTps = if (result.computeFlops.isFinite()      && result.computeFlops      >  0) result.computeFlops      else 0.0
+                val isOk    = result.success && safeTps > 0.0
+
+                if (isOk) {
+                    Log.i("FinalBenchmark", "PASS: $testName | TPS=$safeTps | ${result.accelerationMode}")
+                    emitBenchmarkComplete(testName, categoryName, safeMs.toLong(), safeTps, result.accelerationMode)
+                } else {
+                    Log.e("FinalBenchmark", "FAIL: $testName | ${result.errorMessage ?: "tps=0"}")
+                    emitBenchmarkComplete(testName, categoryName, 0, 0.0)
                 }
 
-                if (fileName.isEmpty()) {
-                    Log.d(TAG, "Skipping $testName (No filename mapped or not implemented)")
-                    // Add skipped result
-                    results.add(BenchmarkResult(testName, 0.0, 0.0, false, "{\"error\": \"Not implemented\"}"))
-                    // Emit fake start/complete to resolve UI Pending state
-                    emitBenchmarkStart(testName, categoryName)
-                    delay(100)
-                    emitBenchmarkComplete(testName, categoryName, 0, 0.0) 
-                    return@forEachIndexed
-                }
-
-                val modelFile = File(modelsDir, fileName)
-                Log.d(TAG, "Checking model file: ${modelFile.absolutePath}, exists=${modelFile.exists()}, size=${if(modelFile.exists()) modelFile.length() else 0}")
-
-                if (!modelFile.exists()) {
-                    Log.w(TAG, "Model file not found: $fileName")
-                     Log.d(TAG, "Skipping $testName (Model missing)")
-                     // Add skipped result
-                     results.add(BenchmarkResult(testName, 0.0, 0.0, false, "{\"error\": \"Model missing\"}"))
-                     // Emit fake start/complete to resolve UI Pending state
-                     emitBenchmarkStart(testName, categoryName)
-                     delay(100)
-                     emitBenchmarkComplete(testName, categoryName, 0, 0.0)
-                    return@forEachIndexed 
-                }
-                 
-                  emitBenchmarkStart(testName, categoryName)
-                  
-                  val startTime = System.currentTimeMillis()
-
-                  // Execute via AiBenchmarkManager
-                  // Execute Benchmark with Logging
-                    // Execute Benchmark
-                    Log.d("FinalBenchmark", "Starting AI Benchmark: $testName with model $fileName")
-                    
-                    val result: AiBenchmarkResult = try {
-                        when (benchmark) {
-                            // Image Models (Generic / V3)
-                            BenchmarkName.IMAGE_CLASSIFICATION -> aiManager.runImageClassification(modelFile, aiManager.createDummyMobileNetInput(), true, aiParams.defaultWarmup, aiParams.imageClassificationIterations)
-                            BenchmarkName.OBJECT_DETECTION -> aiManager.runObjectDetection(modelFile, aiManager.createDummyEfficientDetInput(), true, aiParams.defaultWarmup, aiParams.objectDetectionIterations)
-                            
-                            // Specific V2 Mappings
-                            BenchmarkName.IMAGE_CLASSIFICATION_MOBILENET_V1 -> aiManager.runImageClassification(modelFile, aiManager.createDummyMobileNetInput(), true, aiParams.defaultWarmup, aiParams.imageClassificationIterations)
-                            BenchmarkName.OBJECT_DETECTION_YOLO_V8 -> aiManager.runYoloDetection(modelFile, aiManager.createDummyYoloInput(), true, aiParams.defaultWarmup, aiParams.yoloIterations)
-                            
-                            // Text Models
-                            BenchmarkName.TEXT_EMBEDDING -> aiManager.runTextEmbedding(modelFile, true, aiParams.defaultWarmup, aiParams.textEmbeddingIterations)
-                            BenchmarkName.TEXT_CLASSIFICATION_MOBILEBERT -> aiManager.runMobileBert(modelFile, true, aiParams.defaultWarmup, aiParams.mobileBertIterations)
-
-                            
-                            // Audio / GenAI
-                            BenchmarkName.SPEECH_TO_TEXT -> aiManager.runAsr(modelFile, true, aiParams.asrWarmup, aiParams.asrIterations)
-                            BenchmarkName.LLM_INFERENCE -> aiManager.runLlmInference(modelFile, true, aiParams.heavyModelWarmup, aiParams.llmIterations)
-                            BenchmarkName.AUDIO_NOISE_SUPPRESSION_DTLN -> aiManager.runDtlnNoiseSuppression(testName, modelFile, 2, 5)
-                            
-                            else -> AiBenchmarkResult(benchmark.displayName(), 0.0, 0.0, "Skipped", false, "Not implemented in runner")
-                        }
-                    } catch (e: Exception) {
-                        Log.e("FinalBenchmark", "Error running AI Benchmark: $testName", e)
-                        AiBenchmarkResult(benchmark.displayName(), 0.0, 0.0, "Error", false, e.message ?: "Unknown error")
-                    }
-
-                    // Log & Emit — score is raw throughput (no multiplier)
-                    if (result.success) {
-                        val score = result.throughput // Raw TPS — final score via geometric mean later
-                        Log.i("FinalBenchmark", "PASS: ${result.modelName} | TPS=${result.throughput} | Mode=${result.accelerationMode}")
-                        emitBenchmarkComplete(testName, categoryName, result.inferenceTimeMs.toLong(), score, result.accelerationMode)
-                    } else {
-                        Log.e("FinalBenchmark", "FAIL: ${result.modelName} | Error: ${result.errorMessage}")
-                         emitBenchmarkComplete(testName, categoryName, 0, 0.0)
-                    }
-
-                    results.add(BenchmarkResult(
-                           name = testName,
-                           executionTimeMs = result.inferenceTimeMs,
-                           opsPerSecond = result.throughput, 
-                           isValid = result.success,
-                           metricsJson = "{ \"acceleration\": \"${result.accelerationMode}\", \"avgInferenceTimeMs\": ${result.inferenceTimeMs} }",
-                           accelerationMode = result.accelerationMode
-                       ))
-
-                    delay(100)
-             }
+                // metricsJson uses sanitizeDouble() — NEVER embed raw Double (risk of Infinity in JSON text)
+                val safeAvgMs = sanitizeDouble(safeMs)
+                results.add(BenchmarkResult(
+                    name = testName,
+                    executionTimeMs = safeMs,
+                    opsPerSecond = safeTps,
+                    isValid = isOk,
+                    metricsJson = "{\"acceleration\":\"${result.accelerationMode}\",\"avgMs\":$safeAvgMs}",
+                    accelerationMode = result.accelerationMode
+                ))
+                delay(50)
+            }
              
               // Calculate AI score using geometric mean (same approach as CPU)
               // Ratio = deviceTPS / referenceTPS, then geometricMean * 100 = final score
-              val validResults = results.filter { it.isValid && it.opsPerSecond > 0.0 }
+              val validResults = results.filter { it.isValid && it.opsPerSecond > 0.0 && it.opsPerSecond.isFinite() }
               val totalScore = if (validResults.isNotEmpty()) {
                   val ratios = validResults.mapNotNull { result ->
                       val benchmarkName = BenchmarkName.fromString(result.name)
@@ -351,20 +282,20 @@ class KotlinBenchmarkManager(
              results.forEach { result ->
                  detailedResultsArray.put(JSONObject().apply {
                      put("name", result.name)
-                     put("opsPerSecond", result.opsPerSecond)
-                     put("executionTimeMs", result.executionTimeMs)
+                     put("opsPerSecond", sanitizeDouble(result.opsPerSecond))
+                     put("executionTimeMs", sanitizeDouble(result.executionTimeMs))
                      put("isValid", result.isValid)
                      put("metricsJson", result.metricsJson)
-                     put("acceleration_mode", result.accelerationMode) // Ensure UI receives this
+                     put("acceleration_mode", result.accelerationMode)
                  })
              }
 
              val summaryJson = JSONObject().apply {
                  put("type", "AI")
                  put("single_core_score", 0.0)
-                 put("multi_core_score", 0.0) // Not applicable for AI in this simplified view
-                 put("final_score", totalScore)
-                 put("normalized_score", totalScore) // No normalization yet
+                 put("multi_core_score", 0.0)
+                 put("final_score", sanitizeDouble(totalScore))
+                 put("normalized_score", sanitizeDouble(totalScore))
                  put("detailed_results", detailedResultsArray)
              }.toString()
 
@@ -817,14 +748,14 @@ class KotlinBenchmarkManager(
                                         put(
                                                 JSONObject().apply {
                                                         put("name", result.name)
-                                                        put("opsPerSecond", result.opsPerSecond)
+                                                        put("opsPerSecond", sanitizeDouble(result.opsPerSecond))
                                                         put(
                                                                 "executionTimeMs",
-                                                                result.executionTimeMs
+                                                                sanitizeDouble(result.executionTimeMs)
                                                         )
                                                         put("isValid", result.isValid)
                                                         put("metricsJson", result.metricsJson)
-                                                        put("acceleration_mode", result.accelerationMode)
+                                                        put("acceleration_mode", result.accelerationMode ?: "Unknown")
                                                 }
                                         )
                                 }
@@ -833,14 +764,14 @@ class KotlinBenchmarkManager(
                                         put(
                                                 JSONObject().apply {
                                                         put("name", result.name)
-                                                        put("opsPerSecond", result.opsPerSecond)
+                                                        put("opsPerSecond", sanitizeDouble(result.opsPerSecond))
                                                         put(
                                                                 "executionTimeMs",
-                                                                result.executionTimeMs
+                                                                sanitizeDouble(result.executionTimeMs)
                                                         )
                                                         put("isValid", result.isValid)
                                                         put("metricsJson", result.metricsJson)
-                                                        put("acceleration_mode", result.accelerationMode)
+                                                        put("acceleration_mode", result.accelerationMode ?: "Unknown")
                                                 }
                                         )
                                 }
@@ -848,10 +779,10 @@ class KotlinBenchmarkManager(
 
                 return JSONObject()
                         .apply {
-                                put("single_core_score", calculatedSingleCoreScore)
-                                put("multi_core_score", calculatedMultiCoreScore)
-                                put("final_score", calculatedFinalScore)
-                                put("normalized_score", calculatedNormalizedScore)
+                                put("single_core_score", sanitizeDouble(calculatedSingleCoreScore))
+                                put("multi_core_score", sanitizeDouble(calculatedMultiCoreScore))
+                                put("final_score", sanitizeDouble(calculatedFinalScore))
+                                put("normalized_score", sanitizeDouble(calculatedNormalizedScore))
                                 put("rating", rating)
                                 put("detailed_results", detailedResultsArray)
                         }
@@ -915,86 +846,61 @@ class KotlinBenchmarkManager(
                                 WorkloadParams(
                                         primeRange = 122_500_000,  // 0.25x mid
                                         fibonacciNRange = Pair(92, 92),
-                                        fibonacciIterations = 5_208_333,  // 0.25x mid
+                                        fibonacciIterations = 10_416_667,  // 2×
                                         matrixSize = 128,
-                                        matrixIterations = 375,  // 0.25x mid
+                                        matrixIterations = 750,  // 2×
                                         hashDataSizeMb = 8,
-                                        hashIterations = 65_687_500,  // 0.25x mid
-                                        stringSortIterations = 625,  // 0.25x mid
-                                        rayTracingIterations = 100,  // 0.25x mid
+                                        hashIterations = 131_375_000,  // 2×
+                                        stringSortIterations = 1_250,  // 2×
+                                        rayTracingIterations = 200,  // 2×
                                         rayTracingResolution = Pair(256, 256),
                                         rayTracingDepth = 5,
                                         compressionDataSizeMb = 2,
-                                        compressionIterations = 250,  // 0.25x mid
-                                        monteCarloSamples = 6_250_000L,  // 0.25x mid
+                                        compressionIterations = 500,  // 2×
+                                        monteCarloSamples = 12_500_000L,  // 2×
                                         jsonDataSizeMb = 1,
-                                        jsonParsingIterations = 312,  // 0.25x mid (rounded from 312.5)
-                                        nqueensSize = 12  // N-Queens: -1 from mid
+                                        jsonParsingIterations = 625,  // 2×
+                                        nqueensSize = 13  // +1
                                 )
                         "mid" ->
                                 WorkloadParams(
                                         primeRange = 490_000_000,  // 0.5x flagship
                                         fibonacciNRange = Pair(92, 92),
-                                        fibonacciIterations = 20_833_333,  // 0.5x flagship (rounded from 20833333.5)
+                                        fibonacciIterations = 41_666_667,  // 2×
                                         matrixSize = 128,
-                                        matrixIterations = 1_500,  // 0.5x flagship
+                                        matrixIterations = 3_000,  // 2×
                                         hashDataSizeMb = 8,
-                                        hashIterations = 262_750_000,  // 0.5x flagship
-                                        stringSortIterations = 2_500,  // 0.5x flagship
-                                        rayTracingIterations = 400,  // 0.5x flagship
+                                        hashIterations = 525_500_000,  // 2×
+                                        stringSortIterations = 5_000,  // 2×
+                                        rayTracingIterations = 800,  // 2×
                                         rayTracingResolution = Pair(256, 256),
                                         rayTracingDepth = 5,
                                         compressionDataSizeMb = 2,
-                                        compressionIterations = 1_000,  // 0.5x flagship
-                                        monteCarloSamples = 25_000_000L,  // 0.5x flagship
+                                        compressionIterations = 2_000,  // 2×
+                                        monteCarloSamples = 50_000_000L,  // 2×
                                         jsonDataSizeMb = 1,
-                                        jsonParsingIterations = 1_250,  // 0.5x flagship
-                                        nqueensSize = 15  // N-Queens: -1 from flagship
+                                        jsonParsingIterations = 2_500,  // 2×
+                                        nqueensSize = 16  // +1
                                 )
                         "flagship" ->
                                 WorkloadParams(
-                                        // CACHE-RESIDENT STRATEGY: Small matrices with high
-                                        // iterations
-
                                         primeRange = 980_000_000,  // Miller-Rabin: ~40-50s
-                                        fibonacciNRange = Pair(92, 92), // Use fixed max safe value
-                                        fibonacciIterations = 41_666_667,  // Reduced 3x for polynomial
-                                        matrixSize =
-                                                128, // CACHE-RESIDENT: Fixed small size for cache
-                                        // efficiency
-                                        matrixIterations =
-                                                3000, // CACHE-RESIDENT: High iterations for
-                                        // flagship devices
+                                        fibonacciNRange = Pair(92, 92),
+                                        fibonacciIterations = 125_000_000,  // 3×
+                                        matrixSize = 128,
+                                        matrixIterations = 9_000,  // 3×
                                         hashDataSizeMb = 8,
-                                        hashIterations =
-                                                525_500_000, // FIXED WORK PER CORE: Target ~1.5-2.0
-                                        // seconds
-
-                                        stringSortIterations =
-                                                5_000, // CACHE-RESIDENT: Explicit control - target
-                                        // ~1.0-2.0s
-                                        rayTracingIterations =
-                                                800, // FIXED: Increased to 2000 to reach ~5s
-                                        // target
-                                        // duration for better thermal testing
-                                        rayTracingResolution =
-                                                Pair(
-                                                        256, // REVERTED: 256×256 caused thermal
-                                                        // throttling
-                                                        256
-                                                ), // OPTIMIZED: Increased from 100×100 to 256×256
-                                        // for better multi-core scaling
+                                        hashIterations = 1_576_500_000,  // 3×
+                                        stringSortIterations = 15_000,  // 3×
+                                        rayTracingIterations = 2_400,  // 3×
+                                        rayTracingResolution = Pair(256, 256),
                                         rayTracingDepth = 5,
                                         compressionDataSizeMb = 2,
-                                        compressionIterations =
-                                                2_000, // INCREASED: Target ~15s execution (was
-                                        // 100)
-                                        monteCarloSamples =
-                                                50_000_000L, // Reduced 100x for Mandelbrot Set (was 5B)
+                                        compressionIterations = 6_000,  // 3×
+                                        monteCarloSamples = 150_000_000L,  // 3×
                                         jsonDataSizeMb = 1,
-                                        jsonParsingIterations = 2500,  // Reduced 10x for CPU-bound parsing
-                                        nqueensSize =
-                                                16 // INCREASED: 14,200 solutions, ~20s (was 10)
+                                        jsonParsingIterations = 7_500,  // 3×
+                                        nqueensSize = 17  // +1 (exponential)
                                 )
                         else -> WorkloadParams() // Default values
                 }

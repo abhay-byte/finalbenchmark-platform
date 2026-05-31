@@ -5,7 +5,12 @@
  * Scene 1: Julia fractal compute — 1920×1080 kernel, 128 iter, reports FPS.
  * Scene 2: GEMM FP32 — 512×512 matrix multiply, reports GFLOPS.
  * Scene 3: N-body gravity — 4096 particles, reports FPS.
+ *
+ * This file OWNS the shared OpenCL context (g_clLib / g_ctx / g_queue / g_dev).
+ * ai_benchmark_native.cpp and any other module must call ocl_shared_*() accessors
+ * instead of opening a second libOpenCL.so handle.
  */
+#define OCL_SHARED_IMPL
 #include <jni.h>
 #include <dlfcn.h>
 #include <android/log.h>
@@ -130,8 +135,31 @@ extern "C" {
 JNIEXPORT jboolean JNICALL
 Java_com_ivarna_finalbenchmark2_utils_OpenCLBenchmarkBridge_nativeInit(JNIEnv*, jobject) {
     if (g_clInit) return JNI_TRUE;
-    g_clLib = dlopen("libOpenCL.so", RTLD_LAZY);
-    if (!g_clLib) { LOGI("libOpenCL.so not found: %s", dlerror()); return JNI_FALSE; }
+    
+    // P0 FIX: Multi-path dlopen for all GPU families (Adreno/Mali/Xclipse/PowerVR)
+    // Android 7.0+ (API 24+) requires <uses-native-library> in manifest for linker namespace
+    static const char* OCL_SEARCH_PATHS[] = {
+        "libOpenCL.so",                              // Catch-all (linker namespace)
+        "/vendor/lib64/libOpenCL.so",                // Adreno, Xclipse, Mali (some)
+        "/system/vendor/lib64/libOpenCL.so",         // Adreno (alternate)
+        "/vendor/lib64/libPVROCL.so",                // PowerVR (Tensor G5)
+        "/vendor/lib64/egl/libGLES_mali.so",         // Mali (OpenCL embedded in GLES lib)
+        nullptr
+    };
+    
+    g_clLib = nullptr;
+    for (int i = 0; OCL_SEARCH_PATHS[i]; ++i) {
+        g_clLib = dlopen(OCL_SEARCH_PATHS[i], RTLD_LAZY);
+        if (g_clLib) {
+            LOGI("OpenCL found at: %s", OCL_SEARCH_PATHS[i]);
+            break;
+        }
+    }
+    
+    if (!g_clLib) { 
+        LOGI("OpenCL not found on any path: %s", dlerror()); 
+        return JNI_FALSE; 
+    }
 
     auto GetPlatformIDs    = CL_SYM(GetPlatformIDs);
     auto GetDeviceIDs      = CL_SYM(GetDeviceIDs);
@@ -330,5 +358,12 @@ Java_com_ivarna_finalbenchmark2_utils_OpenCLBenchmarkBridge_nativeDestroy(JNIEnv
     dlclose(g_clLib); g_clLib = nullptr; g_clInit = false;
     LOGI("OpenCL destroyed");
 }
+
+// ─── Shared-context accessors (used by ai_benchmark_native.cpp) ────────────
+bool ocl_shared_available(void) { return g_clInit; }
+void* ocl_shared_lib(void)   { return g_clLib;  }
+void* ocl_shared_ctx(void)   { return g_ctx;    }
+void* ocl_shared_queue(void) { return g_queue;  }
+void* ocl_shared_dev(void)   { return g_dev;    }
 
 } // extern "C"

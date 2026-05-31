@@ -648,9 +648,10 @@ fun TimelineTestRow(test: TestState) {
                         modifier = Modifier
                             .background(
                                 color = when(test.accelerationMode) {
-                                    "NPU" -> MaterialTheme.colorScheme.tertiaryContainer
-                                    "GPU" -> MaterialTheme.colorScheme.secondaryContainer
-                                    else -> MaterialTheme.colorScheme.surfaceVariant
+                                    "Vulkan"    -> MaterialTheme.colorScheme.tertiaryContainer
+                                    "OpenCL"    -> MaterialTheme.colorScheme.secondaryContainer
+                                    "OpenGL ES" -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f)
+                                    else        -> MaterialTheme.colorScheme.surfaceVariant  // CPU or unknown
                                 },
                                 shape = RoundedCornerShape(4.dp)
                             )

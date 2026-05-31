@@ -20,16 +20,14 @@ enum class BenchmarkName(val category: BenchmarkCategory) {
     JSON_PARSING(BenchmarkCategory.CPU),
     N_QUEENS(BenchmarkCategory.CPU),
 
-    // AI Benchmarks
-    LLM_INFERENCE(BenchmarkCategory.AI),
+    // AI Benchmarks — order MUST match KotlinBenchmarkManager.runAiBenchmarks() run order
     IMAGE_CLASSIFICATION(BenchmarkCategory.AI),
     OBJECT_DETECTION(BenchmarkCategory.AI),
     TEXT_EMBEDDING(BenchmarkCategory.AI),
-
     SPEECH_TO_TEXT(BenchmarkCategory.AI),
+    LLM_INFERENCE(BenchmarkCategory.AI),
     IMAGE_CLASSIFICATION_MOBILENET_V1(BenchmarkCategory.AI),
     OBJECT_DETECTION_YOLO_V8(BenchmarkCategory.AI),
-
     TEXT_CLASSIFICATION_MOBILEBERT(BenchmarkCategory.AI),
     AUDIO_NOISE_SUPPRESSION_DTLN(BenchmarkCategory.AI),
 
@@ -92,16 +90,15 @@ enum class BenchmarkName(val category: BenchmarkCategory) {
             MONTE_CARLO -> "Monte Carlo π"
             JSON_PARSING -> "JSON Parsing"
             N_QUEENS -> "N-Queens"
-            LLM_INFERENCE -> "LLM Inference (Gemma 3)"
-            IMAGE_CLASSIFICATION -> "Image Classification (MobileNet V3)"
-            OBJECT_DETECTION -> "Object Detection (EfficientDet)"
-            TEXT_EMBEDDING -> "Text Embedding (MiniLM)"
-            SPEECH_TO_TEXT -> "Speech-to-Text (Whisper)"
-            IMAGE_CLASSIFICATION_MOBILENET_V1 -> "Image Classification (MobileNet V1)"
-            OBJECT_DETECTION_YOLO_V8 -> "Object Detection (YOLOv8)"
-
-            TEXT_CLASSIFICATION_MOBILEBERT -> "Text Classification (MobileBERT)"
-            AUDIO_NOISE_SUPPRESSION_DTLN -> "Noise Suppression (DTLN)"
+            LLM_INFERENCE -> "LLM MatMul 512×512 (GEMM)"
+            IMAGE_CLASSIFICATION -> "Conv Proxy 224×224 (GEMM)"
+            OBJECT_DETECTION -> "Detect Proxy 320×320 (GEMM)"
+            TEXT_EMBEDDING -> "Text Embed 384×384 (GEMM)"
+            SPEECH_TO_TEXT -> "ASR Encoder 1024×1024 (GEMM)"
+            IMAGE_CLASSIFICATION_MOBILENET_V1 -> "Conv Proxy 224×224 v2 (GEMM)"
+            OBJECT_DETECTION_YOLO_V8 -> "YOLO Proxy 640×640 (GEMM)"
+            TEXT_CLASSIFICATION_MOBILEBERT -> "BERT Proxy 384×384 v2 (GEMM)"
+            AUDIO_NOISE_SUPPRESSION_DTLN -> "Audio Proxy 512×512 v2 (GEMM)"
 
             
             // GPU Native
@@ -170,16 +167,15 @@ enum class BenchmarkName(val category: BenchmarkCategory) {
             val normalizedName =
                     when {
                         cleanName.startsWith("Monte Carlo") -> "Monte Carlo π"
-                        cleanName.startsWith("LLM Inference") -> "LLM Inference (Gemma 3)"
-                        // V1/YOLOv8 MUST come before the generic Image/Object checks below
-                        cleanName.startsWith("Image Classification (MobileNet V1)") -> "Image Classification (MobileNet V1)"
-                        cleanName.startsWith("Object Detection (YOLOv8)") -> "Object Detection (YOLOv8)"
-                        cleanName.startsWith("Image Classification") -> "Image Classification (MobileNet V3)"
-                        cleanName.startsWith("Object Detection") -> "Object Detection (EfficientDet)"
-                        cleanName.startsWith("Text Embedding") -> "Text Embedding (MiniLM)"
-                        cleanName.startsWith("Speech-to-Text") -> "Speech-to-Text (Whisper)"
-                        cleanName.startsWith("Text Classification") -> "Text Classification (MobileBERT)"
-                        cleanName.startsWith("Noise Suppression") -> "Noise Suppression (DTLN)"
+                        cleanName.startsWith("LLM MatMul") -> "LLM MatMul 512×512 (GEMM)"
+                        cleanName.startsWith("Conv Proxy 224×224 v2") -> "Conv Proxy 224×224 v2 (GEMM)"
+                        cleanName.startsWith("Conv Proxy 224×224") -> "Conv Proxy 224×224 (GEMM)"
+                        cleanName.startsWith("Detect Proxy") -> "Detect Proxy 320×320 (GEMM)"
+                        cleanName.startsWith("YOLO Proxy") -> "YOLO Proxy 640×640 (GEMM)"
+                        cleanName.startsWith("Text Embed") -> "Text Embed 384×384 (GEMM)"
+                        cleanName.startsWith("ASR Encoder") -> "ASR Encoder 1024×1024 (GEMM)"
+                        cleanName.startsWith("BERT Proxy") -> "BERT Proxy 384×384 v2 (GEMM)"
+                        cleanName.startsWith("Audio Proxy") -> "Audio Proxy 512×512 v2 (GEMM)"
                         
                         // GPU Partial Matches
                         cleanName.startsWith("Triangle Rendering") -> "Triangle Rendering Stress Test"

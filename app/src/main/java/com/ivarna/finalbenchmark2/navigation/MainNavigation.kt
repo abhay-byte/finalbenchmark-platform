@@ -32,7 +32,7 @@ import com.ivarna.finalbenchmark2.data.database.AppDatabase
 import com.ivarna.finalbenchmark2.data.repository.HistoryRepository
 import com.ivarna.finalbenchmark2.ui.screens.*
 import com.ivarna.finalbenchmark2.ui.screens.DetailedResultScreen
-import com.ivarna.finalbenchmark2.ui.screens.ModelDownloadDialog
+
 import com.ivarna.finalbenchmark2.ui.viewmodels.RootStatus
 import com.ivarna.finalbenchmark2.utils.OnboardingPreferences
 import dev.chrisbanes.haze.HazeState
@@ -88,30 +88,6 @@ fun MainNavigation(
                     com.ivarna.finalbenchmark2.CrashHandler.clearCrashReport(context)
                     showCrashDialog = false
                 }) { Text("OK") }
-            }
-        )
-    }
-
-    // AI model download dialog state — shown before Full or AI Benchmark starts
-    var showModelDownloadDialog by remember { mutableStateOf(false) }
-    var pendingFullBenchmarkPreset by remember { mutableStateOf("") }
-    var pendingBenchmarkType by remember { mutableStateOf("FULL") }
-
-    // Show model download dialog if needed
-    if (showModelDownloadDialog) {
-        ModelDownloadDialog(
-            onDismiss = {
-                showModelDownloadDialog = false
-                pendingFullBenchmarkPreset = ""
-                pendingBenchmarkType = "FULL"
-            },
-            onProceed = {
-                showModelDownloadDialog = false
-                val preset = pendingFullBenchmarkPreset
-                val benchType = pendingBenchmarkType
-                pendingFullBenchmarkPreset = ""
-                pendingBenchmarkType = "FULL"
-                navController.navigate("benchmark/$preset/$benchType")
             }
         )
     }
@@ -266,20 +242,8 @@ fun MainNavigation(
                     }
                     HomeScreen(
                             onStartBenchmark = { preset, type ->
-                                if (type == "FULL" || type == "AI") {
-                                    // Both FULL and standalone AI benchmarks require models
-                                    val areModelsReady = com.ivarna.finalbenchmark2.aiBenchmark.ModelDownloader.areAllModelsDownloaded(context)
-                                    if (areModelsReady) {
-                                        navController.navigate("benchmark/$preset/$type")
-                                    } else {
-                                        // Show AI model download dialog before starting
-                                        pendingFullBenchmarkPreset = preset
-                                        pendingBenchmarkType = type
-                                        showModelDownloadDialog = true
-                                    }
-                                } else {
-                                    navController.navigate("benchmark/$preset/$type")
-                                }
+                                // No model download gate — AI benchmark uses native GEMM (no TFLite)
+                                navController.navigate("benchmark/$preset/$type")
                             },
                             onNavigateToSettings = { navController.navigate("settings") },
                             historyRepository = historyRepository,

@@ -113,8 +113,7 @@ class BenchmarkViewModel(
 
         private val benchmarkManager =
                 com.ivarna.finalbenchmark2.cpuBenchmark.KotlinBenchmarkManager(
-                    context = application,
-                    aiManager = com.ivarna.finalbenchmark2.aiBenchmark.AiBenchmarkManager(application)
+                    context = application
                 )
         private val cpuUtils = CpuUtilizationUtils(application)
         private val powerUtils = PowerUtils(application)

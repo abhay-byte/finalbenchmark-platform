@@ -1,0 +1,55 @@
+#version 450
+// ─── AI Benchmark Compute Shaders ──────────────────────────────────────
+// Kernels: matmul_small, matmul_large, conv2d_3x3_depthwise
+// All use storage buffers + push constants for work-size.
+
+layout(constant_id = 0) const int BLOCK = 16;
+
+// ─── matmul_large — GEMM C[N][N] += A[N][N] * B[N][N] ────────────────
+// Tiled: each workgroup computes BLOCK×BLOCK of C.
+// Buffer layout: A[N][N], B[N][N], C[N][N] contiguous row-major.
+layout(binding = 0) buffer BufferA { float a[]; };
+layout(binding = 1) buffer BufferB { float b[]; };
+layout(binding = 2) buffer BufferC { float c[]; };
+
+layout(push_constant) uniform Push { int N; } pc;
+
+shared float As[BLOCK][BLOCK];
+shared float Bs[BLOCK][BLOCK];
+
+void main() {
+    uint row = gl_WorkGroupID.y * BLOCK + gl_LocalInvocationID.y;
+    uint col = gl_WorkGroupID.x * BLOCK + gl_LocalInvocationID.x;
+
+    float sum = 0.0;
+    uint N = uint(pc.N);
+    uint tiles = (N + BLOCK - 1u) / BLOCK;
+
+    for (uint t = 0u; t < tiles; t++) {
+        // Cooperative load A tile
+        uint aRow = row;
+        uint aCol = t * BLOCK + gl_LocalInvocationID.x;
+        if (aRow < N && aCol < N)
+            As[gl_LocalInvocationID.y][gl_LocalInvocationID.x] = a[aRow * N + aCol];
+        else
+            As[gl_LocalInvocationID.y][gl_LocalInvocationID.x] = 0.0;
+
+        // Cooperative load B tile
+        uint bRow = t * BLOCK + gl_LocalInvocationID.y;
+        uint bCol = col;
+        if (bRow < N && bCol < N)
+            Bs[gl_LocalInvocationID.y][gl_LocalInvocationID.x] = b[bRow * N + bCol];
+        else
+            Bs[gl_LocalInvocationID.y][gl_LocalInvocationID.x] = 0.0;
+
+        barrier();
+
+        for (uint k = 0u; k < BLOCK; k++)
+            sum += As[gl_LocalInvocationID.y][k] * Bs[k][gl_LocalInvocationID.x];
+
+        barrier();
+    }
+
+    if (row < N && col < N)
+        c[row * N + col] += sum;
+}

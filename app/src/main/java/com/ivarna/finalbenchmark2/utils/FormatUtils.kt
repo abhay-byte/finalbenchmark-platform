@@ -19,3 +19,13 @@ fun formatBytes(bytes: Long): String {
     
     return String.format("%.1f %s", bytes / result, pre)
 }
+
+/**
+ * Sanitize a Double before passing to JSONObject.put().
+ * org.json throws on Infinity and NaN — return 0.0 for both.
+ */
+fun sanitizeDouble(value: Double): Double = when {
+    value.isNaN()      -> 0.0
+    value.isInfinite() -> 0.0
+    else               -> value
+}
