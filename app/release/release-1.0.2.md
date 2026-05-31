@@ -2,7 +2,7 @@
 
 **Release Date:** May 31, 2026
 **Version Code:** 10
-**APK Size:** ~15 MB (arm64-v8a + armeabi-v7a, R8 minified)
+**APK Size:** ~33 MB (arm64-v8a + armeabi-v7a, R8 minified)
 
 ---
 
