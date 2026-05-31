@@ -72,19 +72,20 @@ class KotlinBenchmarkManager(
                 BenchmarkName.SPEECH_TO_TEXT to 2.0
         )
 
-        // AI Baseline TPS (GFLOPS × 1e9 = ops/s): Calibrated native GEMM on SD8 Gen 3 (CPH2691).
-        // Each test scores ~100 pts on the reference device.
-        // Metric = 2*N³ / ms (ops/s). Backend: OpenCL > Vulkan > GLES > NEON.
+        // AI Baseline TPS: Calibrated from SD 8 Gen 3 (Adreno 750) NEON CPU measurements.
+        // Reference device scores exactly 100. Faster devices (GPU path) score >100.
+        // Calibrated 2026-05-31 with actual N values: Conv=224, Det=304, Text=384,
+        // ASR=1024, LLM=512, YOLO=640, BERT=768, DTLN=512.
         val AI_REFERENCE_TPS = mapOf(
-                BenchmarkName.LLM_INFERENCE                     to 7.9265e10, // 79265 MOPS/s
-                BenchmarkName.IMAGE_CLASSIFICATION              to 6.2771e10, // 62771 MOPS/s
-                BenchmarkName.OBJECT_DETECTION                  to 7.9981e10, // 79981 MOPS/s
-                BenchmarkName.TEXT_EMBEDDING                    to 8.0412e10, // 80412 MOPS/s
-                BenchmarkName.SPEECH_TO_TEXT                    to 7.9290e10, // 79290 MOPS/s
-                BenchmarkName.IMAGE_CLASSIFICATION_MOBILENET_V1 to 7.9701e10, // 79701 MOPS/s
-                BenchmarkName.OBJECT_DETECTION_YOLO_V8          to 7.7937e10, // 77937 MOPS/s
-                BenchmarkName.TEXT_CLASSIFICATION_MOBILEBERT    to 8.0367e10, // 80367 MOPS/s
-                BenchmarkName.AUDIO_NOISE_SUPPRESSION_DTLN      to 7.9234e10  // 79234 MOPS/s
+                BenchmarkName.IMAGE_CLASSIFICATION              to 1.4567e10, // Conv 224:   14567 MOPS/s
+                BenchmarkName.OBJECT_DETECTION                  to 3.1734e10, // Det  320:   31734 MOPS/s
+                BenchmarkName.TEXT_EMBEDDING                    to 5.6300e10, // Text 384:   56300 MOPS/s
+                BenchmarkName.SPEECH_TO_TEXT                    to 5.4147e10, // ASR  1024:  54147 MOPS/s
+                BenchmarkName.LLM_INFERENCE                     to 6.1562e10, // LLM  512:   61562 MOPS/s
+                BenchmarkName.IMAGE_CLASSIFICATION_MOBILENET_V1 to 2.9203e10, // Conv 224v2: 29203 MOPS/s
+                BenchmarkName.OBJECT_DETECTION_YOLO_V8          to 6.4350e10, // YOLO 640:   64350 MOPS/s
+                BenchmarkName.TEXT_CLASSIFICATION_MOBILEBERT    to 6.2641e10, // BERT 768:   62641 MOPS/s
+                BenchmarkName.AUDIO_NOISE_SUPPRESSION_DTLN      to 6.2280e10  // DTLN 512:   62280 MOPS/s
         )
 
         // Per-test scoring factors: factor = 100 / refTps → score = tps * factor
