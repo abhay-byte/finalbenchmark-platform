@@ -156,11 +156,6 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
 
-    // LiteRT (Google AI Edge) 1.4.2 — 16KB page alignment on Android 15+
-    implementation("com.google.ai.edge.litert:litert:1.4.2")
-    implementation("com.google.ai.edge.litert:litert-gpu:1.4.2")
-    implementation("com.google.ai.edge.litert:litert-gpu-api:1.4.2")
-    implementation("com.google.mediapipe:tasks-genai:0.10.14")
 
     
     // Networking
