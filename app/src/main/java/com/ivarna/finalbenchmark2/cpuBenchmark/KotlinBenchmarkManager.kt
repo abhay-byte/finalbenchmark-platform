@@ -867,41 +867,41 @@ class KotlinBenchmarkManager(
                                 WorkloadParams(
                                         primeRange = 490_000_000,  // 0.5x flagship
                                         fibonacciNRange = Pair(92, 92),
-                                        fibonacciIterations = 41_666_667,  // 2×
+                                        fibonacciIterations = 10_416_666,  // Restored
                                         matrixSize = 128,
-                                        matrixIterations = 3_000,  // 2×
+                                        matrixIterations = 750,  // Restored
                                         hashDataSizeMb = 8,
-                                        hashIterations = 525_500_000,  // 2×
-                                        stringSortIterations = 5_000,  // 2×
-                                        rayTracingIterations = 800,  // 2×
+                                        hashIterations = 131_375_000,  // Restored
+                                        stringSortIterations = 1_250,  // Restored
+                                        rayTracingIterations = 200,  // Restored
                                         rayTracingResolution = Pair(256, 256),
                                         rayTracingDepth = 5,
                                         compressionDataSizeMb = 2,
-                                        compressionIterations = 2_000,  // 2×
-                                        monteCarloSamples = 50_000_000L,  // 2×
+                                        compressionIterations = 500,  // Restored
+                                        monteCarloSamples = 12_500_000L,  // Restored
                                         jsonDataSizeMb = 1,
-                                        jsonParsingIterations = 2_500,  // 2×
-                                        nqueensSize = 16  // +1
+                                        jsonParsingIterations = 625,  // Restored
+                                        nqueensSize = 13  // Restored
                                 )
                         "flagship" ->
                                 WorkloadParams(
                                         primeRange = 980_000_000,  // Miller-Rabin: ~40-50s
                                         fibonacciNRange = Pair(92, 92),
-                                        fibonacciIterations = 125_000_000,  // 3×
+                                        fibonacciIterations = 41_666_667,  // Restored
                                         matrixSize = 128,
-                                        matrixIterations = 9_000,  // 3×
+                                        matrixIterations = 3000,  // Restored
                                         hashDataSizeMb = 8,
-                                        hashIterations = 1_576_500_000,  // 3×
-                                        stringSortIterations = 15_000,  // 3×
-                                        rayTracingIterations = 2_400,  // 3×
+                                        hashIterations = 525_500_000,  // Restored
+                                        stringSortIterations = 5_000,  // Restored
+                                        rayTracingIterations = 800,  // Restored
                                         rayTracingResolution = Pair(256, 256),
                                         rayTracingDepth = 5,
                                         compressionDataSizeMb = 2,
-                                        compressionIterations = 6_000,  // 3×
-                                        monteCarloSamples = 150_000_000L,  // 3×
+                                        compressionIterations = 2_000,  // Restored
+                                        monteCarloSamples = 50_000_000L,  // Restored
                                         jsonDataSizeMb = 1,
-                                        jsonParsingIterations = 7_500,  // 3×
-                                        nqueensSize = 17  // +1 (exponential)
+                                        jsonParsingIterations = 2500,  // Restored
+                                        nqueensSize = 16  // Restored
                                 )
                         else -> WorkloadParams() // Default values
                 }
