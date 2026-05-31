@@ -1,0 +1,7 @@
+v1.0.2 - Major AI engine rewrite & CPU optimizations
+
+* Replaced Litert AI backend with Native C++ to fix freezing
+* AI properly uses Vulkan/OpenCL/OpenGL ES acceleration
+* Recalibrated AI scoring baselines to SD 8 Gen 3
+* CPU suite now correctly completes in under 3 minutes
+* UI badges accurately display the AI accelerator backend
