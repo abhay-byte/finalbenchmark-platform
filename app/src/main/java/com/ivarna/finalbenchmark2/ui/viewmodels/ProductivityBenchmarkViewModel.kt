@@ -168,9 +168,17 @@ private fun calculateProductivityGeometricMean(results: List<ProductivityTestRes
     return product.pow(1.0 / ratios.size) * 100.0
 }
 
-private const val PROD_WARMUP_DUR_MS  = 1_000L
-private const val PROD_MEASURE_DUR_MS = 3_000L
-private const val PROD_TICK_MS        = 100L
+private const val PROD_WARMUP_DUR_MS    = 2_000L
+private const val PROD_MEASURE_DUR_MS   = 3_000L
+private const val PROD_TICK_MS          = 100L
+// Video setup (pre-encode I-frames) is heavy; warmup uses a smaller keyframe set
+// so the actual hardware decode/transcode loop is reached inside the warmup
+// window. 10 KFs ≈ 300 ms of pre-encode at 30 fps on SD8 Gen 3.
+private const val PROD_WARMUP_KEYFRAMES = 10
+private const val PROD_MEASURE_KEYFRAMES = 20
+// Fraction of warmup window the setup phase may consume before we cut it off
+// and proceed to the actual decoder/encoder warmup loop.
+private const val PROD_WARMUP_SETUP_FRAC = 0.4
 
 // ── ViewModel ─────────────────────────────────────────────────────────────────
 
@@ -240,10 +248,13 @@ class ProductivityBenchmarkViewModel(
                 )
             }
             coroutineScope {
-                val warmupJob = async(Dispatchers.IO) { runTest(test, durationMs = 800L) }
+                val warmupJob = async(Dispatchers.IO) {
+                    runTest(test, durationMs = PROD_WARMUP_DUR_MS, isWarmup = true)
+                }
                 val warmSteps = (PROD_WARMUP_DUR_MS / PROD_TICK_MS).toInt()
                 repeat(warmSteps) { step ->
                     delay(PROD_TICK_MS)
+                    if (warmupJob.isCompleted) return@repeat
                     _uiState.update { s ->
                         s.copy(
                             currentTestProgress = (step + 1).toFloat() / warmSteps * 0.15f,
@@ -252,7 +263,13 @@ class ProductivityBenchmarkViewModel(
                         )
                     }
                 }
-                warmupJob.await()
+                val warmupValue = warmupJob.await()
+                if (warmupValue <= 0.0) {
+                    android.util.Log.w(
+                        "ProdBench",
+                        "Warmup for $test produced 0 ops — measure phase will run cold"
+                    )
+                }
             }
 
             // ─ Measure ────────────────────────────────────────────────────
@@ -303,17 +320,21 @@ class ProductivityBenchmarkViewModel(
 
     // ── Test dispatcher ────────────────────────────────────────────────────
 
-    private fun runTest(test: ProductivityTest, durationMs: Long): Double = try {
+    private fun runTest(
+        test: ProductivityTest,
+        durationMs: Long,
+        isWarmup: Boolean = false
+    ): Double = try {
         when (test) {
-            ProductivityTest.CANVAS_OPS      -> benchCanvasOps(durationMs)
-            ProductivityTest.IMAGE_FILTER    -> benchImageFilter(durationMs)
-            ProductivityTest.IMAGE_RESIZE    -> benchImageResize(durationMs)
-            ProductivityTest.TEXT_OPS        -> benchTextOps(durationMs)
-            ProductivityTest.JSON_OPS        -> benchJsonOps(durationMs)
-            ProductivityTest.COMPRESSION     -> benchCompression(durationMs)
-            ProductivityTest.VIDEO_ENCODE    -> benchVideoEncode(durationMs)
-            ProductivityTest.VIDEO_DECODE    -> benchVideoDecode(durationMs)
-            ProductivityTest.VIDEO_TRANSCODE -> benchVideoTranscode(durationMs)
+            ProductivityTest.CANVAS_OPS      -> benchCanvasOps(durationMs, isWarmup)
+            ProductivityTest.IMAGE_FILTER    -> benchImageFilter(durationMs, isWarmup)
+            ProductivityTest.IMAGE_RESIZE    -> benchImageResize(durationMs, isWarmup)
+            ProductivityTest.TEXT_OPS        -> benchTextOps(durationMs, isWarmup)
+            ProductivityTest.JSON_OPS        -> benchJsonOps(durationMs, isWarmup)
+            ProductivityTest.COMPRESSION     -> benchCompression(durationMs, isWarmup)
+            ProductivityTest.VIDEO_ENCODE    -> benchVideoEncode(durationMs, isWarmup)
+            ProductivityTest.VIDEO_DECODE    -> benchVideoDecode(durationMs, isWarmup)
+            ProductivityTest.VIDEO_TRANSCODE -> benchVideoTranscode(durationMs, isWarmup)
         }
     } catch (e: Exception) {
         android.util.Log.e("ProductivityBenchVM", "Test $test failed: ${e.message}", e)
@@ -327,7 +348,7 @@ class ProductivityBenchmarkViewModel(
      * into a HardwareBuffer (GPU memory) with async draw() + SyncFence.
      * No ImageReader polling — GPU submission is truly async.
      */
-    private fun benchCanvasOps(durationMs: Long): Double {
+    private fun benchCanvasOps(durationMs: Long, isWarmup: Boolean = false): Double {
         val W = 1024; val H = 1024
 
         // Pre-compute all paths outside hot loop
@@ -524,7 +545,7 @@ class ProductivityBenchmarkViewModel(
      * Per image (frame): brightness + saturation + hue-rotation in one pass via YIQ colour space.
      * Rendered via HardwareRenderer to off-screen ImageReader surface.
      */
-    private fun benchImageFilter(durationMs: Long): Double {
+    private fun benchImageFilter(durationMs: Long, isWarmup: Boolean = false): Double {
         val W = 3840; val H = 2160
 
         // AGSL (Android Graphics Shading Language) shader – GPU-neutral float precision
@@ -640,7 +661,7 @@ class ProductivityBenchmarkViewModel(
      * Measures pure GPU texture-sampler throughput: 3840×2160 → 1920×1080.
      * Uses blocking acquireNextImage() to ensure GPU actually completed each frame.
      */
-    private fun benchImageResize(durationMs: Long): Double {
+    private fun benchImageResize(durationMs: Long, isWarmup: Boolean = false): Double {
         val fullW = 3840; val fullH = 2160
         val halfW = 1920; val halfH = 1080
 
@@ -695,7 +716,7 @@ class ProductivityBenchmarkViewModel(
      * No CPU pixel transfers – frame data flows GPU→SurfaceTexture→hardware encoder.
      * 1920×1080p at 8 Mbps. Measures hardware-encoded frames/second.
      */
-    private fun benchVideoEncode(durationMs: Long): Double {
+    private fun benchVideoEncode(durationMs: Long, isWarmup: Boolean = false): Double {
         val W = 1920; val H = 1080
         return try {
             val format = MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC, W, H).apply {
@@ -767,16 +788,27 @@ class ProductivityBenchmarkViewModel(
     // ── 7. Video Decode (HW – MediaCodec H.264) ──────────────────────────
     /**
      * Hardware H.264 decode pipeline:
-     *   Phase 1 – Setup: pre-encode 20 H.264 I-frames (1920×1080) using
+     *   Phase 1 – Setup: pre-encode N H.264 I-frames (1920×1080) using
      *             MediaCodec encoder in YUV byte-buffer mode, collecting
      *             the full bitstream (SPS/PPS + IDR slices).
      *   Phase 2 – Benchmark loop: feed pre-encoded frames to MediaCodec
      *             hardware decoder, drain output buffers without rendering.
      * Tests the Adreno / Snapdragon VPU hardware decoder throughput in fps.
+     *
+     * Warmup uses fewer keyframes (PROD_WARMUP_KEYFRAMES) and a time-boxed
+     * setup so the actual hardware decoder is reached within the warmup
+     * window. Measure uses PROD_MEASURE_KEYFRAMES and the full duration.
      */
-    private fun benchVideoDecode(durationMs: Long): Double {
+    private fun benchVideoDecode(durationMs: Long, isWarmup: Boolean = false): Double {
         val W = 1920; val H = 1080
-        val KEYFRAMES = 20
+        val KEYFRAMES = if (isWarmup) PROD_WARMUP_KEYFRAMES else PROD_MEASURE_KEYFRAMES
+        val warmupStartMs = System.currentTimeMillis()
+        // Avoid Long.MAX_VALUE + warmupStartMs overflow. Use a far-future
+        // sentinel that is always greater than any real currentTimeMillis.
+        val setupDeadlineMs: Long = if (isWarmup)
+            warmupStartMs + (durationMs * PROD_WARMUP_SETUP_FRAC).toLong()
+        else
+            Long.MAX_VALUE shr 1
 
         return try {
             // ── Phase 1: pre-encode I-frames ────────────────────────────
@@ -797,7 +829,7 @@ class ProductivityBenchmarkViewModel(
             var inputFramesSent = 0
             var encDone = false
 
-            while (!encDone) {
+            while (!encDone && System.currentTimeMillis() < setupDeadlineMs) {
                 // Feed raw YUV frames
                 if (inputFramesSent <= KEYFRAMES) {
                     val inIdx = enc.dequeueInputBuffer(10_000L)
@@ -825,6 +857,16 @@ class ProductivityBenchmarkViewModel(
                     if (encInfo.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) encDone = true
                 } else if (outIdx == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) { /* ignore */ }
             }
+            // Warmup path: drain pending output with a short, bounded wait so
+            // we don't burn the rest of the warmup window on the encoder drain.
+            if (!encDone) {
+                val drainStart = System.currentTimeMillis()
+                while (System.currentTimeMillis() - drainStart < 100L) {
+                    val drain = enc.dequeueOutputBuffer(encInfo, 0)
+                    if (drain < 0) break
+                    enc.releaseOutputBuffer(drain, false)
+                }
+            }
             enc.stop(); enc.release()
 
             // Separate CSD (SPS/PPS) from IDR frames
@@ -850,10 +892,14 @@ class ProductivityBenchmarkViewModel(
             var decFrames = 0L
             val decInfo = MediaCodec.BufferInfo()
             var idrIdx = 0
-            val endMs = System.currentTimeMillis() + durationMs
+            // For warmup, the setup phase may have already consumed part of the
+            // warmup window. Use a unified deadline so total wall-clock time
+            // stays bounded by `durationMs` regardless of how long setup took.
+            val decodeEndMs = if (isWarmup) warmupStartMs + durationMs
+                              else System.currentTimeMillis() + durationMs
             var eos = false
 
-            while (System.currentTimeMillis() < endMs) {
+            while (System.currentTimeMillis() < decodeEndMs) {
                 if (!eos) {
                     val inIdx = dec.dequeueInputBuffer(5_000L)
                     if (inIdx >= 0) {
@@ -875,7 +921,8 @@ class ProductivityBenchmarkViewModel(
             }
 
             dec.stop(); dec.release()
-            decFrames.toDouble() / (durationMs / 1000.0)
+            val actualDurationMs = (System.currentTimeMillis() - warmupStartMs).coerceAtLeast(1L)
+            decFrames.toDouble() / (actualDurationMs / 1000.0)
         } catch (e: Exception) {
             android.util.Log.e("ProdBench", "HW video decode failed: ${e.message}", e)
             0.0
@@ -891,8 +938,14 @@ class ProductivityBenchmarkViewModel(
      *   3. MediaCodec HW H.264 encoder (Surface input) encodes the graded frame
      * Decode → GPU grade → HW encode, all at 1920×1080. Measures fps.
      */
-    private fun benchVideoTranscode(durationMs: Long): Double {
-        val W = 1920; val H = 1080; val KEYFRAMES = 20
+    private fun benchVideoTranscode(durationMs: Long, isWarmup: Boolean = false): Double {
+        val W = 1920; val H = 1080
+        val KEYFRAMES = if (isWarmup) PROD_WARMUP_KEYFRAMES else PROD_MEASURE_KEYFRAMES
+        val warmupStartMs = System.currentTimeMillis()
+        val setupDeadlineMs: Long = if (isWarmup)
+            warmupStartMs + (durationMs * PROD_WARMUP_SETUP_FRAC).toLong()
+        else
+            Long.MAX_VALUE shr 1
         var setupEnc: MediaCodec? = null
         var outEnc: MediaCodec? = null
         var dec: MediaCodec? = null
@@ -920,7 +973,7 @@ class ProductivityBenchmarkViewModel(
             val chunks = mutableListOf<Chunk>()
             val setupInfo = MediaCodec.BufferInfo()
             var inSent = 0; var setupDone = false
-            while (!setupDone) {
+            while (!setupDone && System.currentTimeMillis() < setupDeadlineMs) {
                 if (inSent <= KEYFRAMES) {
                     val idx = sEnc.dequeueInputBuffer(10_000L)
                     if (idx >= 0) {
@@ -944,13 +997,21 @@ class ProductivityBenchmarkViewModel(
                     if (setupInfo.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) setupDone = true
                 }
             }
+            if (!setupDone) {
+                val drainStart = System.currentTimeMillis()
+                while (System.currentTimeMillis() - drainStart < 100L) {
+                    val drain = sEnc.dequeueOutputBuffer(setupInfo, 0)
+                    if (drain < 0) break
+                    sEnc.releaseOutputBuffer(drain, false)
+                }
+            }
             sEnc.stop(); sEnc.release(); setupEnc = null
             val csdChunks = chunks.filter { it.flags and MediaCodec.BUFFER_FLAG_CODEC_CONFIG != 0 }
             val idrChunks = chunks.filter { it.flags and MediaCodec.BUFFER_FLAG_CODEC_CONFIG == 0 && it.data.isNotEmpty() }
             if (idrChunks.isEmpty()) {
                 // Pre-encode produced no IDR frames (MediaTek/Fallback).
                 // Use video encode fps as estimated transcode throughput.
-                return benchVideoEncode(durationMs)
+                return benchVideoEncode(durationMs, isWarmup)
             }
 
             // ── Phase 2: HW encoder (Surface + HardwareRenderer + AGSL) ─
@@ -1037,10 +1098,11 @@ class ProductivityBenchmarkViewModel(
 
             val decInfo = MediaCodec.BufferInfo(); val encInfo = MediaCodec.BufferInfo()
             var frames = 0L; var idrIdx = 0; var ptsAcc = 0L
-            val endMs = System.currentTimeMillis() + durationMs
+            val xcodeEndMs = if (isWarmup) warmupStartMs + durationMs
+                             else System.currentTimeMillis() + durationMs
             val gradePaint = Paint()
 
-            while (System.currentTimeMillis() < endMs) {
+            while (System.currentTimeMillis() < xcodeEndMs) {
                 // Feed next compressed frame to decoder
                 val inIdx = d.dequeueInputBuffer(5_000L)
                 if (inIdx >= 0) {
@@ -1097,12 +1159,13 @@ class ProductivityBenchmarkViewModel(
                 }
             }
 
-            frames.toDouble() / (durationMs / 1000.0)
+            val actualDurationMs = (System.currentTimeMillis() - warmupStartMs).coerceAtLeast(1L)
+            frames.toDouble() / (actualDurationMs / 1000.0)
         } catch (e: Exception) {
             android.util.Log.e("ProdBench", "HW transcode failed: ${e.message}", e)
-            benchVideoEncode(durationMs)
+            benchVideoEncode(durationMs, isWarmup)
         }.let { result ->
-            if (result == 0.0) benchVideoEncode(durationMs) else result
+            if (result == 0.0) benchVideoEncode(durationMs, isWarmup) else result
         }.also { _ ->
             renderer?.stop(); renderer?.destroy()
             encSurface?.release()
@@ -1128,7 +1191,7 @@ class ProductivityBenchmarkViewModel(
      *   2. Levenshtein edit-distance for 20 random pairs (O(m×n) DP per pair)
      *   3. Regex replace with 5 compiled patterns over a 500-word join
      */
-    private fun benchTextOps(durationMs: Long): Double {
+    private fun benchTextOps(durationMs: Long, isWarmup: Boolean = false): Double {
         val wordCount = 5_000
         val rng = Random(54321L)
         val chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
@@ -1193,7 +1256,7 @@ class ProductivityBenchmarkViewModel(
      *   Parse + walk: JSONObject(string), iterate all top-level keys
      * ~3× more fields + recursive nested structure vs. the easy version.
      */
-    private fun benchJsonOps(durationMs: Long): Double {
+    private fun benchJsonOps(durationMs: Long, isWarmup: Boolean = false): Double {
         val rng = Random(11111L)
         val sampleStrings = Array(500) { "str_${rng.nextInt(1_000_000)}_data" }
         var docs = 0L
@@ -1254,7 +1317,7 @@ class ProductivityBenchmarkViewModel(
      * search to work hard on the noisy portions. Level 9 = hardest CPU usage.
      * Measures compressed throughput in MB/s.
      */
-    private fun benchCompression(durationMs: Long): Double {
+    private fun benchCompression(durationMs: Long, isWarmup: Boolean = false): Double {
         val blockSize = 1024 * 1024
         val rng = Random(77777L)
         val inputBlocks = Array(4) {
