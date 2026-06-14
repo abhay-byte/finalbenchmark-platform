@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- T1: night-mode override — dark parent + same splash_bg reference
+         (splash_bg resolves to #1C1B1F via values-night/colors.xml).
+         Prevents bright flash on cold launch when system is in dark mode. -->
+    <style name="Theme.FinalBenchmark2" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/splash_bg</item>
+        <item name="android:statusBarColor">@color/splash_bg</item>
+        <item name="android:navigationBarColor">@color/splash_bg</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+</resources>

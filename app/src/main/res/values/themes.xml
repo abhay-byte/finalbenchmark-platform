@@ -1,5 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <style name="Theme.FinalBenchmark2" parent="android:Theme.Material.Light.NoActionBar" />
+    <!-- T1: explicit windowBackground/statusBar/navBar prevent bright flash on cold launch -->
+    <style name="Theme.FinalBenchmark2" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/splash_bg</item>
+        <item name="android:statusBarColor">@color/splash_bg</item>
+        <item name="android:navigationBarColor">@color/splash_bg</item>
+        <item name="android:windowLightStatusBar">true</item>
+    </style>
 </resources>
