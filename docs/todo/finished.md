@@ -58,4 +58,5 @@ plan: |
 
 ---
   test_status: pending — user has no devices available; branch pushed, awaiting on-device validation + PR
+  test_status: merged — verified on CPH2691 (Adreno 750) + 2311DRK48I (Dimensity 9200+) in dark+light mode via screen-record; merged to v1.1.x via PR #8
 
