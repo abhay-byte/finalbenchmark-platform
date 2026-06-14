@@ -113,13 +113,13 @@ void main() {
     m = m * rotZ(u_Time * 0.03 + 10.5);
     vec4 p = m * vec4(uv, 0.2, 1.0);
 
-    // Julia-set iteration (128 iterations — always full, no early exit → max ALU pressure)
+    // Julia-set iteration (256 iterations — T7: 128 -> 256 to surface 830 vs 750 delta)
     vec2 z = uv;
     vec2 c = vec2(0.355 + 0.12 * sin(u_Time * 0.5),
                   0.355 + 0.12 * cos(u_Time * 0.4));
     float iter = 0.0;
     float escaped = 0.0;
-    for (int i = 0; i < 128; i++) {
+    for (int i = 0; i < 256; i++) {
         // Always compute — no break — keeps ALU busy on every pixel
         float escaped_flag = step(4.0, dot(z, z));
         vec2 next = vec2(z.x*z.x - z.y*z.y, 2.0*z.x*z.y) + c;
@@ -128,7 +128,7 @@ void main() {
         escaped = max(escaped, escaped_flag);
     }
 
-    float t = iter / 128.0;
+    float t = iter / 256.0;
     vec3 col = 0.5 + 0.5 * vec3(sin(t * 6.28318 + u_Time),
                                   sin(t * 6.28318 + u_Time + 2.094),
                                   sin(t * 6.28318 + u_Time + 4.189));
@@ -194,7 +194,7 @@ float noise(vec2 p) {
 
 float fbm(vec2 p) {
     float v = 0.0, a = 0.5;
-    for (int i = 0; i < 12; i++) {
+    for (int i = 0; i < 20; i++) {  // T7: 12 -> 20 octaves
         v += a * noise(p);
         p  = p * 2.03 + vec2(0.31 * float(i), 0.17 * float(i));
         a *= 0.5;
@@ -426,7 +426,7 @@ float noise(vec2 p) {
 }
 float fbm(vec2 p) {
     float v = 0.0, a = 0.5;
-    for (int i = 0; i < 12; i++) {
+    for (int i = 0; i < 16; i++) {  // T7: 12 -> 16 octaves (domain warp pre-pass)
         v += a * noise(p);
         p  = p * 2.01 + vec2(3.7, 1.9);
         a *= 0.5;
@@ -467,7 +467,8 @@ vec2 cdiv(vec2 a, vec2 b) {
     return vec2(dot(a,b), a.y*b.x - a.x*b.y) / d;
 }
 vec3 newton(vec2 z) {
-    for (int i = 0; i < 48; i++) {
+    // T7: 48 -> 96 Newton iter; serial dependency remains but more work = bigger absolute 830 advantage
+    for (int i = 0; i < 96; i++) {
         vec2 z2 = cmul(z,z);
         vec2 z3 = cmul(z2,z);
         // z - (z^3 - 1) / (3*z^2)
@@ -477,7 +478,7 @@ vec3 newton(vec2 z) {
         float d2 = length(z - vec2(-0.5, -0.866));
         float mn = min(d0, min(d1, d2));
         if (mn < 0.001) {
-            float fi = float(i) / 48.0;
+            float fi = float(i) / 96.0;
             if (mn == d0) return mix(vec3(1.0,0.2,0.1), vec3(1.0,0.9,0.7), fi);
             if (mn == d1) return mix(vec3(0.1,0.7,0.2), vec3(0.7,1.0,0.8), fi);
             return mix(vec3(0.1,0.2,0.9), vec3(0.7,0.8,1.0), fi);
@@ -504,9 +505,9 @@ vec2 halton(int i) {
 void main() {
     float scale = 1.6 + 0.4 * sin(u_Time * 0.05);
     vec3 acc = vec3(0.0);
-    const float N = 32.0;
+    const float N = 64.0;  // T7: 32 -> 64 Halton samples
     const float PIX = 0.002;
-    for (int i = 0; i < 32; i++) {
+    for (int i = 0; i < 64; i++) {
         vec2 jitter = halton(i) * PIX;
         vec2 uv = (v_UV - 0.5) * scale * 2.5 + jitter;
         uv.x *= u_Aspect;

@@ -211,8 +211,8 @@ Java_com_ivarna_finalbenchmark2_utils_OpenCLBenchmarkBridge_nativeRunScene(JNIEn
     if (sceneId < 0 || sceneId > 3) { LOGE("Invalid sceneId: %d", sceneId); return -1.0f; }
 
     if (sceneId == 0) {
-        // ─── Scene 0: Memory bandwidth ────────────────────────────────────
-        const size_t BUF_BYTES = 64 * 1024 * 1024;
+        // ─── Scene 0: Memory bandwidth (T7: 64 -> 128 MB to bypass L2) ───
+        const size_t BUF_BYTES = 128 * 1024 * 1024;
         cl_int err = 0;
         cl_mem src = CreateBuffer(g_ctx, CL_MEM_READ_WRITE, BUF_BYTES, nullptr, &err);
         cl_mem dst = CreateBuffer(g_ctx, CL_MEM_READ_WRITE, BUF_BYTES, nullptr, &err);
@@ -237,7 +237,7 @@ Java_com_ivarna_finalbenchmark2_utils_OpenCLBenchmarkBridge_nativeRunScene(JNIEn
         // ─── Scene 1: Julia fractal compute (4K, high iter) ──────────────
         if (!CreateProgramWithSource || !BuildProgram || !CreateKernel || !SetKernelArg ||
             !EnqueueNDRangeKernel || !ReleaseKernel || !ReleaseProgram) return -1.0f;
-        const int W = 3840, H = 2160, MAX_ITER = 512;
+        const int W = 3840, H = 2160, MAX_ITER = 1024;  // T7: 512 -> 1024
         cl_int err = 0;
         cl_mem outBuf = CreateBuffer(g_ctx, CL_MEM_READ_WRITE, (size_t)W * H * sizeof(float), nullptr, &err);
         if (!outBuf) { LOGE("Julia CreateBuffer failed"); return -1.0f; }
@@ -268,10 +268,10 @@ Java_com_ivarna_finalbenchmark2_utils_OpenCLBenchmarkBridge_nativeRunScene(JNIEn
         LOGI("OpenCL Julia: %.2f ms -> %.1f fps", ms, fps);
         return fps;
     } else if (sceneId == 2) {
-        // ─── Scene 2: GEMM FP32 (1024x1024) ──────────────────────────────
+        // ─── Scene 2: GEMM FP32 (T7: 1024 -> 2048) ─────────────────────
         if (!CreateProgramWithSource || !BuildProgram || !CreateKernel || !SetKernelArg ||
             !EnqueueNDRangeKernel || !ReleaseKernel || !ReleaseProgram || !EnqueueWriteBuffer) return -1.0f;
-        const int N = 1024;
+        const int N = 2048;
         const size_t MAT_BYTES = (size_t)N * N * sizeof(float);
         cl_int err = 0;
         cl_mem bufA = CreateBuffer(g_ctx, CL_MEM_READ_ONLY, MAT_BYTES, nullptr, &err);

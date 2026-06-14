@@ -1052,9 +1052,10 @@ struct SceneConfig {
 };
 
 static const SceneConfig SCENE_CFG[4] = {
-    { JULIA_SPIRV,     JULIA_SPIRV_LEN,     480, 270, 1, 3840*2160*sizeof(float), true,  12 }, // 0: Julia 4K, 512 iter
-    { MANDELBROT_SPIRV,MANDELBROT_SPIRV_LEN,480, 270, 1, 3840*2160*sizeof(float), true,  4  }, // 1: Mandelbrot 4K, 2048 iter
-    { GEMM_SPIRV,      GEMM_SPIRV_LEN,      64,  64,  1, 1024*1024*sizeof(float)*3,  true,  4  }, // 2: GEMM 1024x1024
+    // T7: bump workload 2x to surface 830 vs 750 delta on scenes 5,6,7
+    { JULIA_SPIRV,     JULIA_SPIRV_LEN,     480, 270, 1, 3840*2160*sizeof(float), true,  24 }, // 0: Julia 4K, 1024 iter (was 512)
+    { MANDELBROT_SPIRV,MANDELBROT_SPIRV_LEN,480, 270, 1, 3840*2160*sizeof(float), true,  8  }, // 1: Mandelbrot 4K, 4096 iter (was 2048)
+    { GEMM_SPIRV,      GEMM_SPIRV_LEN,      128, 128, 1, 2048*2048*sizeof(float)*3,  true,  4  }, // 2: GEMM 2048x2048 (was 1024x1024)
     { NBODY_SPIRV,     NBODY_SPIRV_LEN,     16,  1,   1, 4096*sizeof(float)*8,     true,  8  }, // 3: N-body
 };
 
@@ -1293,14 +1294,14 @@ static float dispatchAndTime(int sceneId) {
     vkCmdBindDescriptorSets(g_cmdBuf, VK_PIPELINE_BIND_POINT_COMPUTE, g_pipeLayout[sceneId], 0, 1, &g_descSet[sceneId], 0, nullptr);
 
     // Push constants per scene
-    if (sceneId == 0) { // Julia 4K, high iter
-        float pc[3] = {-0.7f, 0.27015f, 512.0f};
+    if (sceneId == 0) { // Julia 4K, high iter (T7: 512 -> 1024)
+        float pc[3] = {-0.7f, 0.27015f, 1024.0f};
         vkCmdPushConstants(g_cmdBuf, g_pipeLayout[sceneId], VK_SHADER_STAGE_COMPUTE_BIT, 0, cfg.pushConstSize, pc);
-    } else if (sceneId == 1) { // Mandelbrot 4K, high iter
-        int pc = 2048;
+    } else if (sceneId == 1) { // Mandelbrot 4K, high iter (T7: 2048 -> 4096)
+        int pc = 4096;
         vkCmdPushConstants(g_cmdBuf, g_pipeLayout[sceneId], VK_SHADER_STAGE_COMPUTE_BIT, 0, cfg.pushConstSize, &pc);
-    } else if (sceneId == 2) { // GEMM 1024x1024
-        int pc = 1024;
+    } else if (sceneId == 2) { // GEMM 2048x2048 (T7: N 1024 -> 2048)
+        int pc = 2048;
         vkCmdPushConstants(g_cmdBuf, g_pipeLayout[sceneId], VK_SHADER_STAGE_COMPUTE_BIT, 0, cfg.pushConstSize, &pc);
     } else if (sceneId == 3) { // N-body
         float pc[2] = {0.001f, 4096.0f};

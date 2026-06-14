@@ -74,13 +74,13 @@ class GpuBenchmarkRenderer(
     private var uTexDisplay     = -1
     private var aPosDisplay     = -1
 
-    // Scene 1 - triangles
-    private val TRI_COUNT = 10_000
+    // Scene 1 - triangles (T7: 10K -> 30K to surface 830 vs 750 delta)
+    private val TRI_COUNT = 30_000
     private lateinit var triBuf: FloatBuffer
     private var triVertCount = 0
 
-    // Scene 3 - particles
-    private val P_COUNT = 5_000   // reduced: physics runs on GL thread, keep CPU cost minimal
+    // Scene 3 - particles (T7: 5K -> 20K, physics still on GL thread; EFF-1 pre-alloc done at line 126)
+    private val P_COUNT = 20_000
     private val pX    = FloatArray(P_COUNT); private val pY    = FloatArray(P_COUNT)
     private val pVx   = FloatArray(P_COUNT); private val pVy   = FloatArray(P_COUNT)
     private val pLife = FloatArray(P_COUNT)
@@ -171,7 +171,10 @@ class GpuBenchmarkRenderer(
         private val HEAVY_4K_SCENES = setOf(
             GpuScene.MANDELBROT_DEEP, GpuScene.PHONG_MULTI_LIGHT,
             GpuScene.RAY_MARCH_SDF,   GpuScene.DOMAIN_WARP,
-            GpuScene.SUPER_SAMPLE
+            GpuScene.SUPER_SAMPLE,
+            // T7: add the 4 under-differentiated GLES scenes to the 4K viewport set
+            GpuScene.TRIANGLE_RENDERING, GpuScene.COMPUTE_MATRIX,
+            GpuScene.PARTICLE_SYSTEM,    GpuScene.TEXTURE_SAMPLING
         )
     }
 
