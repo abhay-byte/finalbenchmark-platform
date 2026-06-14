@@ -2,7 +2,9 @@ package com.ivarna.finalbenchmark2.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material3.*
@@ -80,12 +82,15 @@ fun PowerCalibrationScreen(
             )
     ) {
         Column(
-                modifier = Modifier.fillMaxSize().padding(24.dp),
+                modifier = Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState())  // T5: scrollable for 4:3 / squarish aspects
+                        .padding(24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.SpaceBetween
+                verticalArrangement = Arrangement.Top   // T5: was SpaceBetween — SpaceBetween conflicts with verticalScroll
         ) {
             Spacer(modifier = Modifier.height(32.dp))
-            
+
             // Header Section
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 // Icon Container

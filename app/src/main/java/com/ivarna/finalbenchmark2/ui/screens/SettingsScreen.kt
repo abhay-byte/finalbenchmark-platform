@@ -59,8 +59,8 @@ fun SettingsScreen(
 
         val themes =
                 listOf(
-                        "Light Monet",
-                        "Dark Monet",
+                        "Light",      // T5: was "Light Monet" — old Android 12+ dynamic theming label
+                        "Dark",       // T5: was "Dark Monet" — same; LIGHT/DARK now use Material 3 dynamic colors
                         "Gruvbox",
                         "Nord",
                         "Dracula",
