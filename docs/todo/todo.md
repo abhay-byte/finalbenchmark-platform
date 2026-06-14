@@ -53,25 +53,6 @@
   evidence: data collection required (pain to gather authoritative ranking source)
   github_ref: GH-4
   plan: deferred — needs solid CPU benchmark data first (user decision 2026-06-15)
-- id: T5
-  title: Layout broken on 4:3 / square aspect ratio devices
-  type: bug
-  priority: high
-  difficulty: easy
-  frequency: devices with high dpi / squarish aspect ratios
-  expected: UI is usable on 4:3 landscape and other non-standard aspect ratios (e.g. retro handhelds)
-  actual: Layout broken on 4:3 screens (Ayaneo Pocket Air Mini); UI not implemented to handle squarish aspects
-  reproduction: |
-    1. Install on Ayaneo Pocket Air Mini (4:3 landscape)
-    2. Navigate main UI / Calibrate Power
-    3. Layout clipped, overflow, or content cut off
-  impact: Layout XML — wrap main + Calibrate Power screens in ScrollView; add responsive constraints (ConstraintLayout / sw resources) to handle high-DPI and squarish aspects
-  followups: null
-  images: null
-  evidence: screenshots in GH-2 (Galaxy S24U, A50, S9, Ayaneo Pocket Air Mini)
-  github_ref: GH-2
-  plan: null
----
 - id: T5b
   title: Samsung current reading shows zero (hardware-calibration only, not fixable in software)
   type: wont-do
