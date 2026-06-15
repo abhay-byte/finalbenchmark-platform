@@ -28,3 +28,5 @@ my-release-key.keystore
 keystore/
 .kotlin
 web/node_modules
+# Local review notes (gitignored)
+docs/review/
