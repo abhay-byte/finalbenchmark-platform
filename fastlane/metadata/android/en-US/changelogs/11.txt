@@ -1,0 +1,7 @@
+v1.1.0 - Splash dark-mode fix, 4:3 layout, themed icon
+
+* Dark-mode splash no longer flashes white before main UI (night theme variant)
+* Calibrate Power screen scrollable on 4:3 and squarish aspect ratios
+* Settings theme labels cleaned up: "Light"/"Dark" (no more "Monet")
+* Android 13+ Material You Themed Icon enabled
+* Video-decode warmup fixed: 2s budget, 10 keyframes, 100ms drain cap
