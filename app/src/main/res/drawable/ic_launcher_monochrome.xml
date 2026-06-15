@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- T6: Material You monochrome themed icon.
+     Italic bold F as OUTLINE ONLY (no fill, stroke white).
+     Plus benchmark dial needle (filled white) emerging from middle arm at 20% length.
+     Small pivot circle at the dial base. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- F outline only — stroke white, no fill. -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2.5"
+        android:pathData="M32,30
+                          L81,30
+                          L79,40
+                          L42,40
+                          L40,52
+                          L67,52
+                          L66,62
+                          L39,62
+                          L39,80
+                          L27,80
+                          Z" />
+
+    <!-- Dial needle: triangle, very pointy at top.
+         Filled white so it stands out against the F outline. -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M43.2,54.6 L81,30 L46.8,59.4 Z" />
+
+    <!-- Pivot circle at dial base. -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M45,57 m-3,0 a3,3 0 1,0 6,0 a3,3 0 1,0 -6,0" />
+</vector>
