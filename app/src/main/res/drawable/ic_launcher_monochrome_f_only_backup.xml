@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- T6: Material You monochrome themed icon.
+     Italic bold F. Starts at 25% from left (x=27), right end at 75% (x=81) after italic. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- ITALIC BOLD F.
+         Italic shear: at y=30 shift right +5, at y=80 shift = 0.
+         Base F (upright): stem x=27-39, top arm y=30-40 to x=76, middle arm y=52-62 to x=66.
+         Stem bottom-left = 25% (x=27); top arm right end (italic) = 75% (x=81). -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M32,30
+                          L81,30
+                          L79,40
+                          L42,40
+                          L40,52
+                          L67,52
+                          L66,62
+                          L39,62
+                          L39,80
+                          L27,80
+                          Z" />
+</vector>

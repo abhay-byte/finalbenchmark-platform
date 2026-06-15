@@ -63,17 +63,3 @@
   github_ref: GH-2
   plan: rejected — hardware-only
 ---
-- id: T6
-  title: Support Monochrome/Themed App Icon (Android 13+)
-  type: feature
-  priority: nice-to-have
-  difficulty: easy
-  why: Android 13+ themed icons (Material You); user wants the monochrome theme-icon feature
-  really_needed: Yes, no workaround from app side
-  impact: Drawables + design (new monochrome icon assets)
-  followups: null
-  images: null
-  evidence: mockups (not yet attached)
-  github_ref: GH-1
-  plan: null
----
