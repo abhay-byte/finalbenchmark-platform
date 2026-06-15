@@ -683,7 +683,7 @@ fun AboutSection() {
                                                 textAlign = TextAlign.Center
                                         )
                                         Text(
-                                                text = "Dec 24, 2025", // Updated Date
+                                                text = "Jun 15, 2026", // Updated Date
                                                 fontSize = 16.sp,
                                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                                 textAlign = TextAlign.Center
