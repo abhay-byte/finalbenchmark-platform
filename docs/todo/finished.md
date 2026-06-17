@@ -246,3 +246,18 @@ plan: |
 
 ---
   test_status: parked — code on origin/1.1.x/T7-gpu-benchmark-suite-review, not yet PR'd/merged; awaiting user device validation
+---
+- id: T8
+  title: Replace monochrome themed icon with Gemini F+needle design
+  type: feature
+  priority: medium
+  difficulty: easy
+  why: Existing ic_launcher_monochrome.xml (white-stroke outline) didn't render as expected on device; user wants the solid black italic F+needle Gemini image
+  really_needed: Yes, themed-icon UX
+  impact: app/src/main/res/drawable/ic_launcher_monochrome (xml removed, webp added); ic_launcher.xml + ic_launcher_round.xml references unchanged
+  followups: null
+  images: ~/Downloads/Gemini_Generated_Image_73kuoh73kuoh73ku.png
+  github_ref: null
+  plan: null
+  test_status: done — built + installed on OnePlus 13R (d30a1726), fb.jks keystore (alias fb2)
+---

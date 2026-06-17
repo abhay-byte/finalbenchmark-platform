@@ -78,10 +78,10 @@ android {
 
     signingConfigs {
         create("release") {
-            storeFile = file("/home/abhay/repos/keys/finalbenchmark-release.jks")
-            storePassword = "finalbenchmark_release_ab"
-            keyAlias = "finalbenchmark"
-            keyPassword = "finalbenchmark_release_ab"
+            storeFile = file("/home/abhay/repos/keys/keystore/fb.jks")
+            storePassword = "26262627"
+            keyAlias = "fb2"
+            keyPassword = "26262627"
         }
     }
 
