@@ -21,7 +21,7 @@
 A comprehensive Android CPU, GPU, RAM, Storage, AI/ML, and Productivity benchmarking application with detailed scoring and visualization.
 
 <br/>
-<img src="docs/storelisting/store_listing_slideshow_lowq.gif" alt="FinalBenchmark 2 Slideshow" width="800" style="border-radius: 12px;"/>
+<img src="docs/storelisting/store_listing_slideshow_lowq.gif" alt="Loading animated slideshow..." width="800" height="450" style="border-radius: 12px; background-color: #1e1e2e; color: #a6accd; text-align: center; line-height: 450px; font-family: sans-serif;" title="FinalBenchmark 2 Slideshow" />
 
 </div>
 
