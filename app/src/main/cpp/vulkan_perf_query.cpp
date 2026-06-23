@@ -29,7 +29,7 @@
 extern "C" {
 
 JNIEXPORT jstring JNICALL
-Java_com_ivarna_finalbenchmark2_utils_VulkanPerfQuery_nativeGetCounters(JNIEnv* env, jobject) {
+Java_com_zenithblue_fb2Pro_utils_VulkanPerfQuery_nativeGetCounters(JNIEnv* env, jobject) {
     // Create a temporary instance to enumerate extensions
     VkApplicationInfo appInfo{};
     appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;

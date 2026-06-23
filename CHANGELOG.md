@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.1.0-pro
+
+Initial Google Play Store release of **Finalbenchmark 2 Pro**.
+
+- Repackaged for Play Store: package `com.zenithblue.fb2Pro`, app name "Finalbenchmark 2 Pro"
+- New release keystore: `fb2pro.jks` (Play App Signing upload key)
+- versionCode `11001` (offset from F-Droid's `11` to allow side-by-side install)
+- Same feature set as the F-Droid `v1.1.0` build — no proprietary code
+- F-Droid-specific build config dropped (dependenciesInfo, baseline-profile gating, reproducible-build flags)
+
 ## v1.1.0
 
 ### Features

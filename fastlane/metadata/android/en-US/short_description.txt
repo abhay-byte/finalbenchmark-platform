@@ -1,1 +1,1 @@
-Comprehensive open source CPU benchmark and performance test
+Pro-grade CPU benchmark and performance testing for power users

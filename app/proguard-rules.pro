@@ -14,11 +14,11 @@
 -keepclasseswithmembers class kotlinx.serialization.json.** {
     kotlinx.serialization.KSerializer serializer(...);
 }
--keep,includedescriptorclasses class com.ivarna.finalbenchmark2.**$$serializer { *; }
--keepclassmembers class com.ivarna.finalbenchmark2.** {
+-keep,includedescriptorclasses class com.zenithblue.fb2Pro.**$$serializer { *; }
+-keepclassmembers class com.zenithblue.fb2Pro.** {
     *** Companion;
 }
--keepclasseswithmembers class com.ivarna.finalbenchmark2.** {
+-keepclasseswithmembers class com.zenithblue.fb2Pro.** {
     kotlinx.serialization.KSerializer serializer(...);
 }
 
@@ -66,13 +66,13 @@
 
 
 # Keep BenchmarkResult (cpuBenchmark package) — used by Gson for history
--keep class com.ivarna.finalbenchmark2.cpuBenchmark.BenchmarkResult { *; }
+-keep class com.zenithblue.fb2Pro.cpuBenchmark.BenchmarkResult { *; }
 # Keep benchmark data models
--keep class com.ivarna.finalbenchmark2.data.** { *; }
--keep class com.ivarna.finalbenchmark2.models.** { *; }
+-keep class com.zenithblue.fb2Pro.data.** { *; }
+-keep class com.zenithblue.fb2Pro.models.** { *; }
 
 # Keep ViewModels
--keep class com.ivarna.finalbenchmark2.ui.viewmodels.** { *; }
+-keep class com.zenithblue.fb2Pro.ui.viewmodels.** { *; }
 
 # Keep AndroidX Navigation
 -keep class androidx.navigation.** { *; }

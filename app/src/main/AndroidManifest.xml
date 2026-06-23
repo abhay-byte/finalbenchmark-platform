@@ -24,7 +24,7 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
-        android:name=".FinalBenchmark2Application"
+        android:name=".FB2ProApplication"
         android:allowBackup="true"
         android:usesCleartextTraffic="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -33,7 +33,7 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.FinalBenchmark2">
+        android:theme="@style/Theme.FB2Pro">
 
         <!-- P0 FIX: Native library declarations for Android 7.0+ (API 24+) linker namespace isolation.
              Without these, dlopen() on /vendor/ paths is blocked by linker namespace security.
@@ -47,7 +47,7 @@
             android:name=".MainActivity"
             android:exported="true"
             android:label="@string/app_name"
-            android:theme="@style/Theme.FinalBenchmark2">
+            android:theme="@style/Theme.FB2Pro">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 
@@ -72,7 +72,7 @@
             android:name=".CrashActivity"
             android:exported="false"
             android:process=":crash"
-            android:theme="@style/Theme.FinalBenchmark2" />
+            android:theme="@style/Theme.FB2Pro" />
     </application>
 
 </manifest>

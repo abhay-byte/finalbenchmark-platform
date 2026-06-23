@@ -1347,7 +1347,7 @@ static float dispatchAndTime(int sceneId) {
 extern "C" {
 
 JNIEXPORT jboolean JNICALL
-Java_com_ivarna_finalbenchmark2_utils_VulkanBenchmarkBridge_nativeInit(JNIEnv *, jobject) {
+Java_com_zenithblue_fb2Pro_utils_VulkanBenchmarkBridge_nativeInit(JNIEnv *, jobject) {
     if (g_initialized) return JNI_TRUE;
     if (!createInstance())      { LOGE("createInstance failed");      return JNI_FALSE; }
     if (!pickPhysicalDevice())  { LOGE("pickPhysicalDevice failed");  return JNI_FALSE; }
@@ -1414,7 +1414,7 @@ Java_com_ivarna_finalbenchmark2_utils_VulkanBenchmarkBridge_nativeInit(JNIEnv *,
 }
 
 JNIEXPORT jfloat JNICALL
-Java_com_ivarna_finalbenchmark2_utils_VulkanBenchmarkBridge_nativeRunScene(JNIEnv *, jobject, jint sceneId) {
+Java_com_zenithblue_fb2Pro_utils_VulkanBenchmarkBridge_nativeRunScene(JNIEnv *, jobject, jint sceneId) {
     if (!g_initialized || sceneId < 0 || sceneId > 3) return -1.0f;
     if (g_pipeline[sceneId] == VK_NULL_HANDLE) return -1.0f;
 
@@ -1428,12 +1428,12 @@ Java_com_ivarna_finalbenchmark2_utils_VulkanBenchmarkBridge_nativeRunScene(JNIEn
 }
 
 JNIEXPORT jstring JNICALL
-Java_com_ivarna_finalbenchmark2_utils_VulkanBenchmarkBridge_nativeGetGpuName(JNIEnv *env, jobject) {
+Java_com_zenithblue_fb2Pro_utils_VulkanBenchmarkBridge_nativeGetGpuName(JNIEnv *env, jobject) {
     return env->NewStringUTF(g_gpuName.c_str());
 }
 
 JNIEXPORT void JNICALL
-Java_com_ivarna_finalbenchmark2_utils_VulkanBenchmarkBridge_nativeDestroy(JNIEnv *, jobject) {
+Java_com_zenithblue_fb2Pro_utils_VulkanBenchmarkBridge_nativeDestroy(JNIEnv *, jobject) {
     if (!g_initialized) return;
     for (int i = 0; i < 4; i++) {
         if (g_ssbo[i])     vkDestroyBuffer(g_device, g_ssbo[i], nullptr);

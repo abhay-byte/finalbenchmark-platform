@@ -52,7 +52,7 @@ static int64_t now_ms(void) {
  * Returns MB/s.
  */
 JNIEXPORT jdouble JNICALL
-Java_com_ivarna_finalbenchmark2_utils_StorageNativeBridge_nativeStorageSeqRead(
+Java_com_zenithblue_fb2Pro_utils_StorageNativeBridge_nativeStorageSeqRead(
         JNIEnv *env, jclass cls,
         jstring jpath, jlong fileSizeBytes, jint chunkSize, jlong durationMs)
 {
@@ -136,7 +136,7 @@ Java_com_ivarna_finalbenchmark2_utils_StorageNativeBridge_nativeStorageSeqRead(
  * Returns MB/s.
  */
 JNIEXPORT jdouble JNICALL
-Java_com_ivarna_finalbenchmark2_utils_StorageNativeBridge_nativeStorageSeqWrite(
+Java_com_zenithblue_fb2Pro_utils_StorageNativeBridge_nativeStorageSeqWrite(
         JNIEnv *env, jclass cls,
         jstring jpath, jlong fileSizeBytes, jint chunkSize, jlong durationMs)
 {
@@ -184,7 +184,7 @@ Java_com_ivarna_finalbenchmark2_utils_StorageNativeBridge_nativeStorageSeqWrite(
 }
 
 JNIEXPORT jboolean JNICALL
-Java_com_ivarna_finalbenchmark2_utils_StorageNativeBridge_nativeEvictCache(
+Java_com_zenithblue_fb2Pro_utils_StorageNativeBridge_nativeEvictCache(
         JNIEnv *env, jclass cls, jstring jpath)
 {
     const char *path = (*env)->GetStringUTFChars(env, jpath, NULL);

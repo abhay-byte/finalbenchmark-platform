@@ -393,7 +393,7 @@ static BenchResult run_ai(int N) {
 extern "C" {
 
 JNIEXPORT jboolean JNICALL
-Java_com_ivarna_finalbenchmark2_aiBenchmark_AiBenchmarkNative_nativeInit(JNIEnv*,jobject) {
+Java_com_zenithblue_fb2Pro_aiBenchmark_AiBenchmarkNative_nativeInit(JNIEnv*,jobject) {
     bool hasOCL  = ocl_shared_available();
     // ALWAYS init GLES — OCL can succeed globally but fail per-call (different N, context lost, etc.).
     // If we only init GLES when !hasOCL, the GLES fallback path is unavailable when OCL
@@ -404,7 +404,7 @@ Java_com_ivarna_finalbenchmark2_aiBenchmark_AiBenchmarkNative_nativeInit(JNIEnv*
 }
 
 JNIEXPORT void JNICALL
-Java_com_ivarna_finalbenchmark2_aiBenchmark_AiBenchmarkNative_nativeDestroy(JNIEnv*,jobject) {
+Java_com_zenithblue_fb2Pro_aiBenchmark_AiBenchmarkNative_nativeDestroy(JNIEnv*,jobject) {
     // Unbind before destroy (may be called from a different thread)
     if (g_eDpy != EGL_NO_DISPLAY)
         eglMakeCurrent(g_eDpy,EGL_NO_SURFACE,EGL_NO_SURFACE,EGL_NO_CONTEXT);
@@ -414,7 +414,7 @@ Java_com_ivarna_finalbenchmark2_aiBenchmark_AiBenchmarkNative_nativeDestroy(JNIE
 }
 
 JNIEXPORT jdoubleArray JNICALL
-Java_com_ivarna_finalbenchmark2_aiBenchmark_AiBenchmarkNative_nativeRunBenchmark(
+Java_com_zenithblue_fb2Pro_aiBenchmark_AiBenchmarkNative_nativeRunBenchmark(
         JNIEnv* env, jobject, jint id, jint /*iters*/, jint /*warmup*/) {
     // Map ID → N (multiple of 16 for GLES 16×16 workgroup; multiple of 4 for NEON tile)
     // P3 FIX: Use realistic model sizes based on actual AI workloads
@@ -452,7 +452,7 @@ Java_com_ivarna_finalbenchmark2_aiBenchmark_AiBenchmarkNative_nativeRunBenchmark
 }
 
 JNIEXPORT jstring JNICALL
-Java_com_ivarna_finalbenchmark2_aiBenchmark_AiBenchmarkNative_nativeGetMode(JNIEnv* env, jobject) {
+Java_com_zenithblue_fb2Pro_aiBenchmark_AiBenchmarkNative_nativeGetMode(JNIEnv* env, jobject) {
     // Return friendly display names used directly in UI badge and share text.
     const char* m = "CPU";
     switch (g_activeBackend) {

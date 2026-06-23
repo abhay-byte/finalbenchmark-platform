@@ -1,0 +1,186 @@
+package com.zenithblue.fb2Pro.ui.viewmodels
+
+import android.content.Context
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewModelScope
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
+import com.zenithblue.fb2Pro.cpuBenchmark.BenchmarkResult
+import com.zenithblue.fb2Pro.data.database.AppDatabase
+import com.zenithblue.fb2Pro.data.repository.HistoryRepository
+import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.launch
+
+data class HistoryUiModel(
+        val id: Long,
+        val timestamp: Long,
+        val finalScore: Double,
+        val singleCoreScore: Double,
+        val multiCoreScore: Double,
+        val testName: String,
+        val normalizedScore: Double = 0.0,
+        val detailedResults: List<BenchmarkResult> = emptyList(),
+        val performanceMetricsJson: String = "",
+        /** Raw JSON string from detailedResultsJson DB column — used for FULL benchmark phase_details. */
+        val rawDetailedResultsJson: String = ""
+)
+
+sealed interface HistoryScreenState {
+    object Loading : HistoryScreenState
+    data class Success(val results: List<HistoryUiModel>) : HistoryScreenState
+    object Empty : HistoryScreenState
+}
+
+enum class HistorySort {
+    DATE_NEWEST,
+    DATE_OLDEST,
+    SCORE_HIGH_TO_LOW,
+    SCORE_LOW_TO_HIGH
+}
+
+class HistoryViewModel(private val repository: HistoryRepository) : ViewModel() {
+
+    private val _selectedCategory = MutableStateFlow("All")
+    private val _sortOption = MutableStateFlow(HistorySort.DATE_NEWEST)
+
+    val selectedCategory: StateFlow<String> = _selectedCategory.asStateFlow()
+    val sortOption: StateFlow<HistorySort> = _sortOption.asStateFlow()
+
+    val screenState: StateFlow<HistoryScreenState> =
+            combine(repository.getAllResults(), _selectedCategory, _sortOption) {
+                            rawList,
+                            category,
+                            sort ->
+                        
+                        
+                        val list =
+                                rawList.map { benchmark ->
+                                    // Parse detailed results from JSON string if available
+                                    val detailedResults =
+                                            try {
+                                                val rawJson = benchmark.benchmarkResult.detailedResultsJson
+                                                if (rawJson.isNotEmpty() && rawJson.trimStart().startsWith("[")) {
+                                                    val gson = Gson()
+                                                    val listType =
+                                                            object :
+                                                                            TypeToken<
+                                                                                    List<
+                                                                                            com.zenithblue.fb2Pro.cpuBenchmark.BenchmarkResult>>() {}
+                                                                    .type
+                                                    val parsed = gson.fromJson(
+                                                            rawJson,
+                                                            listType
+                                                    ) as
+                                                            List<
+                                                                    com.zenithblue.fb2Pro.cpuBenchmark.BenchmarkResult>
+                                                    if (parsed.isNotEmpty() && parsed.firstOrNull()?.name?.isNotBlank() == true) parsed
+                                                    else throw IllegalStateException("Parsed data has default values")
+                                                } else {
+                                                    throw IllegalStateException("Not a JSON array")
+                                                }
+                                            } catch (e: Exception) {
+                                                // Fallback: build from genericTestDetails table
+                                                benchmark.genericTestDetails.map { detail ->
+                                                    val metricsObj = try { org.json.JSONObject(detail.metricsJson) } catch (e2: Exception) { org.json.JSONObject() }
+                                                    com.zenithblue.fb2Pro.cpuBenchmark.BenchmarkResult(
+                                                        name = detail.testName,
+                                                        opsPerSecond = metricsObj.optDouble("value", detail.score),
+                                                        executionTimeMs = metricsObj.optDouble("durationMs", 0.0),
+                                                        isValid = true,
+                                                        metricsJson = detail.metricsJson
+                                                    )
+                                                }
+                                            }
+
+                                    HistoryUiModel(
+                                            id = benchmark.benchmarkResult.id,
+                                            timestamp = benchmark.benchmarkResult.timestamp,
+                                            finalScore = benchmark.benchmarkResult.totalScore,
+                                            singleCoreScore =
+                                                    benchmark.benchmarkResult.singleCoreScore,
+                                            multiCoreScore =
+                                                    benchmark.benchmarkResult.multiCoreScore,
+                                            testName = benchmark.benchmarkResult.type,
+                                            normalizedScore =
+                                                    benchmark.benchmarkResult.normalizedScore,
+                                            detailedResults = detailedResults,
+                                            performanceMetricsJson =
+                                                    benchmark.benchmarkResult.performanceMetricsJson,
+                                            rawDetailedResultsJson =
+                                                    benchmark.benchmarkResult.detailedResultsJson
+                                    )
+                                }
+
+                        // 1. Filter
+                        var filteredList = list
+                        if (category != "All") {
+                            filteredList =
+                                    filteredList.filter {
+                                        it.testName.contains(category, ignoreCase = true)
+                                    }
+                        }
+
+                        // 2. Sort
+                        val sortedList =
+                                when (sort) {
+                                    HistorySort.DATE_NEWEST ->
+                                            filteredList.sortedWith(compareByDescending<HistoryUiModel> { it.timestamp }.thenByDescending { it.id })
+                                    HistorySort.DATE_OLDEST ->
+                                            filteredList.sortedWith(compareBy<HistoryUiModel> { it.timestamp }.thenBy { it.id })
+                                    HistorySort.SCORE_HIGH_TO_LOW ->
+                                            filteredList.sortedWith(compareByDescending<HistoryUiModel> { it.finalScore }.thenByDescending { it.id })
+                                    HistorySort.SCORE_LOW_TO_HIGH ->
+                                            filteredList.sortedWith(compareBy<HistoryUiModel> { it.finalScore }.thenBy { it.id })
+                                }
+
+                        // Return appropriate state based on the results
+                        val finalState = if (sortedList.isEmpty()) {
+                            HistoryScreenState.Empty
+                        } else {
+                            HistoryScreenState.Success(sortedList)
+                        }
+                        
+                        
+                        
+                        finalState
+                    }
+                    .stateIn(
+                            scope = viewModelScope,
+                            started = SharingStarted.Lazily,
+                            initialValue = HistoryScreenState.Loading
+                    )
+
+    companion object {
+        class Factory(private val context: Context) : ViewModelProvider.Factory {
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                if (modelClass.isAssignableFrom(HistoryViewModel::class.java)) {
+                    val database = AppDatabase.getDatabase(context)
+                    val dao = database.benchmarkDao()
+                    val repository = HistoryRepository(dao)
+                    @Suppress("UNCHECKED_CAST") return HistoryViewModel(repository) as T
+                }
+                throw IllegalArgumentException("Unknown ViewModel class")
+            }
+        }
+    }
+
+    fun updateCategory(category: String) {
+        _selectedCategory.value = category
+    }
+
+    fun updateSortOption(sort: HistorySort) {
+        _sortOption.value = sort
+    }
+
+    fun deleteResult(id: Long) {
+        viewModelScope.launch { repository.deleteResultById(id) }
+    }
+
+    fun deleteAllResults() {
+        viewModelScope.launch { repository.deleteAllResults() }
+    }
+
+    fun getBenchmarkDetail(id: Long) = repository.getResultById(id)
+}

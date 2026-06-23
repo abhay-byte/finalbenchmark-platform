@@ -1,0 +1,6 @@
+Initial Play Store release of Finalbenchmark 2 Pro (v1.1.0-pro).
+
+• Same feature set as the F-Droid build of Finalbenchmark 2 v1.1.0
+• Repackaged for the Google Play Store under com.zenithblue.fb2Pro
+• New app icon and Pro label
+• Same open-source codebase — no proprietary features

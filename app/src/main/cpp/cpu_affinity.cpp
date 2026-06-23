@@ -21,7 +21,7 @@ extern "C" {
  * @return true if successful, false otherwise
  */
 JNIEXPORT jboolean JNICALL
-Java_com_ivarna_finalbenchmark2_cpuBenchmark_CpuAffinityManager_nativeSetCpuAffinity(
+Java_com_zenithblue_fb2Pro_cpuBenchmark_CpuAffinityManager_nativeSetCpuAffinity(
         JNIEnv* env,
         jobject obj,
         jint coreId) {
@@ -53,7 +53,7 @@ Java_com_ivarna_finalbenchmark2_cpuBenchmark_CpuAffinityManager_nativeSetCpuAffi
  * @return true if successful, false otherwise
  */
 JNIEXPORT jboolean JNICALL
-Java_com_ivarna_finalbenchmark2_cpuBenchmark_CpuAffinityManager_nativeResetCpuAffinity(
+Java_com_zenithblue_fb2Pro_cpuBenchmark_CpuAffinityManager_nativeResetCpuAffinity(
         JNIEnv* env,
         jobject obj) {
     
@@ -87,7 +87,7 @@ Java_com_ivarna_finalbenchmark2_cpuBenchmark_CpuAffinityManager_nativeResetCpuAf
  * @return Array of CPU core IDs that the thread is allowed to run on
  */
 JNIEXPORT jintArray JNICALL
-Java_com_ivarna_finalbenchmark2_cpuBenchmark_CpuAffinityManager_nativeGetCpuAffinity(
+Java_com_zenithblue_fb2Pro_cpuBenchmark_CpuAffinityManager_nativeGetCpuAffinity(
         JNIEnv* env,
         jobject obj) {
     

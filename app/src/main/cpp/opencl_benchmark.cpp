@@ -133,7 +133,7 @@ static bool             g_clInit = false;
 extern "C" {
 
 JNIEXPORT jboolean JNICALL
-Java_com_ivarna_finalbenchmark2_utils_OpenCLBenchmarkBridge_nativeInit(JNIEnv*, jobject) {
+Java_com_zenithblue_fb2Pro_utils_OpenCLBenchmarkBridge_nativeInit(JNIEnv*, jobject) {
     if (g_clInit) return JNI_TRUE;
     
     // P0 FIX: Multi-path dlopen for all GPU families (Adreno/Mali/Xclipse/PowerVR)
@@ -189,7 +189,7 @@ Java_com_ivarna_finalbenchmark2_utils_OpenCLBenchmarkBridge_nativeInit(JNIEnv*, 
 }
 
 JNIEXPORT jfloat JNICALL
-Java_com_ivarna_finalbenchmark2_utils_OpenCLBenchmarkBridge_nativeRunScene(JNIEnv*, jobject, jint sceneId) {
+Java_com_zenithblue_fb2Pro_utils_OpenCLBenchmarkBridge_nativeRunScene(JNIEnv*, jobject, jint sceneId) {
     if (!g_clInit || !g_clLib) return -1.0f;
 
     auto CreateBuffer          = CL_SYM(CreateBuffer);
@@ -351,7 +351,7 @@ Java_com_ivarna_finalbenchmark2_utils_OpenCLBenchmarkBridge_nativeRunScene(JNIEn
 }
 
 JNIEXPORT void JNICALL
-Java_com_ivarna_finalbenchmark2_utils_OpenCLBenchmarkBridge_nativeDestroy(JNIEnv*, jobject) {
+Java_com_zenithblue_fb2Pro_utils_OpenCLBenchmarkBridge_nativeDestroy(JNIEnv*, jobject) {
     if (!g_clLib) return;
     if (g_queue) { auto f = (pfn_ReleaseCommandQueue)dlsym(g_clLib, "clReleaseCommandQueue"); if (f) f(g_queue); g_queue = nullptr; }
     if (g_ctx)   { auto f = (pfn_ReleaseContext)dlsym(g_clLib, "clReleaseContext");           if (f) f(g_ctx);   g_ctx   = nullptr; }

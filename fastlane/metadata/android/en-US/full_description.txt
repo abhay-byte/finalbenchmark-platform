@@ -1,7 +1,18 @@
-Finalbenchmark 2 is a comprehensive CPU benchmarking tool.
+Finalbenchmark 2 Pro is a comprehensive CPU benchmarking and performance testing tool, distributed on the Google Play Store.
 
 <b>Key Features:</b>
 • Multi-threaded CPU stress testing with real-time monitoring
 • Single-core and multi-core performance benchmarks
 • Temperature tracking during intensive tests
+• AI and GPU workload benchmarks (Vulkan / OpenCL)
+• Productivity benchmark with video, image, and document workloads
+• Storage and RAM throughput tests
+• Detailed per-core frequency, governor, and affinity data
+• Historical result tracking and export
 
+<b>Privacy:</b>
+Finalbenchmark 2 Pro is fully open source. No tracking, no ads, no telemetry. The app does not request network access for analytics. All benchmark data stays on your device.
+
+<b>Open source:</b>
+Source code, issue tracker, and F-Droid build:
+https://github.com/abhay-byte/finalbenchmark-platform

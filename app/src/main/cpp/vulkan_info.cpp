@@ -57,7 +57,7 @@ std::string deviceTypeToString(VkPhysicalDeviceType type) {
 }
 
 extern "C" JNIEXPORT jstring JNICALL
-Java_com_ivarna_finalbenchmark2_utils_VulkanNativeBridge_getVulkanInfoNative(JNIEnv* env, jclass clazz) {
+Java_com_zenithblue_fb2Pro_utils_VulkanNativeBridge_getVulkanInfoNative(JNIEnv* env, jclass clazz) {
     // 1. Initialize Vulkan Instance
     VkApplicationInfo appInfo = {};
     appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;

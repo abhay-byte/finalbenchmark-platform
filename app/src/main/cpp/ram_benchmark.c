@@ -93,7 +93,7 @@ static __attribute__((noinline)) int64_t now_ns(void) {
  * before it is needed.
  */
 JNIEXPORT jdouble JNICALL
-Java_com_ivarna_finalbenchmark2_utils_RamNativeBridge_nativeSeqRead(
+Java_com_zenithblue_fb2Pro_utils_RamNativeBridge_nativeSeqRead(
         JNIEnv *env, jclass cls, jlong durationMs)
 {
     size_t l3_size = detect_l3_cache_size();
@@ -153,7 +153,7 @@ Java_com_ivarna_finalbenchmark2_utils_RamNativeBridge_nativeSeqRead(
  * or eliminate the stores.
  */
 JNIEXPORT jdouble JNICALL
-Java_com_ivarna_finalbenchmark2_utils_RamNativeBridge_nativeSeqWrite(
+Java_com_zenithblue_fb2Pro_utils_RamNativeBridge_nativeSeqWrite(
         JNIEnv *env, jclass cls, jlong durationMs)
 {
     size_t l3_size = detect_l3_cache_size();
@@ -211,7 +211,7 @@ Java_com_ivarna_finalbenchmark2_utils_RamNativeBridge_nativeSeqWrite(
  * Returns ns / operation.
  */
 JNIEXPORT jdouble JNICALL
-Java_com_ivarna_finalbenchmark2_utils_RamNativeBridge_nativeRandAccess(
+Java_com_zenithblue_fb2Pro_utils_RamNativeBridge_nativeRandAccess(
         JNIEnv *env, jclass cls, jlong durationMs)
 {
     size_t l3_size = detect_l3_cache_size();
@@ -293,7 +293,7 @@ __attribute__((noinline)) static void do_memcpy_once(
 }
 
 JNIEXPORT jdouble JNICALL
-Java_com_ivarna_finalbenchmark2_utils_RamNativeBridge_nativeMemCopy(
+Java_com_zenithblue_fb2Pro_utils_RamNativeBridge_nativeMemCopy(
         JNIEnv *env, jclass cls, jlong durationMs)
 {
     size_t l3_size = detect_l3_cache_size();
@@ -386,7 +386,7 @@ static void* mt_thread(void *arg) {
 }
 
 JNIEXPORT jdouble JNICALL
-Java_com_ivarna_finalbenchmark2_utils_RamNativeBridge_nativeMultiThread(
+Java_com_zenithblue_fb2Pro_utils_RamNativeBridge_nativeMultiThread(
         JNIEnv *env, jclass cls, jint numThreads, jlong durationMs)
 {
     const int   T       = (numThreads < 1 || numThreads > 64) ? 4 : (int)numThreads;

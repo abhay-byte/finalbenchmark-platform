@@ -248,17 +248,17 @@ VulkanBenchResult vulkan_ai_matmul(int N) {
 extern "C" {
 
 JNIEXPORT jboolean JNICALL
-Java_com_ivarna_finalbenchmark2_aiBenchmark_AiBenchmarkNative_nativeVulkanInit(JNIEnv*, jobject) {
+Java_com_zenithblue_fb2Pro_aiBenchmark_AiBenchmarkNative_nativeVulkanInit(JNIEnv*, jobject) {
     return vulkan_ai_init() ? JNI_TRUE : JNI_FALSE;
 }
 
 JNIEXPORT void JNICALL
-Java_com_ivarna_finalbenchmark2_aiBenchmark_AiBenchmarkNative_nativeVulkanDestroy(JNIEnv*, jobject) {
+Java_com_zenithblue_fb2Pro_aiBenchmark_AiBenchmarkNative_nativeVulkanDestroy(JNIEnv*, jobject) {
     vulkan_ai_destroy();
 }
 
 JNIEXPORT jboolean JNICALL
-Java_com_ivarna_finalbenchmark2_aiBenchmark_AiBenchmarkNative_nativeVulkanAvailable(JNIEnv*, jobject) {
+Java_com_zenithblue_fb2Pro_aiBenchmark_AiBenchmarkNative_nativeVulkanAvailable(JNIEnv*, jobject) {
     return vulkan_ai_available() ? JNI_TRUE : JNI_FALSE;
 }
 

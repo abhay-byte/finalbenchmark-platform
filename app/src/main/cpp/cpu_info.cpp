@@ -32,7 +32,7 @@ std::string getSystemProperty(const char* key) {
 }
 
 extern "C" JNIEXPORT jstring JNICALL
-Java_com_ivarna_finalbenchmark2_utils_CpuNativeBridge_getCpuDetailsNative(JNIEnv* env, jclass clazz) {
+Java_com_zenithblue_fb2Pro_utils_CpuNativeBridge_getCpuDetailsNative(JNIEnv* env, jclass clazz) {
     std::stringstream json;
     json << "{";
 

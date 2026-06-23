@@ -1,11 +1,3 @@
-import org.gradle.api.tasks.bundling.AbstractArchiveTask
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.TimeZone
-
-// F-Droid reproducible builds: disable baseline profiles using Groovy script
-apply(from = "fix-baseline-profiles.gradle")
-
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -15,17 +7,17 @@ plugins {
 }
 
 android {
-    namespace = "com.ivarna.finalbenchmark2"
+    namespace = "com.zenithblue.fb2Pro"
     compileSdk { version = release(36) }
 
     ndkVersion = "27.3.13750724"
 
     defaultConfig {
-        applicationId = "com.ivarna.finalbenchmark2"
+        applicationId = "com.zenithblue.fb2Pro"
         minSdk = 24
         targetSdk = 36
-        versionCode = 11
-        versionName = "1.1.0"
+        versionCode = 11001
+        versionName = "1.1.0-pro"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -65,22 +57,15 @@ android {
     }
 
     androidResources {
-        // Disable PNG crunching for reproducible builds
         @Suppress("UnstableApiUsage")
         ignoreAssetsPattern = "!.svn:!.git:.*:!CVS:!thumbs.db:!picasa.ini:!*.scc:*~"
     }
 
-    // Disable dependency metadata block for F-Droid
-    dependenciesInfo {
-        includeInApk = false
-        includeInBundle = false
-    }
-
     signingConfigs {
-        create("release") {
-            storeFile = file("/home/abhay/repos/keys/keystore/fb.jks")
+        create("playstore") {
+            storeFile = file("/home/abhay/repos/keys/keystore/fb2pro.jks")
             storePassword = "26262627"
-            keyAlias = "fb2"
+            keyAlias = "fb2pro"
             keyPassword = "26262627"
         }
     }
@@ -97,13 +82,10 @@ android {
                     getDefaultProguardFile("proguard-android-optimize.txt"),
                     "proguard-rules.pro"
             )
-            // Disable baseline profiles for F-Droid reproducible builds
             packaging {
                 resources.excludes.add("META-INF/**")
-                resources.excludes.add("**.prof")
-                resources.excludes.add("assets/dexopt/baseline.prof")
             }
-            signingConfig = signingConfigs.getByName("release")
+            signingConfig = signingConfigs.getByName("playstore")
         }
     }
     compileOptions {
@@ -114,12 +96,6 @@ android {
     buildFeatures { compose = true }
 
     packaging { jniLibs { useLegacyPackaging = false } }
-}
-
-// Reproducible builds configuration for F-Droid
-tasks.withType<AbstractArchiveTask>().configureEach {
-    isPreserveFileTimestamps = false
-    isReproducibleFileOrder = true
 }
 
 dependencies {
